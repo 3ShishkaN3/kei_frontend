@@ -1,30 +1,44 @@
 <script>
-	export let name;
+  import { Router, Route } from 'svelte-routing';
+  import Home from './routes/Home.svelte';
+  import Registration from './routes/Registration.svelte';
+  import Login from './routes/Login.svelte';
+  import Header from './components/Header.svelte';
+  import Footer from './components/Footer.svelte';
+  import { tick } from 'svelte';
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/dist/ScrollTrigger';
+
+  gsap.registerPlugin(ScrollTrigger);
+
+  let currentPath = '';
+
+  $: async () => {
+    const newPath = window.location.pathname; // Получаем текущий путь напрямую
+    if (newPath !== currentPath) {
+      currentPath = newPath;
+      await tick(); // Ждём обновление DOM
+      ScrollTrigger.getAll().forEach((st) => st.kill()); // Удаляем все ScrollTrigger
+      document.querySelectorAll('.pin-spacer').forEach(el => el.remove()); // Удаляем остатки
+    }
+  };
 </script>
 
-<main>
-	<h1>Hello {name}!</h1>
-	<p>Visit the <a href="https://svelte.dev/tutorial">Svelte tutorial</a> to learn how to build Svelte apps.</p>
-</main>
-
 <style>
-	main {
-		text-align: center;
-		padding: 1em;
-		max-width: 240px;
-		margin: 0 auto;
-	}
-
-	h1 {
-		color: #ff3e00;
-		text-transform: uppercase;
-		font-size: 4em;
-		font-weight: 100;
-	}
-
-	@media (min-width: 640px) {
-		main {
-			max-width: none;
-		}
-	}
+  body {
+    background: url('/background.jpg') no-repeat center center fixed;
+    font-family: 'Montserrat', sans-serif;
+  }
 </style>
+
+<Router>
+  <Header />
+
+  <main>
+    <Route path="/" component={Home} key={currentPath} />
+    <Route path="/registration" component={Registration} key={currentPath} />
+    <Route path="/login" component={Login} key={currentPath} />
+  </main>
+
+  <Footer />
+</Router>
