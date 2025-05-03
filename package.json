@@ -20,10 +20,31 @@
     "svelte": "^3.55.0"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@fortawesome/fontawesome-svg-core": "^6.7.2",
+    "@fortawesome/free-regular-svg-icons": "^6.7.2",
+    "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "@fortawesome/svelte-fontawesome": "^0.2.3",
+    "@mui/icons-material": "^7.0.1",
+    "@mui/material": "^7.0.1",
+    "@rollup/plugin-replace": "^6.0.2",
+    "easymde": "^2.20.0",
+    "font-awesome": "^4.7.0",
     "gsap": "^3.12.7",
+    "marked": "^15.0.8",
+    "pdfjs-dist": "^5.1.91",
+    "plyr": "^3.7.8",
+    "rollup-plugin-dotenv": "^0.5.1",
     "scrolltrigger": "^1.0.1",
     "sirv-cli": "^2.0.0",
     "svelte-app": "file:",
-    "svelte-routing": "^2.13.0"
+    "svelte-carousel": "^1.0.25",
+    "svelte-easy-crop": "^3.0.1",
+    "svelte-material-icons": "^3.0.5",
+    "svelte-pdf": "^1.0.20",
+    "svelte-routing": "^2.13.0",
+    "swiper": "^11.2.6",
+    "vite": "^6.2.3"
   }
 }

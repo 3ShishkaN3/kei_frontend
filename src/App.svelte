@@ -3,42 +3,72 @@
   import Home from './routes/Home.svelte';
   import Registration from './routes/Registration.svelte';
   import Login from './routes/Login.svelte';
+  import Profile from './routes/Profile.svelte';
+  import Info from './routes/Info.svelte';
+  import Courses from './routes/Courses.svelte';
+  import Lessons from './routes/Lessons.svelte';
+  import Lesson from './routes/Lesson.svelte';
+  import NotFound from './routes/NotFound.svelte';
   import Header from './components/Header.svelte';
   import Footer from './components/Footer.svelte';
-  import { tick } from 'svelte';
+  import { tick, onMount } from 'svelte';
   import { gsap } from 'gsap';
   import { ScrollTrigger } from 'gsap/dist/ScrollTrigger';
+  import { checkAuthStatus, user } from './stores/user.js';
 
   gsap.registerPlugin(ScrollTrigger);
 
-  let currentPath = '';
+  let currentPath = window.location.pathname; 
 
-  $: async () => {
-    const newPath = window.location.pathname; // Получаем текущий путь напрямую
+  $: {
+    const newPath = window.location.pathname;
     if (newPath !== currentPath) {
       currentPath = newPath;
-      await tick(); // Ждём обновление DOM
-      ScrollTrigger.getAll().forEach((st) => st.kill()); // Удаляем все ScrollTrigger
-      document.querySelectorAll('.pin-spacer').forEach(el => el.remove()); // Удаляем остатки
+
+      handlePathChange();
+
     }
-  };
+  }
+
+  async function handlePathChange() {
+    await tick(); 
+    ScrollTrigger.getAll().forEach((st) => st.kill(true)); 
+    console.log('Path changed, ScrollTriggers killed for:', currentPath);
+  }
+
+
+  onMount(async () => {
+    await checkAuthStatus();
+    currentPath = window.location.pathname;
+  });
+
+  let isAuthenticated;
+  let userRole = null;
+  user.subscribe(value => {
+      isAuthenticated = value.isAuthenticated;
+      userRole = value.role;
+  });
 </script>
 
-<style>
-  body {
-    background: url('/background.jpg') no-repeat center center fixed;
-    font-family: 'Montserrat', sans-serif;
-  }
-</style>
-
-<Router>
+<Router url={currentPath}>
   <Header />
 
   <main>
-    <Route path="/" component={Home} key={currentPath} />
-    <Route path="/registration" component={Registration} key={currentPath} />
-    <Route path="/login" component={Login} key={currentPath} />
-  </main>
+    <Route path="/" component={Home} />
+
+    {#if !isAuthenticated}
+      <Route path="/registration" component={Registration} />
+      <Route path="/login" component={Login} />
+    {/if}
+
+    {#if isAuthenticated}
+      <Route path="/profile" component={Profile} />
+      <Route path="/info" component={Info} />
+      <Route path="/courses" component={Courses} />
+      <Route path="/courses/:courseId/lessons" component={Lessons} />
+      <Route path="/bonuses" component={NotFound} /> <Route path="/statistics" component={NotFound} /> <Route path="/calendar" component={NotFound} /> {/if}
+      <Route path="/courses/:courseId/lessons/:lessonId" component={Lesson} />
+    </main>
 
   <Footer />
 </Router>

@@ -1,3 +1,45 @@
+<script>
+    import { API_BASE_URL } from '../config.js';
+    import { user } from '../stores/user.js';
+    import { navigate } from 'svelte-routing';
+    import { apiFetch } from '../api/api.js';
+    import { fetchCsrfToken } from '../api/csrf.js'
+    
+    let email = "";
+    let password = "";
+    let error = "";
+
+    async function handleSubmit(event) {
+        event.preventDefault();
+        error = "";
+
+        const loginData = {
+            username: email,
+            password: password
+        };
+
+        try {
+            const response = await apiFetch(`${API_BASE_URL}/auth/login/`, {
+                method: 'POST',
+                body: JSON.stringify(loginData)
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                await fetchCsrfToken(); 
+                user.set({ isAuthenticated: true });
+                navigate("/");
+            } else {
+                error = data.detail || "Ошибка авторизации";
+            }
+        } catch (err) {
+            error = "Ошибка соединения";
+            console.error(err);
+        }
+    }
+
+</script>
+
 <style>
 .login-container {
     display: flex;
@@ -191,29 +233,38 @@ form input:focus {
     padding: 20px 10px;
     }
 }
+
+  .error {
+    color: red;
+    margin-bottom: 10px;
+  }
+
 </style>
 
 <div class="login-container">
-<div class="form-container">
+  <div class="form-container">
     <h1>С возвращением!</h1>
-    <form>
-    <input type="email" placeholder="Электронная почта" />
-    <input type="password" placeholder="Пароль" />
-    <div class="forgot-register-links">
-        <a href="#">Забыли пароль?</a>
+    {#if error}
+      <div class="error">{error}</div>
+    {/if}
+    <form on:submit={handleSubmit}>
+      <input type="text" placeholder="Электронная почта" bind:value={email} required />
+      <input type="password" placeholder="Пароль" bind:value={password} required />
+      <div class="forgot-register-links">
+        <a href="/">Забыли пароль?</a>
         <a href="/registration">Зарегистрироваться</a>
-    </div>
-    <button type="submit" class="confirm-email-button">Войти</button>
+      </div>
+      <button type="submit" class="confirm-email-button">Войти</button>
     </form>
     <div class="contact-text">СВЯЗЬ С ПРЕПОДАВАТЕЛЕМ</div>
     <div class="contact-buttons">
-    <button class="telegram-button" on:click={() => window.open('https://t.me/keisenpai', '_blank')}>
+      <button class="telegram-button" on:click={() => window.open('https://t.me/keisenpai', '_blank')}>
         <svg viewBox="0 0 24 24">
-        <path d="M21.5,2.5c-0.2,0-0.4,0.1-0.5,0.2l-18,8c-0.3,0.1-0.3,0.6,0,0.7l4.3,1.8l1.7,5.1c0.1,0.3,0.5,0.4,0.7,0.2l2.5-2.2l4.2,3.1c0.3,0.2,0.7,0.1,0.8-0.3l2.5-9C22,2.8,21.8,2.5,21.5,2.5z M9.8,13.2L9,12l7.4-3.7L9.8,13.2z"/>
+          <path d="M21.5,2.5c-0.2,0-0.4,0.1-0.5,0.2l-18,8c-0.3,0.1-0.3,0.6,0,0.7l4.3,1.8l1.7,5.1c0.1,0.3,0.5,0.4,0.7,0.2l2.5-2.2l4.2,3.1c0.3,0.2,0.7,0.1,0.8-0.3l2.5-9C22,2.8,21.8,2.5,21.5,2.5z M9.8,13.2L9,12l7.4-3.7L9.8,13.2z"/>
         </svg>
         TELEGRAM
-    </button>
+      </button>
     </div>
-</div>
-<div class="banner"></div>
+  </div>
+  <div class="banner"></div>
 </div>

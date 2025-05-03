@@ -1,3 +1,311 @@
+:root {
+  /* Основные цвета */
+  --color-primary: #AFA4FF;
+  --color-secondary: #6D7FC9;
+  --color-pink-light: #EBC7F2;
+  --color-pink-hover: #D8A8E8;
+  --color-pink-active: #C18AD2;
+  --color-purple-light: #C2B6FC;
+  --color-purple-hover: #A8A1F5;
+  --color-purple-active: #8E8BE0;
+  --color-soft-blue: rgb(133, 171, 230);
+  --color-muted-indigo: rgb(114, 113, 160);
+  --color-text-dark: #333;
+  --color-text-light: #fff;
+  --color-text-muted: #555;
+  --color-text-admin-button: #4D44B5;
+  --color-text-admin-button-create: #fff;
+  --color-bg-light: #fff;
+  --color-bg-ultra-light: #f8f8f8;
+  --color-bg-admin-button: #e5e2ff;
+  --color-bg-admin-button-create: #4D44B5;
+  --color-bg-admin-button-create-hover: #5f55d1;
+  --color-border-admin-button: #C2B6FC;
+  --color-danger-red: #ff4d4d;
+  --color-telegram: #0088cc; 
+  --color-telegram-text: #333; 
+  --color-telegram-gradient-start: #d6ebff;
+  --color-telegram-gradient-end: #c2e0ff;
+  --color-shadow: rgba(0, 0, 0, 0.1);
+  --color-shadow-hover: rgba(0, 0, 0, 0.15);
+  --color-border-light: rgba(0, 0, 0, 0.1);
+
+  /* Основные размеры и интервалы */
+  --spacing-padding-page: clamp(15px, 5vw, 80px);
+  --spacing-margin-bottom-large: 30px;
+  --spacing-margin-bottom-medium: 25px;
+  --spacing-margin-bottom-small: 15px;
+  --spacing-gap-medium: 15px;
+  --spacing-gap-small: 8px;
+  --spacing-padding-button: 8px 15px;
+  --spacing-border-radius-button: 20px;
+  --spacing-border-radius-dot: 50%;
+  --spacing-border-radius-card: 24px;
+  --spacing-border-radius-block: 16px;
+  --spacing-padding-block: 1.5rem;
+  --spacing-padding-section: 2rem;
+  --spacing-margin-top-medium: 50px;
+  --spacing-margin-top-small: 20px;
+  --spacing-margin-top-large: auto; /* Для кнопки Telegram */
+  --spacing-padding-telegram-button: 15px 30px;
+  --spacing-gap-telegram-button: 12px;
+
+  /* Типография */
+  --font-family-primary: 'Montserrat', sans-serif;
+  --font-family-secondary: 'Roboto', 'Arial', sans-serif;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semi-bold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extra-bold: 900;
+  --font-size-h1: clamp(2rem, 6vw, 3rem);
+  --font-size-h2: clamp(1.5rem, 4vw, 2rem);
+  --font-size-h6: clamp(1rem, 2vw, 1.1rem);
+  --font-size-p: clamp(0.9rem, 1.5vw, 1rem);
+  --font-size-button: 0.9rem;
+  --font-size-dot: 12px;
+  --line-height-body: 1.6;
+  --line-height-title: 1.8;
+
+  /* Анимации */
+  --animation-duration-entrance: 0.6s;
+  --animation-duration-pulse: 1.5s;
+  --animation-duration-transition: 0.3s;
+  --animation-duration-title-underline: 0.8s;
+  --animation-duration-block-underline: 0.6s;
+  --animation-duration-block-hover: 0.6s;
+  --animation-delay-title: 0.1s;
+  --animation-delay-admin-controls: 0.2s;
+  --animation-delay-carousel: 0.3s;
+
+  /* Разное */
+  --max-width-page: 1400px;
+  --max-width-carousel: 800px;
+  --min-height-page: 60vh;
+  --min-height-slide: 520px;
+  --border-width-button: 1px;
+
+    --color-header-bg: rgba(255, 255, 255, 1);
+  --color-header-bg-scrolled: rgba(255, 255, 255, 0.9);
+  --color-header-shadow: rgba(0, 0, 0, 0.1);
+  --color-auth-button-gradient-start: #EBC7F2;
+  --color-auth-button-gradient-end: #C2B6FC;
+  --color-auth-button-text: #FFF;
+  --color-auth-button-gradient-hover-start: #D8A8E8;
+  --color-auth-button-gradient-hover-end: #A8A1F5;
+  --color-auth-button-gradient-active-start: #C18AD2;
+  --color-auth-button-gradient-active-end: #8E8BE0;
+  --color-logout-button-gradient-start: #EBC7F2;
+  --color-logout-button-gradient-end: #C2B6FC;
+  --color-logout-button-text: #FFF;
+  --color-logout-button-gradient-hover-start: #D8A8E8;
+  --color-logout-button-gradient-hover-end: #A8A1F5;
+  --color-logout-button-gradient-active-start: #C18AD2;
+  --color-logout-button-gradient-active-end: #8E8BE0;
+  --color-menu-button-bg: #f0f0f0;
+  --color-menu-button-bg-hover: #e0e0e0;
+  --color-menu-button-shadow: rgba(0, 0, 0, 0.1);
+  --color-menu-icon-bar: #666;
+  --color-divider: #ccc;
+  --color-simple-button-hover-bg: rgba(0, 0, 0, 0.05);
+  --color-simple-button-active-bg: rgba(0, 0, 0, 0.1);
+  --color-avatar-border: #C2B6FC;
+  --color-avatar-shadow: rgba(194, 182, 252, 0.5);
+  --color-avatar-indicator: white;
+
+  --spacing-header-padding-desktop: 20px 80px;
+  --spacing-header-padding-tablet: 20px 40px;
+  --spacing-header-padding-mobile: 20px 20px;
+  --spacing-logo-height: 90px;
+  --spacing-nav-buttons-margin-left: 40px;
+  --spacing-nav-buttons-gap: 12px;
+  --spacing-auth-button-height: 45px;
+  --spacing-auth-button-width: 150px;
+  --spacing-auth-button-border-radius: 25px;
+  --spacing-logout-button-height: 55px;
+  --spacing-logout-button-width: 125px;
+  --spacing-logout-button-border-radius: 12px;
+  --spacing-menu-button-size: 50px;
+  --spacing-menu-button-border-radius: 15px;
+  --spacing-menu-icon-width: 30px;
+  --spacing-menu-icon-height: 24px;
+  --spacing-menu-bar-height: 3px;
+  --spacing-menu-bar-offset: 10px;
+  --spacing-divider-height: 35px;
+  --spacing-divider-width: 1px;
+  --spacing-divider-margin: 0 10px;
+  --spacing-simple-button-padding: 8px 12px;
+  --spacing-simple-button-border-radius: 8px;
+  --spacing-avatar-size: 45px;
+  --spacing-avatar-border-width: 2px;
+  --spacing-avatar-indicator-size: 14px;
+  --spacing-header-bottom-border-height: 0.5px;
+  --spacing-mobile-menu-padding: 20px;
+  --spacing-mobile-menu-gap: 10px 4vw;
+  --spacing-user-controls-gap: 20px;
+  --spacing-mobile-menu-section-margin-bottom: 15px;
+  --spacing-mobile-menu-title-margin-bottom: 8px;
+  --spacing-mobile-nav-buttons-gap: 8px;
+  --spacing-mobile-user-controls-gap: 15px;
+  --spacing-mobile-user-controls-margin-top: 5px;
+
+  --animation-duration-header-scroll: 0.3s;
+
+  --z-index-header: 100;
+  --header-hidden-top: -100px;
+
+  --color-home-bg: url("/main.jpg");
+  --color-sakura-shadow: #ff6ec7;
+
+  --spacing-main-image-height: 150vh;
+  --spacing-main-image-padding-bottom: 100px;
+  --spacing-sakura-width: 200px;
+
+  --animation-duration-rotate: 10s;
+  --animation-duration-neon-pulse: 2s;
+  --animation-duration-move-up: 5s;
+
+    --color-profile-block-bg: #d0e9ff;
+  --color-profile-block-shadow: rgba(0, 0, 0, 0.1);
+  --color-profile-content-bg: #fff;
+  --color-profile-banner-bg-before: #c1bbeb;
+  --color-profile-banner-bg-after: #ffead5;
+  --color-avatar-border-profile: #fff;
+  --color-avatar-bg-profile: #fff;
+  --color-avatar-shadow-profile: rgba(0, 0, 0, 0.2);
+  --color-avatar-overlay-bg: rgba(0, 0, 0, 0.5);
+  --color-avatar-overlay-loading-bg: rgba(0, 0, 0, 0.7);
+  --color-avatar-overlay-text: white;
+  --color-avatar-delete-bg: rgba(255, 0, 0, 0.7);
+  --color-avatar-delete-bg-hover: rgba(255, 0, 0, 0.9);
+  --color-avatar-delete-text: white;
+  --color-profile-info-name: #303972;
+  --color-profile-info-label: #000;
+  --color-profile-info-value: #303972;
+  --color-block-bg: #FFFFFF;
+  --color-block-border: #DFDFDF;
+  --color-block-shadow: rgba(0, 0, 0, 0.05);
+  --color-block-shadow-hover: rgba(0, 0, 0, 0.1);
+  --color-block-title: #6D7FC9;
+  --color-label: #303972;
+  --color-input-bg: #F5F5F5;
+  --color-input-border: #ccc;
+  --color-input-focus-border: #6D7FC9;
+  --color-input-focus-shadow: rgba(109, 127, 201, 0.2);
+  --color-save-btn-gradient-start: #EBC7F2;
+  --color-save-btn-gradient-end: #C2B6FC;
+  --color-save-btn-text: white;
+  --color-save-btn-gradient-hover-start: #ab95f2;
+  --color-save-btn-gradient-hover-end: #7891e6;
+  --color-settings-label: #303972;
+  --color-switch-bg: #ccc;
+  --color-switch-thumb: white;
+  --color-switch-bg-checked: #6D7FC9;
+  --color-error: #e74c3c;
+  --color-error-bg: rgba(231, 76, 60, 0.1);
+  --color-success: #2ecc71;
+  --color-success-bg: rgba(46, 204, 113, 0.1);
+  --color-input-prefix-bg: #e8e8e8;
+  --color-input-prefix-text: #777;
+  --color-cancel-btn-bg: #f5f5f5;
+  --color-cancel-btn-text: #333;
+  --color-error-message: #f44336;
+  --color-error-message-bg: rgba(244, 67, 54, 0.1);
+  --color-success-message: #4caf50;
+  --color-success-message-bg: rgba(76, 175, 80, 0.1);
+
+  /* Размеры и интервалы для Profile.svelte */
+  --spacing-main-max-width: 1200px;
+  --spacing-main-width: 95%;
+  --spacing-main-margin-top: 20vh;
+  --spacing-main-padding: 2rem 1rem;
+  --spacing-profile-block-margin-bottom: 2.5rem;
+  --spacing-profile-block-border-radius: 12px;
+  --spacing-profile-content-padding: 5rem 3% 2rem;
+  --spacing-profile-banner-height: 7rem;
+  --spacing-profile-banner-bg-size: 35%;
+  --spacing-profile-banner-padding-bottom: 0.5rem;
+  --spacing-profile-banner-border-radius: 12px 12px 0 0;
+  --spacing-profile-banner-before-size: 13rem;
+  --spacing-profile-banner-after-size: 20rem;
+  --spacing-profile-banner-offset-y: 40%;
+  --spacing-avatar-size-profile: 7rem;
+  --spacing-avatar-top-profile: 4rem;
+  --spacing-avatar-left-profile: 3%;
+  --spacing-avatar-border-width-profile: 6px;
+  --spacing-avatar-border-radius-profile: 50%;
+  --spacing-avatar-shadow-blur-profile: 8px;
+  --spacing-avatar-delete-size: 30px;
+  --spacing-avatar-message-margin-top: 10px;
+  --spacing-profile-info-cols-gap: 1.5rem;
+  --spacing-profile-info-cols-col-padding: 0.5rem;
+  --spacing-profile-info-name-font-size-min: 1.2rem;
+  --spacing-profile-info-name-font-size-max: 1.6rem;
+  --spacing-profile-info-role-margin-top: 0.5rem;
+  --spacing-profile-info-label-margin-bottom: 0.3rem;
+  --spacing-profile-info-icon-margin-right: 0.5rem;
+  --spacing-block-padding: 1.5rem;
+  --spacing-block-margin-bottom: 2rem;
+  --spacing-block-border-radius: 12px;
+  --spacing-block-shadow-blur: 10px;
+  --spacing-block-title-margin-bottom: 1.5rem;
+  --spacing-btn-container-margin-top: 1.5rem;
+  --spacing-grid-gap-row: 1.5rem;
+  --spacing-grid-gap-col: 4rem;
+  --spacing-label-margin-bottom: 0.5rem;
+  --spacing-input-padding: 12px 15px;
+  --spacing-input-border-radius: 10px;
+  --spacing-textarea-height: 150px;
+  --spacing-form-group-margin-bottom: 1.5rem;
+  --spacing-flex-row-gap: 1.5rem;
+  --spacing-save-btn-padding: 0.8rem 1.5rem;
+  --spacing-save-btn-min-width: 150px;
+  --spacing-save-btn-border-radius: 8px;
+  --spacing-save-btn-shadow-blur: 13px;
+  --spacing-settings-item-margin-bottom: 1.5rem;
+  --spacing-settings-label-gap: 1rem;
+  --spacing-switch-width: 50px;
+  --spacing-switch-height: 24px;
+  --spacing-switch-thumb-size: 18px;
+  --spacing-switch-thumb-offset: 3px;
+  --spacing-error-padding: 0.5rem;
+  --spacing-error-border-radius: 5px;
+  --spacing-success-padding: 0.5rem;
+  --spacing-success-border-radius: 5px;
+  --spacing-input-prefix-padding: 12px 8px;
+  --spacing-error-message-margin-bottom: 1rem;
+  --spacing-error-message-padding: 0.5rem;
+  --spacing-error-message-border-radius: 4px;
+  --spacing-success-message-margin-bottom: 1rem;
+  --spacing-success-message-padding: 0.5rem;
+  --spacing-success-message-border-radius: 4px;
+  --spacing-cancel-btn-margin-left: 1rem;
+
+  /* Разное для Profile.svelte */
+  --profile-banner-bg-position: 90% bottom;
+  --profile-banner-bg-repeat: no-repeat;
+  --profile-banner-bg-size-value: 35%;
+  --avatar-z-index-profile: 1;
+  --profile-banner-z-index: 0;
+  --input-font-size: 16px;
+  --label-font-size: 0.9rem;
+  --block-title-font-size-min: 1rem;
+  --block-title-font-size-max: 1.2rem;
+  --save-btn-font-size: 0.9rem;
+  --avatar-overlay-opacity-transition: opacity 0.2s ease;
+  --avatar-delete-opacity-transition: opacity 0.2s ease;
+  --block-shadow-transition: box-shadow 0.3s ease;
+  --input-transition: border-color 0.3s, box-shadow 0.3s;
+  --save-btn-transition: all 0.3s ease;
+  --switch-transition: 0.4s;
+
+  /* Анимации для Profile.svelte */
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+}
+
 html, body {
 	position: relative;
 	width: 100%;
@@ -10,7 +318,7 @@ body {
 	margin: 0;
 	box-sizing: border-box;
 	font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-	background: url('/background.jpg') no-repeat center center fixed;
+	background: url('/background.jpg') repeat center center fixed;
 	margin-top: 100px;
 }
 

@@ -1,7 +1,9 @@
 <script>
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { gsap } from 'gsap';
   import { ScrollTrigger } from 'gsap/dist/ScrollTrigger';
+  import { API_BASE_URL } from '../config.js';
+  import { apiFetch } from '../api/api.js';
 
   gsap.registerPlugin(ScrollTrigger);
 
@@ -9,6 +11,29 @@
   let consultationContainer;
   let bannerElement;
   let formElements;
+
+  let username = '';
+  let email = '';
+  let password = '';
+  let password2 = '';
+
+  let confirmCode = '';
+
+  let registrationError = '';
+  let confirmationError = '';
+  let registrationSuccess = '';
+  let confirmationSuccess = '';
+
+  let isRegistered = false;
+
+  let resendCooldown = 0;
+  let resendInterval;
+
+  let consultationUsername = '';
+  let consultationEmail = '';
+  let consultationSubject = '';
+  let consultationError = '';
+  let consultationSuccess = '';
 
   onMount(() => {
     formElements = gsap.utils.toArray('form input, form button, form h1');
@@ -59,11 +84,166 @@
         { y: 0, opacity: 1, scale: 1, duration: 1.5, ease: 'power2.out' }
       );
     });
+
+    const storedEmail = localStorage.getItem('registrationEmail');
+    if (storedEmail) {
+      email = storedEmail;
+      isRegistered = true;
+    }
   });
 
+  async function handleRegistrationSubmit(event) {
+    event.preventDefault();
+    registrationError = '';
+    registrationSuccess = '';
+
+    const registrationData = {
+      username: username,
+      email: email,
+      password: password,
+      password2: password2
+    };
+
+    try {
+      const response = await apiFetch(`${API_BASE_URL}/auth/register/`, {
+        method: 'POST',
+        body: JSON.stringify(registrationData)
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        registrationSuccess = data.message;
+        isRegistered = true;
+        localStorage.setItem('registrationEmail', email);
+      } else {
+        registrationError = parseErrors(data);
+      }
+    } catch (err) {
+      registrationError = 'Ошибка соединения';
+      console.error(err);
+    }
+  }
+
+  async function handleConfirmSubmit(event) {
+    event.preventDefault();
+    confirmationError = '';
+    confirmationSuccess = '';
+
+    const storedEmail = localStorage.getItem('registrationEmail') || email;
+    const confirmData = {
+      email: storedEmail,
+      code: confirmCode
+    };
+
+    try {
+      const response = await apiFetch(`${API_BASE_URL}/auth/register/confirm/`, {
+        method: 'POST',
+        body: JSON.stringify(confirmData)
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        confirmationSuccess = data.message;
+        localStorage.removeItem('registrationEmail');
+      } else {
+        confirmationError = parseErrors(data);
+      }
+    } catch (err) {
+      confirmationError = 'Ошибка соединения';
+      console.error(err);
+    }
+  }
+
+  async function resendConfirmationCode() {
+    confirmationError = '';
+    confirmationSuccess = '';
+
+    if (resendCooldown > 0) return;
+
+    const storedEmail = localStorage.getItem('registrationEmail') || email;
+    const resendData = { email: storedEmail };
+
+    try {
+      const response = await apiFetch(`${API_BASE_URL}/auth/register/resend/`, {
+        method: 'POST',
+        body: JSON.stringify(resendData)
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        confirmationSuccess = data.message || 'Код выслан повторно.';
+        startResendCooldown();
+      } else {
+        confirmationError = parseErrors(data);
+      }
+    } catch (err) {
+      confirmationError = 'Ошибка соединения';
+      console.error(err);
+    }
+  }
+
+  function startResendCooldown() {
+    resendCooldown = 60;
+    if (resendInterval) clearInterval(resendInterval);
+    resendInterval = setInterval(() => {
+      resendCooldown--;
+      if (resendCooldown <= 0) {
+        clearInterval(resendInterval);
+      }
+    }, 1000);
+  }
+
+  function returnToRegistration() {
+    isRegistered = false;
+    registrationError = '';
+    confirmationError = '';
+    confirmationSuccess = '';
+    confirmCode = '';
+    localStorage.removeItem('registrationEmail');
+  }
+
+  function parseErrors(errors) {
+    let errorText = '';
+    for (const key in errors) {
+      if (errors.hasOwnProperty(key)) {
+        errorText += errors[key].join(' ') + ' ';
+      }
+    }
+    return errorText.trim();
+  }
+
+    async function handleConsultationSubmit(event) {
+    event.preventDefault();
+    consultationError = '';
+    consultationSuccess = '';
+
+    const consultationData = {
+      username: consultationUsername,
+      email: consultationEmail,
+      subject: consultationSubject
+    };
+
+    try {
+      const response = await apiFetch(`${API_BASE_URL}/telegram/consultation/`, {
+        method: 'POST',
+        body: JSON.stringify(consultationData)
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        consultationSuccess = data.message || 'Запрос успешно отправлен.';
+        consultationUsername = '';
+        consultationEmail = '';
+        consultationSubject = '';
+      } else {
+        consultationError = parseErrors(data);
+      }
+    } catch (err) {
+      consultationError = 'Ошибка соединения';
+      console.error(err);
+    }
+  }
 </script>
-
-
 
 
 <style>
@@ -332,18 +512,83 @@
       width: 100%;
     }
   }
+
+    .confirmation-links {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    font-size: 16px;
+    color: #BDB4FE;
+    margin-top: 10px;
+  }
+  
+  .confirmation-links a {
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.3s ease;
+  }
+  
+  .confirmation-links a:hover {
+    color: #8F7EE3;
+    opacity: 0.8;
+  }
+  
+  .confirmation-links a.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
 </style>
 
 <div class="registration-container" bind:this={registrationContainer}>
   <div class="form-container">
     <h1 class="parallax-element">Добро пожаловать!</h1>
-    <form>
-      <input type="text" placeholder="Как вас называть?" />
-      <input type="email" placeholder="Электронная почта" />
-      <input type="password" placeholder="Пароль" />
-      <input type="password" placeholder="Подтвердить пароль" />
-      <button type="submit" class="confirm-email-button parallax-element">Подтвердить почту</button>
-    </form>
+
+    {#if !isRegistered}
+      <!-- Форма регистрации -->
+      <form on:submit={handleRegistrationSubmit}>
+        <input type="text" placeholder="Как вас называть?" bind:value={username} required />
+        <input type="email" placeholder="Электронная почта" bind:value={email} required />
+        <input type="password" placeholder="Пароль" bind:value={password} required />
+        <input type="password" placeholder="Подтвердить пароль" bind:value={password2} required />
+        <button type="submit" class="confirm-email-button">Зарегистрироваться</button>
+      </form>
+      {#if registrationError}
+        <div class="error">{registrationError}</div>
+      {/if}
+      {#if registrationSuccess}
+        <div class="success">{registrationSuccess}</div>
+      {/if}
+    {:else}
+      <!-- Форма подтверждения email -->
+      <div class="confirmation-container">
+        <p>
+          Введите код подтверждения, отправленный на {localStorage.getItem('registrationEmail') || email}
+        </p>
+        <form on:submit={handleConfirmSubmit}>
+          <input type="text" placeholder="Код подтверждения" bind:value={confirmCode} required />
+          <button type="submit" class="confirm-email-button">Подтвердить email</button>
+        </form>
+        <div class="confirmation-links">
+          <a href="#" on:click|preventDefault={resendConfirmationCode} class="resend-link" class:disabled={resendCooldown > 0}>
+            {#if resendCooldown > 0}
+              Повторно выслать код ({resendCooldown})
+            {:else}
+              Выслать код повторно
+            {/if}
+          </a>
+          <a href="#" on:click|preventDefault={returnToRegistration} class="back-link">
+            Вернуться к регистрации
+          </a>
+        </div>
+        {#if confirmationError}
+          <div class="error">{confirmationError}</div>
+        {/if}
+        {#if confirmationSuccess}
+          <div class="success">{confirmationSuccess}</div>
+        {/if}
+      </div>
+    {/if}
+
     <div class="contact-text">СВЯЗЬ С ПРЕПОДАВАТЕЛЕМ</div>
     <div class="contact-buttons">
       <button class="telegram-button" on:click={() => window.open('https://t.me/keisenpai', '_blank')}>
@@ -357,6 +602,7 @@
   <div class="banner parallax-element"></div>
 </div>
 
+
 <div class="consultation-container" bind:this={consultationContainer}>
   <h1 class="parallax-element">Бесплатная консультация</h1>
   <div class="consultation-text parallax-element">
@@ -365,10 +611,16 @@
   </div>
   <div class="consultation-form">
     <div class="consultation-inputs parallax-element">
-      <input type="text" placeholder="Имя" />
-      <input type="tel" placeholder="Телефон" />
-      <input type="text" placeholder="Тема" />
+      <input type="text" placeholder="Имя" bind:value={consultationUsername} required />
+      <input type="email" placeholder="Почта" bind:value={consultationEmail} required />
+      <input type="text" placeholder="Тема" bind:value={consultationSubject} required />
     </div>
-    <button class="consultation-button parallax-element">Отправить заявку</button>
+    <button class="consultation-button parallax-element" on:click={handleConsultationSubmit}>Отправить заявку</button>
+    {#if consultationError}
+      <div class="error">{consultationError}</div>
+    {/if}
+    {#if consultationSuccess}
+      <div class="success">{consultationSuccess}</div>
+    {/if}
   </div>
 </div>

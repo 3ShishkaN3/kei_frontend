@@ -1,0 +1,284 @@
+<script>
+    import BookOpenVariant from 'svelte-material-icons/BookOpenVariant.svelte';
+    import PencilOutline from 'svelte-material-icons/PencilOutline.svelte';
+    import DeleteOutline from 'svelte-material-icons/DeleteOutline.svelte';
+    import { createEventDispatcher } from 'svelte';
+
+    export let lesson;
+    export let progress;
+    export let isAdminView;
+    export let animationDelay = '0s';
+
+    const dispatch = createEventDispatcher();
+
+    $: progressText = progress === 0 ? 'Не начато' :
+                      progress === 100 ? 'Завершено' :
+                      `Завершено на ${progress}%`;
+
+    $: buttonText = progress === 0 ? 'Начать' :
+                    progress === 100 ? 'Повторить' :
+                    'Продолжить';
+
+    $: coverStyle = lesson.cover_image
+        ? `background-image: url(${lesson.cover_image})`
+        : 'background-color: var(--color-purple-light, #e0dffc);';
+
+    function handleEdit() {
+        dispatch('edit', { lesson });
+    }
+
+    function handleDelete() {
+        dispatch('delete', { lessonId: lesson.id });
+    }
+
+    function handleAction() {
+        // TODO: Implement navigation or action for starting/continuing lesson
+        console.log(`Action clicked for lesson ${lesson.id}`);
+        // Example: navigate(`/lessons/${lesson.id}`);
+        dispatch('action', { lessonId: lesson.id });
+    }
+
+</script>
+
+<div class="lesson-card" style="animation-delay: {animationDelay};" class:admin-view={isAdminView}>
+    {#if isAdminView}
+        <div class="admin-controls">
+            <button class="admin-icon-button edit" on:click|stopPropagation={handleEdit} title="Редактировать">
+                <PencilOutline size="20px" />
+            </button>
+            <button class="admin-icon-button delete" on:click|stopPropagation={handleDelete} title="Удалить">
+                <DeleteOutline size="20px" /> 
+                
+            </button>
+        </div>
+    {/if}
+
+    <div class="card-content">
+        <div class="top-section">
+             <div class="icon-container" style={coverStyle}>
+                 {#if !lesson.cover_image}
+                    <BookOpenVariant size="48px" class="default-icon" />
+                 {/if}
+            </div>
+            <div class="info-wrapper">
+                <div class="title-progress-group">
+                     <h3 class="title">{lesson.title}</h3>
+                     <p class="progress-text">{progressText}</p>
+                </div>
+                 <div class="section-count" title="Количество разделов">
+                     <span class="section-label">Разделов:</span>
+                     <span class="section-number">{lesson.section_count || 0}</span>
+                 </div>
+            </div>
+        </div>
+
+        <div class="progress-bar-container">
+            <div class="progress-bar" style="width: {progress}%"></div>
+        </div>
+
+        <div class="bottom-section">
+            <button class="action-button" on:click={handleAction}>
+                {buttonText}
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes card-enter {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .lesson-card {
+        background-color: var(--color-block-bg, #fff);
+        border-radius: var(--spacing-border-radius-block, 16px);
+        box-shadow: var(--color-block-shadow, 0 3px 10px rgba(0,0,0,0.06));
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: box-shadow 0.3s ease, transform 0.3s ease;
+        position: relative;
+        border: 1px solid var(--color-border-light, #f0f0f0);
+        /* Animation */
+        opacity: 0;
+        transform: translateY(20px);
+        animation: card-enter 0.5s ease-out forwards;
+    }
+    .lesson-card:hover {
+        box-shadow: var(--color-block-shadow-hover, 0 6px 18px rgba(0,0,0,0.1));
+        transform: translateY(-5px); /* More pronounced hover */
+    }
+
+    .admin-controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: flex;
+        gap: 6px;
+        z-index: 10;
+        background-color: rgba(255, 255, 255, 0.2);
+        padding: 5px;
+        border-radius: 8px;
+        backdrop-filter: blur(2px);
+    }
+    .admin-icon-button {
+        background: none; border: none; padding: 5px; /* Increased padding */
+        cursor: pointer; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--color-text-muted);
+        transition: background-color 0.2s, color 0.2s;
+    }
+    .admin-icon-button.edit:hover { background-color: var(--color-bg-admin-button); color: var(--color-text-admin-button); }
+    .admin-icon-button.delete:hover { background-color: rgba(255, 77, 77, 0.2); color: var(--color-danger-red); }
+
+    .card-content {
+        padding: 20px; /* Increased padding */
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+    }
+
+    .top-section {
+        display: flex;
+        align-items: flex-start;
+        gap: 15px; /* Increased gap */
+        margin-bottom: 15px; /* Increased margin */
+    }
+
+    .icon-container {
+        width: 85px; /* Increased size */
+        height: 85px; /* Increased size */
+        flex-shrink: 0;
+        border-radius: 12px; /* Slightly larger radius */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-size: cover;
+        background-position: center;
+        transition: transform 0.3s ease;
+    }
+    .lesson-card:hover .icon-container {
+         transform: scale(1.05);
+     }
+    .default-icon { color: var(--color-purple-active); }
+
+    .info-wrapper {
+        flex-grow: 1;
+        min-width: 0;
+        display: flex;
+        justify-content: space-between; /* Space out title/prog from sections */
+        min-height: 70px; /* Match icon height */
+    }
+
+    .title-progress-group {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        margin-bottom: 8px; /* Space between title/progress and sections count */
+    }
+
+    .title {
+        font-size: 1.5rem; /* Increased size */
+        font-weight: var(--font-weight-bold, 700);
+        color: var(--color-text-dark, #333);
+        margin: 0 0 6px 0; /* Increased margin */
+        line-height: 1.35;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .progress-text {
+        font-size: 0.9rem; /* Increased size */
+        color: var(--color-text-muted, #555);
+        margin: 0;
+        line-height: 1.4;
+    }
+
+    .section-count {
+        font-size: 0.9rem;
+        font-weight: var(--font-weight-medium);
+        color: var(--color-text-muted);
+        background-color: #f7f7f7; /* Softer background */
+        padding: 5px 10px;
+        border-radius: 6px;
+        align-self: flex-start;
+        display: inline-flex; /* Keep label and number together */
+        align-items: baseline;
+        gap: 5px;
+        border: 1px solid #eee;
+    }
+    .section-label {
+         font-size: 0.8rem;
+         color: #888;
+    }
+    .section-number {
+         font-weight: var(--font-weight-bold);
+         color: var(--color-secondary); /* Use secondary color */
+         font-size: 1rem;
+    }
+
+    .progress-bar-container {
+        height: 8px; /* Slightly thicker */
+        background-color: var(--color-border-light, #f0f0f0); /* Lighter background */
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 20px 0 20px 0; /* Increased bottom margin */
+    }
+
+    .progress-bar {
+        height: 100%;
+         /* Updated Vertical Gradient */
+        background: linear-gradient(to bottom, var(--color-soft-blue, #a1c4fd), var(--color-purple-hover, #c2e9fb)); /* Softer vertical gradient */
+        border-radius: 4px;
+        transition: width 0.6s cubic-bezier(0.25, 1, 0.5, 1); /* Smoother transition */
+    }
+
+    .bottom-section {
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    .action-button {
+        width: 100%;
+        padding: 12px 20px; /* Increased padding */
+        border: none;
+        border-radius: var(--spacing-border-radius-button, 20px);
+         /* Updated Vertical Gradient */
+        background: linear-gradient(to bottom, rgb(161, 132, 194), rgb(164, 182, 216));
+        color: var(--color-text-light, #fff);
+        font-weight: var(--font-weight-semi-bold, 600);
+        font-size: 1rem; /* Increased size */
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 5px rgba(160, 160, 200, 0.2);
+    }
+    .action-button:hover {
+        filter: brightness(1.1);
+        box-shadow: 0 4px 12px rgba(160, 160, 200, 0.3);
+        transform: translateY(-2px);
+    }
+    .action-button:active {
+         filter: brightness(0.95);
+         transform: translateY(0);
+    }
+
+    @media (max-width: 480px) {
+         .title { font-size: 1.1rem; min-height: calc(1.1rem * 1.35 * 2); }
+         .icon-container { width: 70px; height: 70px; }
+         .info-wrapper { min-height: 60px; }
+         .section-count { font-size: 0.8rem; }
+         .section-number { font-size: 0.9rem; }
+         .action-button { font-size: 0.9rem; padding: 10px 15px;}
+         .progress-text { font-size: 0.85rem; }
+     }
+</style>

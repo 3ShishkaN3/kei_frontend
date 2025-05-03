@@ -5,8 +5,11 @@ import terser from '@rollup/plugin-terser';
 import resolve from '@rollup/plugin-node-resolve';
 import livereload from 'rollup-plugin-livereload';
 import css from 'rollup-plugin-css-only';
-
+import replace from '@rollup/plugin-replace';
+import dotenv from 'dotenv';
 const production = !process.env.ROLLUP_WATCH;
+
+dotenv.config();
 
 function serve() {
 	let server;
@@ -38,6 +41,11 @@ export default {
 		file: 'public/build/bundle.js'
 	},
 	plugins: [
+		replace({
+			preventAssignment: true,
+			'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1')
+		}),
+
 		svelte({
 			compilerOptions: {
 				// enable run-time checks when not in production
@@ -58,6 +66,7 @@ export default {
 			dedupe: ['svelte'],
 			exportConditions: ['svelte']
 		}),
+
 		commonjs(),
 
 		// In dev mode, call `npm run start` once
