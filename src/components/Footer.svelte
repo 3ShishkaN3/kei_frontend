@@ -9,6 +9,8 @@
     background: transparent;
     color: #333;
     position: relative;
+
+    z-index: -1;
   }
 </style>
 

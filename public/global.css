@@ -8,6 +8,8 @@
   --color-purple-light: #C2B6FC;
   --color-purple-hover: #A8A1F5;
   --color-purple-active: #8E8BE0;
+  --color-primary-dark: #8679f0;
+  --color-secondary-rgb: 109, 127, 201;
   --color-soft-blue: rgb(133, 171, 230);
   --color-muted-indigo: rgb(114, 113, 160);
   --color-text-dark: #333;
@@ -30,6 +32,8 @@
   --color-shadow-hover: rgba(0, 0, 0, 0.15);
   --color-border-light: rgba(0, 0, 0, 0.1);
 
+  --color-primary-rgb: 175, 164, 255;
+
   /* Основные размеры и интервалы */
   --spacing-padding-page: clamp(15px, 5vw, 80px);
   --spacing-margin-bottom-large: 30px;
@@ -38,6 +42,9 @@
   --spacing-gap-medium: 15px;
   --spacing-gap-small: 8px;
   --spacing-padding-button: 8px 15px;
+  --spacing-padding-button-low: 4px 8px;
+  --spacing-padding-button-medium: 8px 15px;
+  --spacing-padding-button-large: 16px 30px;
   --spacing-border-radius-button: 20px;
   --spacing-border-radius-dot: 50%;
   --spacing-border-radius-card: 24px;
@@ -85,7 +92,7 @@
   --min-height-slide: 520px;
   --border-width-button: 1px;
 
-    --color-header-bg: rgba(255, 255, 255, 1);
+  --color-header-bg: rgba(255, 255, 255, 1);
   --color-header-bg-scrolled: rgba(255, 255, 255, 0.9);
   --color-header-shadow: rgba(0, 0, 0, 0.1);
   --color-auth-button-gradient-start: #EBC7F2;
@@ -152,6 +159,7 @@
   --animation-duration-header-scroll: 0.3s;
 
   --z-index-header: 100;
+  --z-index-lightbox: 1060;
   --header-hidden-top: -100px;
 
   --color-home-bg: url("/main.jpg");

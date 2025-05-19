@@ -1,6 +1,8 @@
 <script>
-    import { createEventDispatcher, onMount } from 'svelte';
+    import { createEventDispatcher, onDestroy} from 'svelte';
     import Close from 'svelte-material-icons/Close.svelte';
+    import { fade, fly } from 'svelte/transition';
+    import { addNotification } from '../../stores/notifications.js';
 
     export let isOpen = false;
     export let title = "Введите значение";
@@ -11,37 +13,63 @@
     export let isLoading = false;
 
     let value = '';
-    let inputElement; // Для фокуса
+    let inputElement; // Ссылка на DOM-элемент input
 
     const dispatch = createEventDispatcher();
-
-    $: if (isOpen) {
-        value = initialValue;
-        // Фокус на инпут при открытии
-        setTimeout(() => {
-             if (inputElement) {
-                 inputElement.focus();
-             }
-        }, 50); // Небольшая задержка
+    function handleKeydown(event) {
+        if (event.key === 'Escape') {
+            handleClose();
+        }
     }
+    function handleGlobalKeydown(event) {
+        if (isOpen && event.key === 'Escape') {
+            handleClose();
+        }
+    }
+    function autoFocus(node) {
+    // Эта функция будет вызвана, когда элемент <input> смонтирован
+    if (node) { // Убедимся, что узел существует
+        node.focus();
+    }
+
+    return {
+        // update(newParameters) { /* если нужно реагировать на изменения параметров */ },
+        destroy() {
+            // Код при демонтировании элемента (если нужно)
+        }
+    };
+}
+    // Реактивный блок для управления фокусом и значением при открытии
+    $: if (isOpen) {
+        value = initialValue; // Устанавливаем начальное значение
+       
+        window.addEventListener('keydown', handleGlobalKeydown);
+    } else {
+        window.removeEventListener('keydown', handleGlobalKeydown);
+    }
+
+    onDestroy(() => {
+        window.removeEventListener('keydown', handleGlobalKeydown);
+    });
+
+
+    // Убедимся, что обработчик удаляется при уничтожении компонента
+    onDestroy(() => {
+        window.removeEventListener('keydown', handleKeydown);
+    });
 
     function handleSubmit() {
         if (required && !value.trim()) {
-            alert("Поле не может быть пустым.");
+            addNotification("Поле не может быть пустым.", 'warning');
             return;
         }
-        dispatch('submit', value); // Отправляем введенное значение
+        dispatch('submit', value);
     }
 
     function handleClose() {
         dispatch('close');
     }
 
-    function handleKeydown(event) {
-        if (event.key === 'Escape') {
-            handleClose();
-        }
-    }
 </script>
 
 <svelte:window on:keydown={handleKeydown}/>
@@ -57,23 +85,23 @@
             <label for="simple-input">{prompt}</label>
             {#if inputType === 'number'}
                 <input
-                    bind:this={inputElement}
+                    use:autoFocus
                     type="number"
                     id="simple-input"
                     bind:value
                     {required}
                     placeholder="0"
                 >
-                {:else}
+            {:else}
                 <input
-                    bind:this={inputElement}
+                    use:autoFocus
                     type="text"
                     id="simple-input"
                     bind:value
                     {required}
                     placeholder=""
                 >
-                {/if}
+            {/if}
             <div class="modal-actions">
                 <button type="button" class="cancel-btn" on:click={handleClose} disabled={isLoading}>Отмена</button>
                 <button type="submit" class="save-btn" disabled={isLoading}>
@@ -96,7 +124,7 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        z-index: 1100; /* Выше чем модалка для элементов */
+        z-index: 1100;
         padding: 15px;
     }
     .simple-modal-content {
@@ -104,7 +132,7 @@
         padding: 25px 30px;
         border-radius: 8px;
         width: 100%;
-        max-width: 450px; /* Уменьшим ширину для простого ввода */
+        max-width: 450px;
         box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
         position: relative;
     }
@@ -141,10 +169,9 @@
     .cancel-btn { background-color: #f0f0f0; color: #333; }
     .cancel-btn:hover { background-color: #e0e0e0; }
     .save-btn { background-color: var(--color-primary); color: white; min-width: 100px; }
-    .save-btn:hover { background-color: var(--color-primary-dark); }
+    .save-btn:hover { background-color: var(--color-primary-dark, #9d92f7); } /* Добавил --color-primary-dark */
     .save-btn:disabled { background-color: #cccccc; cursor: not-allowed; }
 
-    /* Простой спиннер */
     .spinner {
         display: inline-block;
         width: 1em;

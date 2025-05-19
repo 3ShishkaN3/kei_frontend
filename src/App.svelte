@@ -11,6 +11,7 @@
   import NotFound from './routes/NotFound.svelte';
   import Header from './components/Header.svelte';
   import Footer from './components/Footer.svelte';
+  import NotificationsContainer from './components/utils/NotificationsContainer.svelte';
   import { tick, onMount } from 'svelte';
   import { gsap } from 'gsap';
   import { ScrollTrigger } from 'gsap/dist/ScrollTrigger';
@@ -24,18 +25,14 @@
     const newPath = window.location.pathname;
     if (newPath !== currentPath) {
       currentPath = newPath;
-
       handlePathChange();
-
     }
   }
 
   async function handlePathChange() {
     await tick(); 
     ScrollTrigger.getAll().forEach((st) => st.kill(true)); 
-    console.log('Path changed, ScrollTriggers killed for:', currentPath);
   }
-
 
   onMount(async () => {
     await checkAuthStatus();
@@ -52,7 +49,7 @@
 
 <Router url={currentPath}>
   <Header />
-
+  <NotificationsContainer />
   <main>
     <Route path="/" component={Home} />
 
@@ -66,9 +63,13 @@
       <Route path="/info" component={Info} />
       <Route path="/courses" component={Courses} />
       <Route path="/courses/:courseId/lessons" component={Lessons} />
-      <Route path="/bonuses" component={NotFound} /> <Route path="/statistics" component={NotFound} /> <Route path="/calendar" component={NotFound} /> {/if}
       <Route path="/courses/:courseId/lessons/:lessonId" component={Lesson} />
-    </main>
+      <Route path="/bonuses" component={NotFound} /> 
+      <Route path="/statistics" component={NotFound} /> 
+      <Route path="/calendar" component={NotFound} /> 
+    {/if}
+    
+  </main>
 
   <Footer />
 </Router>

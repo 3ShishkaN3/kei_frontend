@@ -749,7 +749,7 @@ h2 {
 
         <div class="simple-block">
             <h2> <Cog size="20px" /> Связь с преподавателем</h2>
-            <button class="telegram-button" onclick="window.open('https://t.me/keisenpai', '_blank')">
+            <button class="telegram-button" on:click={() => window.open('https://t.me/keisenpai', '_blank')}>
                 <svg viewBox="0 0 24 24">
                     <path d="M21.5,2.5c-0.2,0-0.4,0.1-0.5,0.2l-18,8c-0.3,0.1-0.3,0.6,0,0.7l4.3,1.8l1.7,5.1c0.1,0.3,0.5,0.4,0.7,0.2l2.5-2.2l4.2,3.1c0.3,0.2,0.7,0.1,0.8-0.3l2.5-9C22,2.8,21.8,2.5,21.5,2.5z M9.8,13.2L9,12l7.4-3.7L9.8,13.2z"/>
                 </svg>
