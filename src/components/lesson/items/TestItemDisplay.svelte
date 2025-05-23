@@ -1,11 +1,7 @@
 <script>
-    import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
-    import { dndzone } from 'svelte-dnd-action';
-    import { flip } from 'svelte/animate'; 
-    import { fade } from 'svelte/transition'; 
-
+    import { createEventDispatcher, onMount, tick } from 'svelte';
     import ImageItemDisplay from '../items/ImageItemDisplay.svelte';
-    import AudioItemDisplay from '../items/AudioItemDisplay.svelte';
+	import AudioItemDisplay from '../items/AudioItemDisplay.svelte';
 
     import CheckCircleOutline from 'svelte-material-icons/CheckCircleOutline.svelte'; 
     import CloseCircleOutline from 'svelte-material-icons/CloseCircleOutline.svelte'; 
@@ -14,278 +10,326 @@
     import CheckboxMarked from 'svelte-material-icons/CheckboxMarked.svelte';
     import CheckboxBlankOutline from 'svelte-material-icons/CheckboxBlankOutline.svelte';
     import HelpCircleOutline from 'svelte-material-icons/HelpCircleOutline.svelte';
-    import DragVertical from 'svelte-material-icons/DragVertical.svelte';
+    import DragVertical from 'svelte-material-icons/DragVertical.svelte'; 
+    import { dndzone } from 'svelte-dnd-action';
 
-    export let testData;        
-    export let sectionItemId;   
+    export let testData = null;        
+    export let sectionItemId = null;   
     export let viewMode = 'student'; 
     export let studentSubmission = null; 
 
     const dispatch = createEventDispatcher();
 
+    // --- Локальное состояние для UI и взаимодействия ---
+    let localSelectedOptionsMap = {}; 
+    let localSelectedRadioOption = null; 
     let isSubmitting = false;
+    let dndBasePoolForCurrentTest = []; // Базовый пул для word-order
     
-    $: isSubmitted = !!studentSubmission && studentSubmission.test?.id === testData?.id && viewMode === 'student';
-    $: canInteract = viewMode === 'student' && !isSubmitted && !isSubmitting;
+    // --- Вычисляемые состояния на основе пропсов ---
+    let isTestSubmittedByStudent = false;
+    let canStudentInteract = false;
+    let studentActualChoicesIds = [];
 
-    let mcq_selectedOptionsMap = {}; 
-    let mcq_selectedRadioOption = null; 
-    
-    let sentenceOrder_availableItems = []; 
-    let sentenceOrder_placedInSlots = []; 
-    
-    let dragToMatch_availableItems = [];
-    let dragToMatch_matches = {}; 
+    // Состояния для конкретных типов тестов
+    let draggableItemsPoolForDisplay = []; // Для drag-and-drop
+    let filledSlotsForDisplay = {};      
+    let currentWordSequence = []; // Для word-order
+    let wordOrderAvailableOptionsInPool = []; // Для word-order
+    let selectedDraggableOptionForSlot = null; 
 
-    let studentActualMcqChoiceIds = []; 
-    let studentActualSentenceOrderPlacedItems = []; 
-    let studentActualDragToMatchMatches = {};
+    const dndOpts = { flipDurationMs: 200 };
 
+    function generateUiId() { return `ui_${Math.random().toString(36).substr(2, 9)}`; }
 
-    function initializeLocalStateFromProps(currentTestData, currentStudentSubmission, currentViewMode) {
-        mcq_selectedOptionsMap = {};
-        mcq_selectedRadioOption = null;
-        
-        const currentIsSubmittedForInit = !!currentStudentSubmission && 
+    function syncStateWithProps(currentTestData, currentStudentSubmission, currentViewMode, currentIsSubmittingFlag) {
+        const newIsTestSubmittedByStudent = !!currentStudentSubmission && 
                                            currentStudentSubmission.test?.id === currentTestData?.id && 
                                            currentViewMode === 'student';
         
-        sentenceOrder_availableItems = currentTestData?.draggable_items 
-            ? currentTestData.draggable_items.map(item => ({...item }))
-            : [];
-        sentenceOrder_placedInSlots = currentTestData?.sentence_order_slots 
-            ? currentTestData.sentence_order_slots.map(() => null) 
-            : [];
-
-        dragToMatch_availableItems = currentTestData?.draggable_items
-            ? currentTestData.draggable_items.map(item => ({...item }))
-            : [];
-        dragToMatch_matches = {};
+        let newIsSubmittingState = currentIsSubmittingFlag;
+        if (currentIsSubmittingFlag && newIsTestSubmittedByStudent && currentStudentSubmission?.id !== studentSubmission?.id) {
+            newIsSubmittingState = false;
+        } else if (currentIsSubmittingFlag && !currentStudentSubmission && studentSubmission !== null) { 
+            newIsSubmittingState = false;
+        }
         
-        studentActualMcqChoiceIds = [];
-        studentActualSentenceOrderPlacedItems = currentTestData?.sentence_order_slots?.map(() => null) || [];
-        studentActualDragToMatchMatches = {};
+        isTestSubmittedByStudent = newIsTestSubmittedByStudent;
+        isSubmitting = newIsSubmittingState;
+        canStudentInteract = currentViewMode === 'student' && !isTestSubmittedByStudent && !isSubmitting;
+        
+        localSelectedOptionsMap = {};
+        localSelectedRadioOption = null;
+        studentActualChoicesIds = [];
+        
+        draggableItemsPoolForDisplay = [];
+        filledSlotsForDisplay = {};
+        currentWordSequence = [];
+        wordOrderAvailableOptionsInPool = [];
+        dndBasePoolForCurrentTest = []; // Сброс базового пула
+        selectedDraggableOptionForSlot = null;
 
-        if (currentIsSubmittedForInit && currentStudentSubmission && currentStudentSubmission.answers) {
-            const answers = currentStudentSubmission.answers;
+        if (currentTestData) {
+            // Инициализация для drag-and-drop
+            if (currentTestData.draggable_options_pool && currentTestData.test_type === 'drag-and-drop') {
+                draggableItemsPoolForDisplay = currentTestData.draggable_options_pool.map(text => ({ 
+                    id: generateUiId(), 
+                    text: text 
+                }));
+            }
 
-            if (currentTestData?.test_type === 'mcq-multi' || currentTestData?.test_type === 'mcq-single') {
-                const ids = answers.selected_option_ids || (Array.isArray(answers) ? answers.map(a => a.id) : []);
-                studentActualMcqChoiceIds = ids;
-                if (currentTestData.test_type === 'mcq-multi') {
-                    ids.forEach(id => { mcq_selectedOptionsMap[id] = true; });
-                } else if (ids.length > 0) {
-                    mcq_selectedRadioOption = ids[0];
-                }
-            } else if (currentTestData?.test_type === 'sentence-order' && answers.submitted_item_ids_order) {
-                const placedIds = answers.submitted_item_ids_order;
-                studentActualSentenceOrderPlacedItems = placedIds.map(id => 
-                    currentTestData.draggable_items.find(di => di.id === id) || null
-                ).filter(item => item !== null); 
-                
-                sentenceOrder_placedInSlots = [...studentActualSentenceOrderPlacedItems]; 
-                const placedItemIdsSet = new Set(placedIds);
-                sentenceOrder_availableItems = (currentTestData.draggable_items || [])
-                    .filter(di => !placedItemIdsSet.has(di.id))
-                    .map(item => ({...item }));
+            // Инициализация для word-order
+            if (currentTestData.draggable_options_pool && currentTestData.test_type === 'word-order') {
+                dndBasePoolForCurrentTest = currentTestData.draggable_options_pool.map(text => ({ 
+                    id: generateUiId(), 
+                    text: text 
+                }));
+                wordOrderAvailableOptionsInPool = [...dndBasePoolForCurrentTest];
+            }
 
-            } else if (currentTestData?.test_type === 'drag-to-match' && Array.isArray(answers)) {
-                answers.forEach(match => {
-                    const targetKey = match.matching_pair_id || match.target_id;
-                    const itemKey = match.submitted_draggable_item_id || match.dropped_item_id;
-                    if (typeof targetKey !== 'undefined' && typeof itemKey !== 'undefined') {
-                       studentActualDragToMatchMatches[targetKey] = itemKey;
-                       dragToMatch_matches[targetKey] = itemKey; 
+            if (isTestSubmittedByStudent && currentStudentSubmission && currentStudentSubmission.answers) {
+                const answersFromServer = currentStudentSubmission.answers;
+
+                if (currentTestData.test_type === 'mcq-multi' || currentTestData.test_type === 'mcq-single') {
+                    const mcqAnswerIds = answersFromServer.selected_option_ids || 
+                                       (Array.isArray(answersFromServer) ? answersFromServer.map(a => a.id) : []);
+                    studentActualChoicesIds = mcqAnswerIds;
+                    if (currentTestData.test_type === 'mcq-multi') {
+                        studentActualChoicesIds.forEach(id => { localSelectedOptionsMap[id] = true; });
+                    } else if (studentActualChoicesIds.length > 0) {
+                        localSelectedRadioOption = studentActualChoicesIds[0];
                     }
-                });
-                const matchedItemIdsSet = new Set(Object.values(studentActualDragToMatchMatches));
-                dragToMatch_availableItems = (currentTestData.draggable_items || [])
-                    .filter(di => !matchedItemIdsSet.has(di.id))
-                    .map(item => ({...item }));
+                } else if (currentTestData.test_type === 'drag-and-drop' && Array.isArray(answersFromServer)) {
+                    answersFromServer.forEach(ans => {
+                        if (ans && typeof ans.slot_id !== 'undefined' && typeof ans.dropped_option_text !== 'undefined') {
+                            const poolItem = draggableItemsPoolForDisplay.find(pItem => pItem.text === ans.dropped_option_text);
+                            filledSlotsForDisplay[ans.slot_id] = poolItem ? { ...poolItem } : { id: generateUiId(), text: ans.dropped_option_text };
+                        }
+                    });
+                } else if (currentTestData.test_type === 'word-order' && Array.isArray(answersFromServer.submitted_order_words)) {
+                    currentWordSequence = answersFromServer.submitted_order_words.map(text => {
+                        const poolItem = dndBasePoolForCurrentTest.find(p => p.text === text);
+                        return poolItem ? { ...poolItem } : { id: generateUiId(), text: text };
+                    });
+                    // Обновляем доступный пул, исключая использованные слова
+                    wordOrderAvailableOptionsInPool = dndBasePoolForCurrentTest.filter(
+                        poolItem => !currentWordSequence.find(seqItem => seqItem.id === poolItem.id)
+                    ).map(item => ({...item}));
+                }
             }
         }
         
-        mcq_selectedOptionsMap = {...mcq_selectedOptionsMap};
-        sentenceOrder_availableItems = [...sentenceOrder_availableItems];
-        sentenceOrder_placedInSlots = [...sentenceOrder_placedInSlots];
-        dragToMatch_availableItems = [...dragToMatch_availableItems];
-        dragToMatch_matches = {...dragToMatch_matches};
+        // Обновляем реактивные переменные
+        localSelectedOptionsMap = {...localSelectedOptionsMap};
+        filledSlotsForDisplay = {...filledSlotsForDisplay};
+        currentWordSequence = [...currentWordSequence];
+        draggableItemsPoolForDisplay = [...draggableItemsPoolForDisplay];
+        wordOrderAvailableOptionsInPool = [...wordOrderAvailableOptionsInPool];
+        dndBasePoolForCurrentTest = [...dndBasePoolForCurrentTest];
     }
-    
+
     onMount(() => {
-        initializeLocalStateFromProps(testData, studentSubmission, viewMode);
+        syncStateWithProps(testData, studentSubmission, viewMode, isSubmitting);
     });
 
     let prevTestDataString = ""; 
     let prevSubmissionString = "";
     let prevViewModeString = "";
+    let prevIsSubmittingForEffect = false;
 
-    $: { 
-        const currentTestDataStr = JSON.stringify(testData ? { id: testData.id, type: testData.test_type, oL: testData.mcq_options?.length, dL: testData.draggable_items?.length, soL: testData.sentence_order_slots?.length, mtL: testData.match_targets?.length } : null);
-        const currentSubmissionStr = JSON.stringify(studentSubmission ? { id: studentSubmission.id, status: studentSubmission.status } : null);
-        const currentViewModeStr = viewMode;
-
-        if (currentTestDataStr !== prevTestDataString || 
-            currentSubmissionStr !== prevSubmissionString || 
-            currentViewModeStr !== prevViewModeString) 
+    $: {
+        const sigTest = JSON.stringify(testData?.id + (testData?.test_type || '') + (testData?.mcq_options?.length || 0) + (testData?.drag_drop_slots?.length || 0) + (testData?.draggable_options_pool?.join(',') || ''));
+        const sigSub = JSON.stringify(studentSubmission?.id + (studentSubmission?.status || '') + JSON.stringify(studentSubmission?.answers));
+        if (sigTest !== prevTestDataString || sigSub !== prevSubmissionString || viewMode !== prevViewModeString || isSubmitting !== prevIsSubmittingForEffect) 
         {
-            if (isSubmitting && currentSubmissionStr !== prevSubmissionString) { 
-                 if ((studentSubmission && studentSubmission.test?.id === testData?.id) || !studentSubmission) {
-                    isSubmitting = false;
-                }
-            }
-            initializeLocalStateFromProps(testData, studentSubmission, viewMode);
-            prevTestDataString = currentTestDataStr;
-            prevSubmissionString = currentSubmissionStr;
-            prevViewModeString = currentViewModeStr;
+            syncStateWithProps(testData, studentSubmission, viewMode, isSubmitting);
+            prevTestDataString = sigTest;
+            prevSubmissionString = sigSub;
+            prevViewModeString = viewMode;
+            prevIsSubmittingForEffect = isSubmitting;
         }
     }
     
     function handleMcqOptionChange(optionId, event) {
-        if (!canInteract) return; 
+        if (!canStudentInteract) return; 
         if (testData.test_type === 'mcq-multi') {
-            mcq_selectedOptionsMap[optionId] = event.target.checked;
-            mcq_selectedOptionsMap = {...mcq_selectedOptionsMap};
+            localSelectedOptionsMap[optionId] = event.target.checked;
+            localSelectedOptionsMap = {...localSelectedOptionsMap};
         } else if (testData.test_type === 'mcq-single') {
-            mcq_selectedRadioOption = optionId;
+            localSelectedRadioOption = optionId;
         }
     }
 
-    const dndOptions = { flipDurationMs: 200 };
-
-    function handleSentenceOrderPoolFinalize(e) {
-        if (!canInteract) return;
-        sentenceOrder_availableItems = e.detail.items.map(item => ({...item}));
-    }
-
-    function handleSentenceOrderSlotFinalize(e, slotIndex) {
-        if (!canInteract) return;
-        const droppedItemArray = e.detail.items; 
-        const oldItemInSlot = sentenceOrder_placedInSlots[slotIndex];
-
-        if (oldItemInSlot && (!droppedItemArray[0] || oldItemInSlot.id !== droppedItemArray[0]?.id)) {
-            if (!sentenceOrder_availableItems.find(it => it.id === oldItemInSlot.id)) {
-                 sentenceOrder_availableItems = [...sentenceOrder_availableItems, oldItemInSlot];
-            }
-        }
-        
-        if (droppedItemArray && droppedItemArray.length > 0) {
-            sentenceOrder_placedInSlots[slotIndex] = droppedItemArray[0];
-            sentenceOrder_availableItems = sentenceOrder_availableItems.filter(it => it.id !== droppedItemArray[0].id);
-        } else { 
-            sentenceOrder_placedInSlots[slotIndex] = null;
-        }
-        sentenceOrder_placedInSlots = [...sentenceOrder_placedInSlots];
-        sentenceOrder_availableItems = [...sentenceOrder_availableItems];
-    }
-
-    function handleMatchItemsPoolFinalize(e) {
-        if (!canInteract) return;
-        dragToMatch_availableItems = e.detail.items.map(item => ({...item}));
-    }
-
-    function handleDndMatchTargetDropFinalize(e, targetId) {
-        if (!canInteract) return;
-        const droppedItemArray = e.detail.items;
-        const previouslyDroppedItemId = dragToMatch_matches[targetId];
-
-        if (previouslyDroppedItemId && (!droppedItemArray[0] || previouslyDroppedItemId !== droppedItemArray[0]?.id)) {
-            const prevItemOriginal = testData.draggable_items.find(i => i.id === previouslyDroppedItemId);
-            if (prevItemOriginal && !dragToMatch_availableItems.find(i => i.id === prevItemOriginal.id)) {
-                dragToMatch_availableItems = [...dragToMatch_availableItems, {...prevItemOriginal}];
-            }
-        }
-        if (droppedItemArray && droppedItemArray.length > 0) {
-            dragToMatch_matches[targetId] = droppedItemArray[0].id;
-            dragToMatch_availableItems = dragToMatch_availableItems.filter(item => item.id !== droppedItemArray[0].id);
+    function selectDraggableForSlot(item) {
+        if (!canStudentInteract) return;
+        if (selectedDraggableOptionForSlot && selectedDraggableOptionForSlot.id === item.id) {
+            selectedDraggableOptionForSlot = null; 
         } else {
-            delete dragToMatch_matches[targetId];
+            selectedDraggableOptionForSlot = item;
         }
-        dragToMatch_matches = {...dragToMatch_matches};
-        dragToMatch_availableItems = [...dragToMatch_availableItems];
     }
 
-    function returnItemToPool(targetId) {
-        if (!canInteract) return;
-        const itemIdToReturn = dragToMatch_matches[targetId];
-        if (itemIdToReturn) {
-            const itemOriginal = testData.draggable_items.find(i => i.id === itemIdToReturn);
-            if (itemOriginal && !dragToMatch_availableItems.find(i => i.id === itemOriginal.id)) {
-                dragToMatch_availableItems = [...dragToMatch_availableItems, {...itemOriginal}];
-            }
-            delete dragToMatch_matches[targetId];
-            dragToMatch_matches = {...dragToMatch_matches};
+    function placeSelectedOptionInSlot(slotId) {
+        if (!canStudentInteract || !selectedDraggableOptionForSlot) return;
+        filledSlotsForDisplay[slotId] = {...selectedDraggableOptionForSlot}; 
+        filledSlotsForDisplay = {...filledSlotsForDisplay};
+        selectedDraggableOptionForSlot = null; 
+    }
+    
+    function clearSlot(slotId) {
+        if (!canStudentInteract) return;
+        delete filledSlotsForDisplay[slotId];
+        filledSlotsForDisplay = {...filledSlotsForDisplay};
+    }
+    
+    function handleDndFinalizePool(e) {
+        if (!canStudentInteract) return;
+        const {items, info} = e.detail;
+        // Для drag-and-drop пул остается неизменным при finalize
+        // Элементы не удаляются из пула при перетаскивании
+        draggableItemsPoolForDisplay = items.map(item => ({...item}));
+    }
+
+    function handleDndFinalizeSlot(e, slotId) {
+        if (!canStudentInteract) return;
+        const {items, info} = e.detail;
+        if (items.length > 0) {
+            filledSlotsForDisplay[slotId] = {...items[0]}; 
+        } else { 
+            delete filledSlotsForDisplay[slotId];
+        }
+        filledSlotsForDisplay = {...filledSlotsForDisplay};
+    }
+    
+    function returnItemFromSlotToPool(slotId) {
+        if (!canStudentInteract) return;
+        delete filledSlotsForDisplay[slotId];
+        filledSlotsForDisplay = {...filledSlotsForDisplay};
+    }
+
+    // Для Word Order DND
+    function handleDndWordOrderPool(e) {
+        if (!canStudentInteract) return;
+        const {items, info} = e.detail;
+        wordOrderAvailableOptionsInPool = items.map(item => ({...item}));
+        
+        // Обработка перемещения из последовательности в пул
+        if (info.trigger === 'droppedIntoZone') {
+            // После изменения пула, обновляем последовательность
+            currentWordSequence = currentWordSequence.filter(
+                seqItem => !wordOrderAvailableOptionsInPool.find(poolItem => poolItem.id === seqItem.id)
+            ).map(item => ({...item}));
+        }
+    }
+    
+    function handleDndWordOrderSequence(e) {
+        if (!canStudentInteract) return;
+        const {items, info} = e.detail;
+        currentWordSequence = items.map(item => ({...item}));
+        
+        // Обработка перемещения из пула в последовательность
+        if (info.trigger === 'droppedIntoZone') {
+            // После изменения последовательности, обновляем доступные в пуле
+            wordOrderAvailableOptionsInPool = dndBasePoolForCurrentTest.filter(
+                poolItem => !currentWordSequence.find(seqItem => seqItem.id === poolItem.id)
+            ).map(item => ({...item}));
+        }
+    }
+     
+    function addWordToStudentSequenceFromPool(itemFromPool) {
+        if (!canStudentInteract) return;
+        currentWordSequence = [...currentWordSequence, {...itemFromPool}];
+        wordOrderAvailableOptionsInPool = wordOrderAvailableOptionsInPool.filter(p => p.id !== itemFromPool.id);
+    }
+    
+    function returnWordFromStudentSequenceToPool(itemIndex) {
+        if (!canStudentInteract || itemIndex < 0 || itemIndex >= currentWordSequence.length) return;
+        const [itemToReturn] = currentWordSequence.splice(itemIndex, 1);
+        currentWordSequence = [...currentWordSequence];
+        if (itemToReturn && !wordOrderAvailableOptionsInPool.find(i => i.id === itemToReturn.id)) {
+             // Добавляем обратно в пул и сортируем по исходному порядку
+            wordOrderAvailableOptionsInPool = [...wordOrderAvailableOptionsInPool, {...itemToReturn}]
+                .sort((a,b) => dndBasePoolForCurrentTest.findIndex(p=>p.id===a.id) - dndBasePoolForCurrentTest.findIndex(p=>p.id===b.id) );
+        } else {
+            wordOrderAvailableOptionsInPool = [...wordOrderAvailableOptionsInPool];
         }
     }
 
     async function handleSubmitTest() {
-        if (!canInteract) return;
+        if (!canStudentInteract) return;
         let answersPayload = {};
+        let formIsValid = true;
 
         if (testData.test_type === 'mcq-multi') {
-            const selectedIds = Object.keys(mcq_selectedOptionsMap).filter(id => mcq_selectedOptionsMap[id]).map(id => parseInt(id));
-            if (selectedIds.length === 0) { dispatch('notify', { type: 'warning', message: 'Выберите хотя бы один вариант.' }); return; }
+            const selectedIds = Object.keys(localSelectedOptionsMap).filter(id => localSelectedOptionsMap[id]).map(id => parseInt(id));
+            if (selectedIds.length === 0 && viewMode === 'student') formIsValid = false;
             answersPayload = { selected_option_ids: selectedIds };
         } else if (testData.test_type === 'mcq-single') {
-            if (mcq_selectedRadioOption === null) { dispatch('notify', { type: 'warning', message: 'Выберите вариант ответа.' }); return; }
-            answersPayload = { selected_option_ids: mcq_selectedRadioOption !== null ? [parseInt(mcq_selectedRadioOption)] : [] };
-        } else if (testData.test_type === 'sentence-order') {
-            const placedItemIds = sentenceOrder_placedInSlots.map(item => item?.id).filter(id => id != null);
-            if (placedItemIds.length !== (testData.sentence_order_slots?.length || 0)) {
-                 dispatch('notify', { type: 'warning', message: 'Заполните все слоты для порядка слов.' }); return;
+            if (localSelectedRadioOption === null && viewMode === 'student') formIsValid = false;
+            answersPayload = { selected_option_ids: localSelectedRadioOption !== null ? [parseInt(localSelectedRadioOption)] : [] };
+        } else if (testData.test_type === 'drag-and-drop') {
+            const slotAnswers = [];
+            let filledCount = 0;
+            for (const slot of testData.drag_drop_slots || []) {
+                if (filledSlotsForDisplay[slot.id]) {
+                    slotAnswers.push({ slot_id: slot.id, dropped_option_text: filledSlotsForDisplay[slot.id].text });
+                    filledCount++;
+                }
             }
-            answersPayload = { submitted_item_ids_order: placedItemIds };
-        } else if (testData.test_type === 'drag-to-match') {
-            const matchesForApi = Object.entries(dragToMatch_matches).map(([targetId, itemId]) => ({
-                matching_pair_id: parseInt(targetId), 
-                submitted_draggable_item_id: itemId ? parseInt(itemId) : null 
-            }));
-             if (matchesForApi.length !== (testData.match_targets?.length || 0)) {
-                 dispatch('notify', { type: 'warning', message: 'Соотнесите элементы для всех целей.' }); return;
+            if (filledCount < (testData.drag_drop_slots || []).length && viewMode === 'student') formIsValid = false;
+            answersPayload = { answers: slotAnswers }; 
+        } else if (testData.test_type === 'word-order') {
+            if (currentWordSequence.length === 0 && (testData.word_order_sentence?.correct_ordered_texts || []).length > 0 && viewMode === 'student') {
+                formIsValid = false;
             }
-            answersPayload = { answers: matchesForApi }; 
-        } else {
+            answersPayload = { submitted_order_words: currentWordSequence.map(item => item.text) };
+        } else { return; }
+
+        if (!formIsValid && viewMode === 'student') {
+            dispatch('notify', { type: 'warning', message: 'Пожалуйста, дайте ответ на все части задания.' });
             return;
         }
-
         isSubmitting = true; 
-        await tick();
-        
-        dispatch('submitTest', {
-            testId: testData.id, sectionItemId: sectionItemId,
-            answers: answersPayload, fileData: null 
-        });
+        await tick(); 
+        dispatch('submitTest', { testId: testData.id, sectionItemId, answers: answersPayload, fileData: null });
     }
     
-    function getOptionDisplayStatus(option, studentChoices, isTestDone) {
-        if (viewMode === 'admin' || isTestDone) {
-            const isSelectedByStudent = studentChoices.includes(option.id);
-            if (option.is_correct) return isSelectedByStudent ? 'student_correct' : 'missed_correct';
-            return isSelectedByStudent ? 'student_incorrect' : 'neutral_incorrect';
+    function getOptionDisplayStatusForMcq(option) {
+        if (viewMode === 'admin' || isTestSubmittedByStudent) {
+            const isSelected = studentActualChoicesIds.includes(option.id);
+            if (option.is_correct) { 
+                return isSelected ? 'student_correct' : 'missed_correct';
+            } else { 
+                return isSelected ? 'student_incorrect' : 'neutral_incorrect';
+            }
         }
         return 'pending';
     }
 
-    function getSentenceOrderSlotStatus(slot, index, studentPlacedItems, isTestDone) {
-        if (viewMode === 'admin' || isTestDone) {
-            const studentPlacedItem = studentPlacedItems[index];
-            if (!studentPlacedItem) return 'slot_empty';
-            return slot.correct_item_id === studentPlacedItem.id ? 'slot_correct' : 'slot_incorrect';
+    function getSlotDisplayStatus(slot) { 
+        if (viewMode === 'admin' || isTestSubmittedByStudent) {
+            const studentAnswerObjectInSlot = filledSlotsForDisplay[slot.id];
+            const studentAnswerTextInSlot = studentAnswerObjectInSlot?.text;
+            if (studentAnswerTextInSlot === undefined && isTestSubmittedByStudent) return 'slot_empty_after_submit';
+            if (studentAnswerTextInSlot === undefined) return 'slot_empty'; 
+            if (studentAnswerTextInSlot === slot.correct_answer_text) return 'student_correct';
+            return 'student_incorrect';
         }
-        return 'slot_pending';
+        return 'pending';
     }
 
-    function getMatchTargetStatus(target, studentMatches, isTestDone) {
-        if (viewMode === 'admin' || isTestDone) {
-            const studentDroppedItemId = studentMatches[target.id];
-            if (studentDroppedItemId === undefined || studentDroppedItemId === null) return 'target_empty';
-            return target.correct_item_id === studentDroppedItemId ? 'target_correct' : 'target_incorrect';
-        }
-        return 'target_pending';
+    function isWordOrderSequenceCorrect() { 
+        if (!isTestSubmittedByStudent || !testData?.word_order_sentence?.correct_ordered_texts) return null;
+        const correctTexts = testData.word_order_sentence.correct_ordered_texts;
+        const studentTexts = currentWordSequence.map(item => item.text);
+        if (correctTexts.length === 0 && studentTexts.length === 0) return true; 
+        if (correctTexts.length !== studentTexts.length && studentTexts.length > 0) return false; 
+        if (correctTexts.length > 0 && studentTexts.length === 0 && correctTexts.length > 0) return false; 
+        return correctTexts.every((word, index) => word === studentTexts[index]);
     }
 </script>
-
 <div class="test-item-display-wrapper" data-testid={"test-item-" + (testData?.id || 'unknown')} aria-labelledby={"test-title-" + (testData?.id || 'unknown')}>
+    
     <h4 class="test-title" id={"test-title-" + (testData?.id || 'unknown')}>{testData?.title || 'Тест'}</h4>
     {#if testData?.description}
         <div class="test-description">{@html testData.description.replace(/\n/g, '<br>')}</div>
@@ -307,36 +351,36 @@
             <fieldset class="mcq-options-group" role={testData.test_type === 'mcq-single' ? 'radiogroup' : 'group'} aria-labelledby={"test-title-" + (testData?.id || 'unknown')}>
                 <legend class="sr-only">Варианты ответа для теста "{testData?.title}"</legend>
                 {#each testData.mcq_options || [] as option (option.id)}
-                    {@const displayStatus = getOptionDisplayStatus(option, studentActualMcqChoiceIds, isSubmitted)}
+                    {@const displayStatus = getOptionDisplayStatusForMcq(option)}
                     <div 
                         class="mcq-option-display-item status-{displayStatus}"
-                        class:disabled={!canInteract}
+                        class:disabled={!canStudentInteract}
                     >
                         <label class="mcq-option-label">
                             <input 
                                 type={testData.test_type === 'mcq-single' ? 'radio' : 'checkbox'}
                                 name={"mcq_option_group_" + sectionItemId + "_" + (testData.id || 'new')} 
                                 value={option.id}
-                                checked={testData.test_type === 'mcq-single' ? mcq_selectedRadioOption === option.id : !!mcq_selectedOptionsMap[option.id]}
+                                checked={testData.test_type === 'mcq-single' ? localSelectedRadioOption === option.id : !!localSelectedOptionsMap[option.id]}
                                 on:change={(e) => handleMcqOptionChange(option.id, e)}
-                                disabled={!canInteract}
+                                disabled={!canStudentInteract}
                                 class="mcq-option-input"
-                                aria-describedby={option.explanation ? "explanation-" + option.id : null}
+                                aria-describedby={option.explanation ? ("explanation-" + sectionItemId + "-" + option.id) : null}
                             />
                             <span class="mcq-option-checkbox-visual">
                                 {#if testData.test_type === 'mcq-single'}
-                                    <svelte:component this={(isSubmitted ? studentActualMcqChoiceIds.includes(option.id) : mcq_selectedRadioOption === option.id) ? RadioboxMarked : RadioboxBlank} size="22px" />
+                                    <svelte:component this={(isTestSubmittedByStudent ? studentActualChoicesIds.includes(option.id) : localSelectedRadioOption === option.id) ? RadioboxMarked : RadioboxBlank} size="22px" />
                                 {:else}
-                                    <svelte:component this={(isSubmitted ? studentActualMcqChoiceIds.includes(option.id) : mcq_selectedOptionsMap[option.id]) ? CheckboxMarked : CheckboxBlankOutline} size="22px" />
+                                    <svelte:component this={(isTestSubmittedByStudent ? studentActualChoicesIds.includes(option.id) : localSelectedOptionsMap[option.id]) ? CheckboxMarked : CheckboxBlankOutline} size="22px" />
                                 {/if}
                             </span>
                             <span class="mcq-option-text-content">{@html option.text.replace(/\n/g, '<br>')}</span>
                         </label>
                         
-                        {#if option.explanation && (viewMode === 'admin' || (isSubmitted && studentActualMcqChoiceIds.includes(option.id) ))}
+                        {#if option.explanation && (viewMode === 'admin' || (isTestSubmittedByStudent && (displayStatus === 'student_correct' || displayStatus === 'student_incorrect' || displayStatus === 'missed_correct')))}
                             <div 
                                 class="mcq-option-explanation status-{displayStatus} visible" 
-                                id={"explanation-" + option.id}
+                                id={"explanation-" + sectionItemId + "-" + option.id}
                             >
                                 <strong>Пояснение:</strong> {@html option.explanation.replace(/\n/g, '<br>')}
                             </div>
@@ -345,176 +389,183 @@
                 {/each}
             </fieldset>
         
-        {:else if testData?.test_type === 'sentence-order'}
-            <div class="sentence-order-test-area">
-                <p class="instruction">Расставьте элементы в правильном порядке.</p>
-                
-                <h4>Доступные элементы (перетащите в слоты ниже):</h4>
-                <section 
-                    class="draggable-items-pool so-pool"
-                    use:dndzone={{items: sentenceOrder_availableItems, type: 'draggable_item_so', ...dndOptions, dragDisabled: !canInteract}}
-                    on:finalize={handleSentenceOrderPoolFinalize}
-                    aria-label="Пул доступных элементов для расстановки"
-                >
-                    {#each sentenceOrder_availableItems as item (item.id)}
-                        <div class="draggable-item-chip so-chip" animate:flip={dndOptions}>
-                            {#if canInteract}<DragVertical size="16px" class="drag-handle"/>{/if} 
-                            {@html item.text.replace(/\n/g, '<br>')}
-                        </div>
-                    {/each}
-                    {#if sentenceOrder_availableItems.length === 0 && !isSubmitted}
-                        <span class="empty-pool-placeholder">Все элементы размещены</span>
-                    {/if}
-                </section>
-
-                <h4>Порядок в предложении:</h4>
-                <section class="sentence-order-slots-container" aria-label="Слоты для размещения элементов">
-                    {#each testData.sentence_order_slots || [] as slot, index (slot.id)}
-                        {@const placedItemObject = sentenceOrder_placedInSlots[index]} 
-                        {@const slotStatus = getSentenceOrderSlotStatus(slot, index, studentActualSentenceOrderPlacedItems, isSubmitted)}
-                        <div 
-                            class="sentence-order-slot status-{slotStatus}"
-                            use:dndzone={{items: placedItemObject ? [placedItemObject] : [], type: 'draggable_item_so', ...dndOptions, dragDisabled: !canInteract}}
-                            on:finalize={(e) => handleSentenceOrderSlotFinalize(e, index)}
-                            aria-label={`Слот ${index + 1}${slot.prompt_text ? ', подсказка: ' + slot.prompt_text : ''}`}
-                        >
-                            <span class="slot-index">{index + 1}.</span>
-                            {#if slot.prompt_text}<span class="slot-prompt">{@html slot.prompt_text.replace(/\n/g, '<br>')}</span>{/if}
-                            
-                            {#if placedItemObject}
-                                <div class="draggable-item-chip placed so-chip" 
-                                     transition:fade={{duration:150}} 
-                                     
-                                >
-                                   {#if canInteract}<DragVertical size="16px" class="drag-handle"/>{/if} 
-                                   {@html placedItemObject.text.replace(/\n/g, '<br>')}
-                                </div>
-                            {:else if canInteract}
-                                <span class="empty-slot-placeholder">Перетащите сюда</span>
-                            {/if}
-
-                            {#if isSubmitted && slotStatus === 'slot_incorrect'}
-                                <span class="feedback-icon error" title="Неверно"><CloseCircleOutline size="18px"/></span>
-                            {:else if isSubmitted && slotStatus === 'slot_correct'}
-                                <span class="feedback-icon success" title="Верно"><CheckCircleOutline size="18px"/></span>
-                            {:else if isSubmitted && slotStatus === 'slot_empty'}
-                                <span class="feedback-icon neutral" title="Пропущено"><HelpCircleOutline size="18px"/></span>
-                            {/if}
-                        </div>
-                        {#if slot.explanation && (viewMode === 'admin' || (isSubmitted && (slotStatus === 'slot_correct' || slotStatus === 'slot_incorrect' || slotStatus === 'slot_empty')))}
-                            <div class="mcq-option-explanation status-{slotStatus} visible">
-                                <strong>Пояснение к слоту:</strong> {@html slot.explanation.replace(/\n/g, '<br>')}
-                            </div>
-                        {/if}
-                    {/each}
-                </section>
-                {#if viewMode === 'admin' || isSubmitted}
-                    <div class="correct-answer-display">
-                        <strong>Правильный порядок:</strong>
-                        {#each testData.sentence_order_slots || [] as slot ('correct-slot-' + slot.id)}
-                            {@const correctItem = testData.draggable_items.find(di => di.id === slot.correct_item_id)}
-                            <span class="draggable-item-chip correct-chip">{@html correctItem?.text?.replace(/\n/g, '<br>') || '?'}</span>
-                        {/each}
-                    </div>
+        {:else if testData?.test_type === 'drag-and-drop'}
+            <div class="drag-drop-test-area">
+                {#if testData.description && viewMode === 'admin'} 
+                {:else if !testData.description && testData.test_type === 'drag-and-drop' }
+                    <p class="instruction-text">Распределите предложенные варианты по соответствующим ячейкам.</p>
                 {/if}
+                
+                {#if canStudentInteract || viewMode === 'admin'}
+                    <h4>Доступные слова/фразы:</h4>
+                    <section 
+                        class="draggable-options-pool-display dnd-pool word-order-source-pool"
+                        use:dndzone={{
+                            items: wordOrderAvailableOptionsInPool, 
+                            type: 'woItem-' + sectionItemId, 
+                            dragDisabled: !canStudentInteract, 
+                            dropTargetStyle: {},
+                            ...dndOpts
+                        }}
+                        on:consider={handleDndWordOrderPool}
+                        on:finalize={handleDndWordOrderPool}
+                        aria-label="Пул доступных слов для составления последовательности"
+                    >
+                        {#each wordOrderAvailableOptionsInPool as item (item.id)}
+                            <div class="draggable-option-dnd word-order-option"
+                                title={canStudentInteract ? "Клик или перетаскивание для добавления: " + item.text : item.text}
+                                tabindex={canStudentInteract ? 0 : -1}
+                                on:click={() => {if(canStudentInteract) addWordToStudentSequenceFromPool(item)}}
+                                on:keypress={(e) => {if(canStudentInteract && (e.key === 'Enter' || e.key === ' ')) addWordToStudentSequenceFromPool(item);}}
+                                role="button"
+                            >{item.text}</div>
+                        {/each}
+                        {#if wordOrderAvailableOptionsInPool.length === 0 && canStudentInteract}
+                            <p class="empty-pool-message">Все слова использованы.</p>
+                        {/if}
+                        {#if dndBasePoolForCurrentTest.length === 0 }
+                            <p class="empty-pool-message">Пул слов для этого теста не задан.</p>
+                        {/if}
+                    </section>
+                {/if}
+
+                <h4>Ячейки для заполнения:</h4>
+                <div class="drag-drop-slots-container">
+                    {#each testData.drag_drop_slots || [] as slot (slot.id)}
+                        {@const filledItemObject = filledSlotsForDisplay[slot.id]}
+                        {@const slotDisplayStatus = getSlotDisplayStatus(slot)}
+                        <div class="drag-drop-slot-item status-{slotDisplayStatus}"
+                             class:disabled={!canStudentInteract && isTestSubmittedByStudent}
+                        >
+                            <div class="slot-prompt">
+                                {#if slot.prompt_image_details} <ImageItemDisplay contentDetails={slot.prompt_image_details} /> {/if}
+                                {#if slot.prompt_audio_details} <AudioItemDisplay contentDetails={slot.prompt_audio_details} /> {/if}
+                                {#if slot.prompt_text} <p class="prompt-text">{@html slot.prompt_text.replace(/\n/g, '<br>')}</p> {/if}
+                                {#if !slot.prompt_image_details && !slot.prompt_audio_details && !slot.prompt_text}
+                                    <span class="slot-placeholder-num">Ячейка #{slot.order + 1}</span>
+                                {/if}
+                            </div>
+                            <div 
+                                class="drop-target-area-dnd" 
+                                use:dndzone={{items: filledItemObject ? [filledItemObject] : [], type: 'ddOption-' + sectionItemId, zoneId: 'ddSlot-' + sectionItemId + '-' + slot.id, dragDisabled: !canStudentInteract, dropFromOthersDisabled: !!filledItemObject, ...dndOpts }}
+                                on:finalize={(e) => handleDndFinalizeSlot(e, slot.id)}
+                                on:click={() => placeSelectedOptionInSlot(slot.id)}
+                                on:keypress={(e) => { if (canStudentInteract && (e.key === 'Enter' || e.key === ' ')) placeSelectedOptionInSlot(slot.id); }}
+                                role="button"
+                                tabindex={canStudentInteract && !filledItemObject ? 0 : -1} 
+                                aria-label={`Ячейка ${slot.prompt_text || ('слот '+(slot.order+1))}. ${filledItemObject ? 'Текущий ответ: ' + filledItemObject.text : (selectedDraggableOptionForSlot && canStudentInteract ? 'Нажмите, чтобы поместить ' + selectedDraggableOptionForSlot.text : ( (viewMode === 'admin' || isTestSubmittedByStudent) ? 'Нет ответа' : 'Пусто, выберите облачко и нажмите сюда или перетащите' )  ) }`}
+                            >
+                                {#if filledItemObject}
+                                    <div class="draggable-option-dnd in-slot" 
+                                         on:click|stopPropagation={() => {if(canStudentInteract) clearSlot(slot.id)}}
+                                         on:keypress|stopPropagation={(e) => { if(canStudentInteract && (e.key === 'Enter' || e.key === ' ')) clearSlot(slot.id); }}
+                                         tabindex={canStudentInteract ? 0 : -1}
+                                         role="button"
+                                         title={canStudentInteract ? "Удалить облачко из ячейки (клик)" : filledItemObject.text}
+                                    >
+                                        {filledItemObject.text}
+                                    </div>
+                                {:else if selectedDraggableOptionForSlot && canStudentInteract}
+                                    <span class="drop-hint">Поместить "{selectedDraggableOptionForSlot.text}"?</span>
+                                {:else}
+                                    <span class="drop-placeholder">{ (viewMode === 'admin' || isTestSubmittedByStudent) ? 'Нет ответа' : 'Пусто'}</span>
+                                {/if}
+                            </div>
+                            {#if slot.explanation && (viewMode === 'admin' || (isTestSubmittedByStudent && filledItemObject))}
+                                <div class="slot-explanation status-{slotDisplayStatus} visible">
+                                    <strong>Пояснение:</strong> {@html slot.explanation.replace(/\n/g, '<br>')}
+                                </div>
+                            {/if}
+                        </div>
+                    {/each}
+                </div>
             </div>
 
-        {:else if testData?.test_type === 'drag-to-match'}
-            <div class="drag-to-match-test-area">
-                <p class="instruction">Перетащите облачка к соответствующим целям.</p>
-                <div class="drag-match-layout">
-                    <section class="match-targets-column" aria-label="Цели для соотнесения">
-                        <h4>Цели:</h4>
-                        {#each testData.match_targets || [] as target (target.id)}
-                            {@const droppedItemId = dragToMatch_matches[target.id]}
-                            {@const droppedItemObject = testData.draggable_items.find(di => di.id === droppedItemId)}
-                            {@const targetStatus = getMatchTargetStatus(target, studentActualDragToMatchMatches, isSubmitted)}
-                            <div class="match-target-item status-{targetStatus}">
-                                <div class="target-prompt">
-                                    {#if target.prompt_text}<p class="prompt-p-text">{@html target.prompt_text.replace(/\n/g, '<br>')}</p>{/if}
-                                    {#if target.prompt_image_details} <div class="prompt-p-media"><ImageItemDisplay contentDetails={target.prompt_image_details} /></div> {/if}
-                                    {#if target.prompt_audio_details} <div class="prompt-p-media"><AudioItemDisplay contentDetails={target.prompt_audio_details} /></div> {/if}
-                                </div>
-                                <div 
-                                    class="target-dropzone"
-                                    use:dndzone={{items: droppedItemObject ? [droppedItemObject] : [], type: 'draggable_item_match', ...dndOptions, dragDisabled: !canInteract}}
-                                    on:finalize={(e) => handleDndMatchTargetDropFinalize(e, target.id)}
-                                    aria-label={`Зона для ответа на цель ${target.prompt_text || ('медиа #' + target.id)}`}
-                                >
-                                    {#if droppedItemObject}
-                                        <div class="draggable-item-chip placed dm-chip" 
-                                             on:click={() => {if(canInteract) returnItemToPool(target.id)}} 
-                                             title={canInteract ? "Нажмите, чтобы вернуть в пул" : ""}
-                                             role={canInteract ? "button" : ""}
-                                             tabindex={canInteract ? 0 : -1}
-                                             on:keydown={(e) => {if(canInteract && (e.key==='Enter' || e.key===' ')) returnItemToPool(target.id)}}
-                                             transition:fade={{duration:150}} 
-                                        >
-                                            {#if canInteract}<DragVertical size="16px" class="drag-handle"/>{/if} 
-                                            {@html droppedItemObject.text.replace(/\n/g, '<br>')}
-                                        </div>
-                                    {:else if canInteract}
-                                        <span class="empty-slot-placeholder">Перетащите сюда</span>
-                                    {/if}
-                                </div>
-                                {#if isSubmitted}
-                                    {#if targetStatus === 'target_incorrect'}
-                                        <span class="feedback-icon error" title="Неверно"><CloseCircleOutline size="18px"/></span>
-                                    {:else if targetStatus === 'target_correct'}
-                                        <span class="feedback-icon success" title="Верно"><CheckCircleOutline size="18px"/></span>
-                                    {:else if targetStatus === 'target_empty'}
-                                         <span class="feedback-icon neutral" title="Нет ответа"><HelpCircleOutline size="18px"/></span>
-                                    {/if}
-                                {/if}
-                                {#if target.explanation && (viewMode === 'admin' || (isSubmitted && (targetStatus === 'target_correct' || targetStatus === 'target_incorrect')) )}
-                                    <div class="match-target-explanation status-{targetStatus} visible">
-                                        <strong>Пояснение:</strong> {@html target.explanation.replace(/\n/g, '<br>')}
-                                    </div>
-                                {/if}
-                            </div>
-                        {/each}
-                    </section>
+        {:else if testData?.test_type === 'word-order'}
+            <div class="word-order-test-area">
+                {#if testData.word_order_sentence?.display_prompt}
+                    <p class="instruction-text"><strong>Задание:</strong> {@html testData.word_order_sentence.display_prompt.replace(/\n/g, '<br>')}</p>
+                {/if}
+                <p class="instruction-text">Составьте правильную последовательность, перетаскивая слова/фразы из верхнего блока в нижний, или кликая по ним.</p>
+
+                {#if canStudentInteract || viewMode === 'admin'}
+                    <h4>Доступные слова/фразы:</h4>
                     <section 
-                        class="draggable-items-pool-column dm-pool"
-                        use:dndzone={{items: dragToMatch_availableItems, type: 'draggable_item_match', ...dndOptions, dragDisabled: !canInteract}}
-                        on:finalize={handleMatchItemsPoolFinalize}
-                        aria-label="Пул доступных облачков для соотнесения"
+                        class="draggable-options-pool-display dnd-pool word-order-source-pool"
+                        use:dndzone={{items: wordOrderAvailableOptionsInPool, type: 'woItem-' + sectionItemId, zoneId: 'woPool-' + sectionItemId, dragDisabled: !canStudentInteract, ...dndOpts}}
+                        on:finalize={(e) => handleDndWordOrderPool(e)}
+                        aria-label="Пул доступных слов для составления последовательности"
                     >
-                        <h4>Доступные облачка:</h4>
-                        {#each dragToMatch_availableItems as item (item.id)}
-                            <div class="draggable-item-chip dm-chip" 
-                                 animate:flip={dndOptions}
-                                 class:is-distractor={item.is_distractor && (viewMode==='admin' || isSubmitted)}
-                            >
-                               {#if canInteract}<DragVertical size="16px" class="drag-handle"/>{/if} 
-                               {@html item.text.replace(/\n/g, '<br>')}
-                            </div>
+                        {#each wordOrderAvailableOptionsInPool as item (item.id)}
+                            <div class="draggable-option-dnd word-order-option"
+                                 title={canStudentInteract ? "Клик или перетаскивание для добавления: " + item.text : item.text}
+                                 aria-grabbed={false} tabindex={canStudentInteract ? 0 : -1}
+                                 on:click={() => {if(canStudentInteract) addWordToStudentSequenceFromPool(item)}}
+                                 on:keypress={(e) => {if(canStudentInteract && (e.key === 'Enter' || e.key === ' ')) addWordToStudentSequenceFromPool(item);}}
+                                 role="button"
+                            >{item.text}</div>
                         {/each}
-                        {#if dragToMatch_availableItems.length === 0 && !isSubmitted}
-                            <span class="empty-pool-placeholder">Все облачка использованы</span>
+                        {#if wordOrderAvailableOptionsInPool.length === 0 && canStudentInteract}
+                            <p class="empty-pool-message">Все слова использованы.</p>
+                        {/if}
+                         {#if dndBasePoolForCurrentTest.length === 0 }
+                            <p class="empty-pool-message">Пул слов для этого теста не задан.</p>
                         {/if}
                     </section>
-                </div>
-                 {#if viewMode === 'admin' || isSubmitted}
-                    <div class="correct-answer-display">
-                        <strong>Правильные соотнесения:</strong>
-                        <ul>
-                        {#each testData.match_targets || [] as target ('correct-target-' + target.id)}
-                            {@const correctItem = testData.draggable_items.find(di => di.id === target.correct_item_id)}
-                            <li>
-                                <span class="prompt-preview">
-                                    {#if target.prompt_text}{@html target.prompt_text.replace(/\n/g, '<br>')}{:else if target.prompt_image_details}Изображение{:else if target.prompt_audio_details}Аудио{/if}
-                                </span>
-                                 → <span class="draggable-item-chip correct-chip">{@html correctItem?.text?.replace(/\n/g, '<br>') || '?'}</span>
-                            </li>
+                {/if}
+
+                <h4>Ваша последовательность:</h4>
+                <section 
+                    class="word-sequence-display-area dnd-sequence word-order-target-sequence"
+                    use:dndzone={{
+                        items: currentWordSequence, 
+                        type: 'woItem-' + sectionItemId, 
+                        dragDisabled: !canStudentInteract, 
+                        dropTargetStyle: {},
+                        ...dndOpts
+                    }}
+                    on:consider={handleDndWordOrderSequence}
+                    on:finalize={handleDndWordOrderSequence}
+                    aria-label="Текущая составленная последовательность"
+                >
+                    {#if currentWordSequence.length > 0}
+                        {#each currentWordSequence as item, index (item.id)}
+                            <div class="sequence-word-item-dnd" 
+                                title={canStudentInteract ? "Перетащить для изменения порядка или кликнуть для возврата: " + item.text : item.text}
+                                class:interactive={canStudentInteract}
+                                tabindex={canStudentInteract ? 0 : -1}
+                                on:click={() => {if(canStudentInteract) returnWordFromStudentSequenceToPool(index);}}
+                                on:keypress={(e) => {if(canStudentInteract && (e.key === 'Enter' || e.key === ' ')) returnWordFromStudentSequenceToPool(index);}}
+                                role="button"
+                            >
+                                {#if canStudentInteract} <DragVertical size="16px" class="drag-handle"/> {/if}
+                                <span>{item.text}</span>
+                            </div>
                         {/each}
-                        </ul>
+                    {:else}
+                        <p class="empty-sequence-message">Последовательность пуста. Перетащите или кликните слова из пула выше.</p>
+                    {/if}
+                </section>
+                {#if isTestSubmittedByStudent && testData.word_order_sentence}
+                    {@const isCorrectSeq = isWordOrderSequenceCorrect()}
+                    <div class="sequence-result-display" class:correct={isCorrectSeq === true} class:incorrect={isCorrectSeq === false}>
+                        <strong>Результат:</strong> 
+                        {#if isCorrectSeq === true} Верно!
+                        {:else if isCorrectSeq === false} Неверно. 
+                            {#if viewMode === 'admin' || isTestSubmittedByStudent }
+                            Правильная последовательность: "{testData.word_order_sentence.correct_ordered_texts.join(' ')}"
+                            {/if}
+                        {:else} Ответ не полный или не может быть оценен.
+                        {/if}
+                        {#if testData.word_order_sentence.explanation}
+                            <p class="explanation-text"><em>Пояснение:</em> {@html testData.word_order_sentence.explanation.replace(/\n/g, '<br>')}</p>
+                        {/if}
                     </div>
                 {/if}
             </div>
         {/if}
-
-        {#if canInteract}
+    
+        {#if canStudentInteract}
             <div class="test-actions-display">
                 <button type="submit" class="btn-submit-test-display" disabled={isSubmitting}>
                     {isSubmitting ? 'Отправка...' : 'Отправить ответ'}
@@ -522,14 +573,14 @@
             </div>
         {/if}
 
-        {#if viewMode === 'student' && isSubmitted && studentSubmission}
+        {#if viewMode === 'student' && isTestSubmittedByStudent && studentSubmission}
             <div class="submission-result-display status-{studentSubmission.status.toLowerCase()}">
                 <h4>Результаты:</h4>
                 <p>Статус: 
                     <strong >
                         { studentSubmission.status === 'graded' ? 'Оценено' : 
-                            studentSubmission.status === 'auto_passed' ? 'Зачтено' :
-                            studentSubmission.status === 'auto_failed' ? 'Не зачтено' :
+                            studentSubmission.status === 'auto_passed' || studentSubmission.status === 'auto_correct' ? 'Зачтено' :
+                            studentSubmission.status === 'auto_failed' || studentSubmission.status === 'auto_incorrect' ? 'Не зачтено' :
                             studentSubmission.status === 'grading_pending' ? 'На проверке' :
                             'Отправлено'
                         }
@@ -553,216 +604,165 @@
 </div>
 
 <style>
-    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
-    .test-item-display-wrapper { background-color: #fff; border: 1px solid #e7eaf3; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 3px 8px rgba(175, 164, 255, 0.05); }
-    .test-title { font-size: 1.5em; font-weight: 700; color: #333; margin-top: 0; margin-bottom: 8px; }
-    .test-description { font-size: 1em; color: #555; margin-bottom: 18px; line-height: 1.65; }
-    .test-attachment { margin-bottom: 18px; }
-    .test-attachment :global(.image-item-display), .test-attachment :global(.audio-item-display-enhanced) { border: 1px solid #eef0f5; box-shadow: none; margin-bottom: 0; border-radius: 8px; }
-    .test-form-display { margin-top: 10px; }
-    .mcq-options-group { border: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
-    
-    .mcq-option-display-item {
-        border: 1px solid #d1c9ff;
-        border-radius: 8px;
-        background-color: #fff;
-        transition: background-color 0.2s, border-color 0.2s;
-        overflow: hidden; 
-    }
-    .mcq-option-label {
-        display: flex;
-        align-items: flex-start; 
-        gap: 10px;
-        padding: 12px 15px;
-        cursor: pointer;
-        width: 100%;
-    }
-    .mcq-option-display-item.disabled .mcq-option-label { cursor: default; opacity: 0.7; }
-    .mcq-option-display-item:not(.disabled) .mcq-option-label:hover { background-color: #f8f6ff; }
-    
-    .mcq-option-input { 
-        position: absolute;
-        opacity: 0;
-        width: 0; height: 0;
-    }
-    .mcq-option-checkbox-visual {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 22px; height: 22px;
-        margin-top: 2px; 
-        color: #adb5bd; 
-        flex-shrink: 0;
-        transition: color 0.2s;
-    }
-    .mcq-option-input:checked + .mcq-option-checkbox-visual {
-        color: var(--color-primary, #AFA4FF); 
-    }
-    .mcq-option-input:disabled + .mcq-option-checkbox-visual {
-        color: #ced4da; 
-    }
-    .mcq-option-text-content { flex-grow: 1; line-height: 1.55; font-size: 0.95em; word-break: break-word; color: #343a40; }
-    
-    .mcq-option-display-item.status-student_correct { background-color: #e6ffed; border-left: 4px solid #28a745; }
-    .mcq-option-display-item.status-student_incorrect { background-color: #ffebee; border-left: 4px solid #dc3545; }
-    .mcq-option-display-item.status-missed_correct { border-left: 4px solid #ffc107; }
-    .mcq-option-display-item.status-neutral_incorrect.admin-view,
-    .mcq-option-display-item.status-pending.admin-view { /* Optional distinct style for admin */ }
-    .mcq-option-display-item.status-missed_correct.admin-view,
-    .mcq-option-display-item.status-student_correct.admin-view { border-left-color: #28a745; }
-    
-    
-    .mcq-option-explanation {
-        font-size: 0.9em; color: #495057; margin: 0 15px 12px 44px; 
-        padding: 10px; background-color: #f8f9fa; border-radius: 6px; 
-        border-left: 3px solid #ced4da; line-height: 1.6;
-        display: none; 
-    }
-    .mcq-option-explanation.visible { display: block; }
-    .mcq-option-display-item.status-student_correct .mcq-option-explanation.visible,
-    .mcq-option-display-item.status-missed_correct .mcq-option-explanation.visible { border-left-color: #28a745; background-color: #e6ffed; color: #155724; }
-    .mcq-option-display-item.status-student_incorrect .mcq-option-explanation.visible { border-left-color: #dc3545; background-color: #ffebee; color: #721c24; }
-    .mcq-option-display-item.status-missed_correct.admin-view .mcq-option-explanation.visible,
-    .mcq-option-display-item.status-student_correct.admin-view .mcq-option-explanation.visible { border-left-color: #28a745; background-color: #e6ffed; color: #155724; }
-    .mcq-option-display-item.status-student_incorrect.admin-view .mcq-option-explanation.visible,
-    .mcq-option-display-item.status-neutral_incorrect.admin-view .mcq-option-explanation.visible { border-left-color: #6c757d; background-color: #f1f3f5; }
-    
-    
-    .test-actions-display { margin-top: 25px; text-align: right; }
-    .btn-submit-test-display { background-color: var(--color-primary, #AFA4FF); color: white; padding: 10px 22px; border: none; border-radius: 25px; font-weight: 500; cursor: pointer; transition: background-color 0.2s ease, transform 0.1s ease; font-size: 0.95rem; }
-    .btn-submit-test-display:hover:not(:disabled) { background-color: var(--color-primary-dark, #8679f0); }
-    .btn-submit-test-display:active:not(:disabled) { transform: translateY(1px); }
-    .btn-submit-test-display:disabled { background-color: #ccc; cursor: not-allowed; opacity: 0.8; }
-    
-    .submission-result-display { margin-top: 25px; padding: 15px 20px; background-color: #f8f6ff; border: 1px solid #d1c9ff; border-radius: 12px; }
-    .submission-result-display h4 { margin-top: 0; margin-bottom: 12px; color: #5845d8; font-size: 1.1em; }
-    .submission-result-display p { margin-bottom: 8px; font-size: 0.95em; }
-    .submission-result-display strong { font-weight: 600; }
-    .submission-result-display.status-auto_passed strong, .submission-result-display.status-graded strong { color: #27ae60; } 
-    .submission-result-display.status-auto_failed strong { color: #e74c3c; }
-    .submission-result-display.status-grading_pending strong, .submission-result-display.status-submitted strong { color: #6D7FC9; }
-    .submission-result-display .feedback-text strong { color: #343a40; font-weight: normal; display: block; margin-top: 4px; padding: 8px; background-color: #fff; border-radius: 4px;}
-    .submission-result-display.admin-view { background-color: #e9ecef; border-color: #ced4da; }
-    .submission-result-display.admin-view h4 { color: #495057; }
-    
-    /* DND Стили */
-    .sentence-order-test-area .instruction,
-    .drag-to-match-test-area .instruction { font-style: italic; margin-bottom: 15px; color: var(--color-text-muted); }
-    
-    .draggable-items-pool, .draggable-items-pool-column {
-        display: flex; flex-wrap: wrap; gap: 8px; 
-        margin-bottom: 20px; padding: 10px; 
-        background-color: var(--color-bg-ultra-light, #f8f6ff); 
-        border: 1px dashed var(--color-border-admin-button, #d1c9ff);
-        border-radius: 8px; min-height: 40px;
-        user-select: none;
-    }
-    .draggable-item-chip {
-        padding: 7px 14px; 
-        background-color: #fff; 
-        border: 1px solid var(--color-border-light, #e0e0e0);
-        color: var(--color-text-dark, #333);
-        border-radius: 20px; 
-        cursor: grab;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.08); 
-        transition: box-shadow 0.2s, transform 0.2s, background-color 0.2s, border-color 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 0.9em;
-    }
-    .draggable-item-chip:active:not(.disabled) { cursor: grabbing; box-shadow: 0 3px 6px rgba(0,0,0,0.12); transform: scale(1.03); }
-    .draggable-item-chip.is-distractor { 
-        opacity: 0.8; 
-        border-style: dashed; 
-        border-color: #aaa;
-        background-color: #f5f5f5;
-    }
-    .drag-handle { color: #aaa; margin-right: 3px; cursor: inherit; }
-    .draggable-item-chip.disabled, .draggable-item-chip[draggable="false"] {
-        cursor: default;
-        opacity: 0.7;
-    }
-    .draggable-item-chip.disabled:active, .draggable-item-chip[draggable="false"]:active {
-        box-shadow: 0 1px 2px rgba(0,0,0,0.08); transform: none;
-    }
-    
-    
-    .sentence-order-slots-container { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
-    .sentence-order-slot { 
-        display: flex; align-items: center; gap: 10px; 
-        padding: 8px 12px; 
-        border: 1px solid var(--color-border-light, #e0e0e0); 
-        background-color: #fff;
-        border-radius: 8px; min-height: 42px; 
-        transition: background-color 0.2s, border-color 0.2s;
-    }
-    .sentence-order-slot.dnd-hovered { 
-        background-color: var(--color-primary-light, #e0d8ff) !important;
-        border-color: var(--color-primary, #AFA4FF) !important;
-    }
-    .slot-index { font-weight: bold; color: var(--color-text-muted, #6c757d); }
-    .slot-prompt { font-style: italic; color: #888; margin-right: 5px; }
-    .empty-slot-placeholder, .empty-pool-placeholder { color: #adb5bd; font-style: italic; font-size: 0.9em; text-align: center; width: 100%; }
-    .draggable-item-chip.placed { 
-        cursor: default; 
-        background-color: var(--color-primary-light, #f0eaff); 
-        border-color: var(--color-primary, #AFA4FF); 
-        color: var(--color-primary-dark, #5845d8);
-    }
-    .feedback-icon { display: inline-flex; align-items: center; margin-left: auto; padding-left: 8px; }
-    .feedback-icon.success { color: var(--color-success, #28a745); }
-    .feedback-icon.error { color: var(--color-danger-red, #dc3545); }
-    .feedback-icon.neutral { color: var(--color-text-muted, #6c757d); }
-    
-    
-    .sentence-order-slot.status-slot_correct { background-color: #e6ffed; border-color: #28a745; }
-    .sentence-order-slot.status-slot_incorrect { background-color: #ffebee; border-color: #dc3545; }
-    .sentence-order-slot.status-slot_empty { /* Optional: style for empty slots after submission */ }
-    
-    
-    .correct-answer-display { margin-top: 15px; padding-top:10px; border-top: 1px solid #eee;}
-    .correct-answer-display strong { display: block; margin-bottom: 8px; font-size: 0.95em;}
-    .correct-answer-display .draggable-item-chip.correct-chip { 
-        background-color: #d4edda; border-color: #c3e6cb; color: #155724; cursor: default; margin-right: 5px; margin-bottom: 5px;
-    }
-    .correct-answer-display ul { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 5px; }
-    .correct-answer-display li { margin-bottom: 5px; display: flex; align-items: center; }
-    .correct-answer-display .prompt-preview { color: #555; font-style: italic; margin-right: 5px; }
-    
-    
-    .drag-match-layout { display: flex; gap: 25px; flex-wrap: wrap; }
-    .match-targets-column { flex: 2; min-width: 280px; display: flex; flex-direction: column; gap: 15px;}
-    .draggable-items-pool-column { flex: 1; min-width: 200px; background: #f0f4f8; padding: 15px; border-radius: 8px; align-self: flex-start; }
-    .draggable-items-pool-column h4, .match-targets-column h4 { margin-top:0; margin-bottom:12px; font-size: 1.05em; color: var(--color-text-dark);}
-    .match-target-item { padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; background: #fff; }
-    .target-prompt { margin-bottom: 12px; min-height: 30px; }
-    .target-prompt .prompt-p-text { margin: 0 0 8px 0; font-weight: 500;}
-    .target-prompt :global(.image-item-display), .target-prompt :global(.audio-item-display-enhanced) { 
-        padding: 0; border: none; box-shadow: none; margin-bottom: 5px; background: transparent;
-    }
-    .target-dropzone { 
-        min-height: 46px; background: #f8f9fa; 
-        border: 2px dashed #ced4da; border-radius: 6px; 
-        display: flex; align-items: center; justify-content: center; padding: 8px; 
-        transition: background-color 0.2s, border-color 0.2s;
-    }
-    .target-dropzone.dnd-hovered {
-         background-color: var(--color-primary-light, #e0d8ff) !important;
-         border-color: var(--color-primary, #AFA4FF) !important;
-    }
-    .match-target-item.status-target_correct .target-dropzone .draggable-item-chip.placed { background-color: #d4edda; border-color: #28a745; color: #155724; }
-    .match-target-item.status-target_incorrect .target-dropzone .draggable-item-chip.placed { background-color: #f8d7da; border-color: #dc3545; color: #721c24; }
-    
-    
-    .match-target-explanation { margin-top: 10px; font-size: 0.88em; color: #495057; background: #f8f9fa; padding: 8px 10px; border-left: 3px solid #ced4da; border-radius: 6px; line-height: 1.6; display: none; }
-    .match-target-explanation.visible { display: block; }
-    .match-target-item.status-target_correct .match-target-explanation.visible { border-left-color: var(--color-success); background-color: #e6ffed; }
-    .match-target-item.status-target_incorrect .match-target-explanation.visible { border-left-color: var(--color-danger-red); background-color: #ffebee; }
-    
-    
-    @media (max-width: 768px) {
-        .drag-match-layout { flex-direction: column; }
-        .draggable-items-pool-column { order: -1; margin-bottom: 20px; } 
-    }
-    </style>
+/* Общие стили для TestItemDisplay */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
+.test-item-display-wrapper { background-color: #fff; border: 1px solid #e7eaf3; border-radius: 12px; padding: clamp(15px, 3vw, 25px); margin-bottom: 25px; box-shadow: 0 4px 12px rgba(var(--color-primary-rgb, 175, 164, 255), 0.07); }
+.test-title { font-size: clamp(1.25em, 3vw, 1.6em); font-weight: 700; color: var(--color-text-dark); margin-top: 0; margin-bottom: 10px; }
+.test-description { font-size: clamp(0.9em, 2.2vw, 1em); color: var(--color-text-muted); margin-bottom: 20px; line-height: 1.7; }
+.test-attachment { margin-bottom: 20px; border-radius: 8px; overflow: hidden; }
+.test-attachment :global(.image-item-display), 
+.test-attachment :global(.audio-item-display-enhanced) { 
+    border: none; box-shadow: none; margin-bottom: 0; padding: 0; 
+}
+.test-form-display { margin-top: 15px; }
+
+/* Стили для MCQ (из предыдущего ответа, можно скопировать) */
+.mcq-options-group { border: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.mcq-option-display-item { border: 1px solid #d1c9ff; border-radius: 8px; background-color: #fff; transition: background-color 0.2s, border-color 0.2s; overflow: hidden; }
+.mcq-option-label { display: flex; align-items: flex-start; gap: 10px; padding: 12px 15px; cursor: pointer; width: 100%; }
+.mcq-option-display-item.disabled .mcq-option-label { cursor: default; }
+.mcq-option-display-item:not(.disabled) .mcq-option-label:hover { background-color: #f8f6ff; }
+.mcq-option-input { position: absolute; opacity: 0; width: 0; height: 0; }
+.mcq-option-checkbox-visual { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-top: 2px; color: #adb5bd; flex-shrink: 0; transition: color 0.2s; }
+.mcq-option-input:checked + .mcq-option-checkbox-visual { color: var(--color-primary, #AFA4FF); }
+.mcq-option-input:disabled + .mcq-option-checkbox-visual { color: #ced4da; }
+.mcq-option-text-content { flex-grow: 1; line-height: 1.55; font-size: 0.95em; word-break: break-word; color: #343a40; }
+.mcq-option-display-item.status-student_correct { background-color: #e6ffed; border-left: 4px solid #28a745; }
+.mcq-option-display-item.status-student_incorrect { background-color: #ffebee; border-left: 4px solid #dc3545; }
+.mcq-option-display-item.status-missed_correct { border-left: 4px solid #ffc107; }
+.mcq-option-display-item.status-missed_correct.admin-view, .mcq-option-display-item.status-student_correct.admin-view { border-left: 4px solid #28a745; }
+.mcq-option-explanation { font-size: 0.9em; color: #495057; margin: 0 15px 12px 44px; padding: 10px; background-color: #f8f9fa; border-radius: 6px; border-left: 3px solid #ced4da; line-height: 1.6; display: none; }
+.mcq-option-explanation.visible { display: block; }
+.mcq-option-display-item.status-student_correct .mcq-option-explanation.visible { border-left-color: #28a745; background-color: #e6ffed; color: #155724; }
+.mcq-option-display-item.status-student_incorrect .mcq-option-explanation.visible { border-left-color: #dc3545; background-color: #ffebee; color: #721c24; }
+.mcq-option-display-item.status-missed_correct .mcq-option-explanation.visible { border-left-color: var(--color-primary, #AFA4FF); background-color: #f8f6ff; color: var(--color-primary-dark, #5845d8); }
+.mcq-option-display-item.status-missed_correct.admin-view .mcq-option-explanation.visible, .mcq-option-display-item.status-student_correct.admin-view .mcq-option-explanation.visible { border-left-color: #28a745; background-color: #e6ffed; color: #155724; }
+.mcq-option-display-item.status-student_incorrect.admin-view .mcq-option-explanation.visible, .mcq-option-display-item.status-neutral_incorrect.admin-view .mcq-option-explanation.visible { border-left-color: #6c757d; background-color: #f1f3f5;}
+
+
+/* Стили для Drag-and-Drop и Word-Order */
+.drag-drop-test-area, .word-order-test-area { margin-top: 25px; padding-top: 20px; border-top: 1px solid #f0f0f0; }
+.instruction-text { font-size: 0.95em; color: var(--color-text-muted); margin-bottom: 15px; line-height: 1.6; }
+.drag-drop-test-area h4, .word-order-test-area h4 { font-size: 1.05em; font-weight: 600; margin-top: 20px; margin-bottom: 12px; color: var(--color-secondary); }
+
+.dnd-zone { /* Общий стиль для dnd-зон */
+    border: 2px dashed var(--color-border-light, #e0e0e0);
+    padding: 10px;
+    border-radius: var(--spacing-border-radius-small);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    min-height: 50px; /* Минимальная высота для пустых зон */
+}
+.dnd-zone.svelte-dnd-droptarget-active {
+    background-color: rgba(var(--color-primary-rgb), 0.05);
+    border-color: var(--color-primary);
+    border-style: solid;
+}
+.draggable-options-pool-display { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; background-color: #f7f9fc; }
+.draggable-item, .draggable-option-dnd { /* Унифицировал имя класса */
+    padding: 8px 15px; background-color: #fff;
+    border: 1px solid var(--color-primary-light, #d1c9ff);
+    color: var(--color-primary-dark, #5845d8);
+    border-radius: 18px; cursor: grab;
+    transition: all 0.2s ease; font-size: 0.9em;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    display: inline-flex; align-items: center; user-select: none;
+}
+.draggable-item:hover:not([aria-disabled="true"]),
+.draggable-option-dnd:hover:not([aria-disabled="true"]) {
+    background-color: var(--color-primary-light, #e0d8ff);
+    transform: scale(1.03);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+}
+.draggable-item[aria-grabbed="true"],
+.draggable-option-dnd[aria-grabbed="true"] {
+    opacity: 0.6; background-color: var(--color-secondary); color: white;
+    box-shadow: 0 5px 10px rgba(0,0,0,0.2); transform: rotate(-2deg);
+}
+.draggable-item[aria-disabled="true"],
+.draggable-option-dnd[aria-disabled="true"] {
+    opacity: 0.5; cursor: not-allowed; background-color: #e9ecef;
+    color: #6c757d; border-color: #ced4da; box-shadow: none;
+}
+.draggable-item.selected-for-slot { /* Для клик-механики D&D */
+    outline: 3px solid var(--color-secondary);
+    box-shadow: 0 0 10px rgba(var(--color-secondary-rgb), 0.4);
+}
+.empty-pool-message, .empty-sequence-message { width: 100%; text-align: center; font-size: 0.9em; color: #888; font-style: italic; padding: 10px 0; }
+
+.drag-drop-slots-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
+.drag-drop-slot-item { border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; background-color: #fff; display: flex; flex-direction: column; transition: border-color 0.3s, background-color 0.3s; }
+.drag-drop-slot-item.disabled { opacity: 0.7; background-color: #f9f9f9; }
+.slot-prompt { margin-bottom: 10px; min-height: 20px; font-size: 0.9em; }
+.slot-prompt .prompt-text { font-style: italic; color: #444; }
+.slot-prompt :global(.image-item-display), .slot-prompt :global(.audio-item-display-enhanced) { margin-bottom: 5px; border: none; padding: 0; box-shadow: none; }
+.slot-placeholder-num { color: #999; font-size: 0.85em; }
+
+.drop-target-area-dnd {
+    min-height: 48px; background-color: #f4f7fa;
+    border: 2px dashed #c5d5e6; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 10px; cursor: pointer; transition: all 0.2s;
+    flex-grow: 1;
+}
+.drag-drop-slot-item.disabled .drop-target-area-dnd { cursor: default; }
+.drop-target-area-dnd.occupied { border-style: solid; border-color: var(--color-secondary-light, #d1d8f8); background-color: #eef2f7; }
+.draggable-item.in-slot { cursor: pointer; position: relative; } /* Для кнопки очистки */
+.clear-slot-btn { position: absolute; top: -8px; right: -8px; background: white; border: 1px solid #ccc; border-radius: 50%; width: 20px; height: 20px; font-size: 14px; color: #888; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.2); line-height: 1; padding: 0; }
+.clear-slot-btn:hover { color: var(--color-danger-red); background-color: #fff0f0; border-color: var(--color-danger-red); }
+.drop-hint, .drop-placeholder-dnd { font-size: 0.9em; color: #777; font-style: italic; text-align: center; }
+
+.drag-drop-slot-item.status-student_correct .drop-target-area-dnd { border-color: var(--color-success); background-color: #e6ffed; }
+.drag-drop-slot-item.status-student_correct .draggable-item.in-slot { background-color: var(--color-success); border-color: var(--color-success); color: white; }
+.drag-drop-slot-item.status-student_incorrect .drop-target-area-dnd { border-color: var(--color-danger-red); background-color: #ffebee; }
+.drag-drop-slot-item.status-student_incorrect .draggable-item.in-slot { background-color: var(--color-danger-red); border-color: var(--color-danger-red); color: white; }
+.drag-drop-slot-item.status-slot_empty_after_submit .drop-target-area-dnd,
+.drag-drop-slot-item.status-slot_empty .drop-target-area-dnd { border-color: #ffc107; background-color: #fff8e1; }
+.slot-explanation { font-size: 0.88em; color: #495057; margin-top: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 6px; border-left: 3px solid #ced4da; line-height: 1.6; display: none; }
+.slot-explanation.visible { display: block; }
+.drag-drop-slot-item.status-student_correct .slot-explanation.visible { border-left-color: #28a745; background-color: #e6ffed; color: #155724; }
+.drag-drop-slot-item.status-student_incorrect .slot-explanation.visible { border-left-color: #dc3545; background-color: #ffebee; color: #721c24; }
+
+
+/* Стили для Word Order теста */
+.word-order-test-area .draggable-options-pool-display { margin-bottom: 15px; }
+.word-order-test-area .draggable-item.word-order-option { /* Можно добавить специфичные стили */ }
+.word-sequence-display-area {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 12px; background-color: #fff;
+    border: 1px solid var(--color-secondary-light);
+    border-radius: var(--spacing-border-radius-small);
+    min-height: 48px; margin-bottom: 15px;
+}
+.sequence-word-item-dnd {
+    position: relative; padding-right: 20px; /* Место под крестик */
+}
+.sequence-word-item-dnd.interactive:hover { background-color: #eef2f7; }
+.drag-handle { margin-right: 6px; cursor: grab; color: #aaa; }
+.sequence-word-item-dnd:active .drag-handle { cursor: grabbing; }
+.remove-word-indicator { position: absolute; top: 50%; right: 5px; transform: translateY(-50%); font-weight: bold; color: #aaa; cursor: pointer; opacity: 0.6; transition: opacity 0.2s; font-size: 1.2em; line-height: 1; }
+.sequence-word-item-dnd.interactive:hover .remove-word-indicator { opacity: 1; }
+.remove-word-indicator:hover { color: var(--color-danger-red); }
+
+.sequence-result-display { margin-top: 15px; padding: 12px; border-radius: var(--spacing-border_radius-small); font-size: 0.95em;}
+.sequence-result-display.correct { background-color: #e6ffed; border: 1px solid #c3e6cb; color: #155724; }
+.sequence-result-display.incorrect { background-color: #ffebee; border: 1px solid #f5c6cb; color: #721c24; }
+.sequence-result-display .explanation-text { margin-top: 8px; font-size: 0.9em; font-style: italic; }
+
+/* Общие для тестов */
+.test-actions-display { margin-top: 25px; text-align: right; }
+.btn-submit-test-display { background-color: var(--color-primary, #AFA4FF); color: white; padding: 10px 22px; border: none; border-radius: 25px; font-weight: 500; cursor: pointer; transition: background-color 0.2s ease, transform 0.1s ease; font-size: 0.95rem; }
+.btn-submit-test-display:hover:not(:disabled) { background-color: var(--color-primary-dark, #8679f0); }
+.btn-submit-test-display:active:not(:disabled) { transform: translateY(1px); }
+.btn-submit-test-display:disabled { background-color: #ccc; cursor: not-allowed; opacity: 0.8; }
+
+.submission-result-display { margin-top: 25px; padding: 15px 20px; background-color: #f8f6ff; border: 1px solid #d1c9ff; border-radius: 12px; }
+.submission-result-display h4 { margin-top: 0; margin-bottom: 12px; color: #5845d8; font-size: 1.1em; }
+.submission-result-display p { margin-bottom: 8px; font-size: 0.95em; }
+.submission-result-display strong { font-weight: 600; }
+.submission-result-display.status-auto_passed strong, .submission-result-display.status-graded strong, .submission-result-display.status-auto_correct strong { color: #27ae60; } 
+.submission-result-display.status-auto_failed strong, .submission-result-display.status-auto_incorrect strong { color: #e74c3c; }
+.submission-result-display.status-grading_pending strong, .submission-result-display.status-submitted strong { color: #6D7FC9; }
+.submission-result-display .feedback-text strong { color: #343a40; font-weight: normal; display: block; margin-top: 4px; padding: 8px; background-color: #fff; border-radius: 4px;}
+.submission-result-display.admin-view { background-color: #e9ecef; border-color: #ced4da; }
+.submission-result-display.admin-view h4 { color: #495057; }
+</style>
