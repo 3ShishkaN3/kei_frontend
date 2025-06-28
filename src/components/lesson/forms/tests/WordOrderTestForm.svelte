@@ -199,7 +199,6 @@
             addNotification("Текст опции не может быть пустым.", "warning");
         } else {
             event.target.value = localTestModel.draggable_options_pool[index];
-            addNotification("Такая опция уже существует в пуле.", "warning");
         }
     }
 
@@ -381,7 +380,7 @@
                             <input type="text" value={optionText} on:change={(e) => editOptionInPool(index, e)} class="pool-option-input" placeholder="Текст опции" />
                             <div class="pool-item-actions">
                                 <button type="button" class="btn-action-small" on:click={() => addWordToSequence(optionText)} title="Добавить в правильную последовательность"
-                                        disabled={isLoading || (localTestModel.word_order_sentence.correct_ordered_texts.includes(optionText) && !confirm("Это слово уже есть в последовательности. Добавить еще раз?"))} >
+                                        disabled={isLoading || (localTestModel.word_order_sentence.correct_ordered_texts.includes(optionText))} >
                                     <PlusCircleOutline size="16px"/>
                                 </button>
                                 <button type="button" class="btn-delete-small" on:click={() => removeOptionFromDraggablePool(optionText)} title="Удалить из пула">

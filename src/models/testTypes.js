@@ -111,20 +111,20 @@ export class FreeTextTestModel extends BaseTestModel {
 /**
  * Модель для слота/ячейки в Drag-and-Drop тесте (бывший MatchingPair).
  */
-export class DragDropSlotModel { // Переименовал для ясности на фронте
+export class DragDropSlotModel {
     constructor({ 
         id = null, 
         prompt_text = "", 
-        prompt_image_id = null, // ID существующего ImageMaterial для prompt
-        prompt_audio_id = null, // ID существующего AudioMaterial для prompt
-        correct_answer_text = "", // Текст облачка, которое является правильным для этого слота
+        prompt_image_file = null, 
+        prompt_audio_file = null, 
+        correct_answer_text = "", 
         explanation = "", 
         order = 0 
     }) {
         this.id = id;
         this.prompt_text = prompt_text;
-        this.prompt_image_id = prompt_image_id;
-        this.prompt_audio_id = prompt_audio_id;
+        this.prompt_image_file = prompt_image_file;
+        this.prompt_audio_file = prompt_audio_file;
         this.correct_answer_text = correct_answer_text;
         this.explanation = explanation;
         this.order = order;
@@ -133,8 +133,8 @@ export class DragDropSlotModel { // Переименовал для ясност
     toPayload() {
         const payload = {
             prompt_text: this.prompt_text,
-            prompt_image_id: this.prompt_image_id, // На бэке MatchingPairSerializer ожидает prompt_image_id
-            prompt_audio_id: this.prompt_audio_id, // На бэке MatchingPairSerializer ожидает prompt_audio_id
+            prompt_image_file: null, // Файл передается отдельно в multipart/form-data
+            prompt_audio_file: null, // Файл передается отдельно в multipart/form-data
             correct_answer_text: this.correct_answer_text,
             explanation: this.explanation,
             order: this.order,

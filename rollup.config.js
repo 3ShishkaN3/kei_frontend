@@ -8,8 +8,6 @@ import terser from '@rollup/plugin-terser';
 
 import resolve from '@rollup/plugin-node-resolve';
 
-import livereload from 'rollup-plugin-livereload';
-
 import css from 'rollup-plugin-css-only';
 
 import replace from '@rollup/plugin-replace';
@@ -130,20 +128,6 @@ export default {
 		commonjs(),
 
 
-		// In dev mode, call `npm run start` once
-
-		// the bundle has been generated
-
-		!production && serve(),
-
-
-		// Watch the `public` directory and refresh the
-
-		// browser on changes when not in production
-
-		!production && livereload('public'),
-
-
 		// If we're building for production (npm run build
 
 		// instead of npm run dev), minify
@@ -154,7 +138,8 @@ export default {
 
 	watch: {
 
-		clearScreen: false
+		clearScreen: false,
+		usePolling: true
 
 	}
 

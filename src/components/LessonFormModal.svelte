@@ -5,7 +5,6 @@
   // Установить: npm install svelte-easy-crop
   import Cropper from 'svelte-easy-crop';
 
-  export let lessonToEdit = null;
   export let editingLesson = null;
   export let courseId;
   const dispatch = createEventDispatcher();
@@ -17,20 +16,19 @@
   let coverImageFile = null;
 
   // Параметры кроппера
-    let crop = { x: 0, y: 0 };
+  let crop = { x: 0, y: 0 };
   let zoom = 1;
   let croppedAreaPixels = null;
-  let naturalSize = { width: 0, height: 0 };
-
+  
   let formError = null;
   let isLoading = false;
 
   onMount(() => {
-    if (lessonToEdit) {
-      initialTitle = lessonToEdit.title || '';
-      initialCoverImageUrl = lessonToEdit.cover_image;
-      coverImageUrlPreview = lessonToEdit.cover_image;
-      title = '';
+    if (editingLesson) {
+      initialTitle = editingLesson.title || '';
+      title = editingLesson.title || '';
+      initialCoverImageUrl = editingLesson.cover_image;
+      coverImageUrlPreview = editingLesson.cover_image;
     }
   });
 
@@ -47,29 +45,26 @@
     zoom = 1;
     croppedAreaPixels = null;
 
-    // узнаём натуральный размер картинки
-    const img = new Image();
-    img.src = coverImageUrlPreview;
-    img.onload = () => {
-      naturalSize = { width: img.width, height: img.height };
-      // сразу выставляем дефолтный кроп на всю картинку
-      croppedAreaPixels = { x: 0, y: 0, width: img.width, height: img.height };
-      console.log('Default crop area:', croppedAreaPixels);
-    };
+    // We don't need to read natural size here, cropper will handle it
   }
 
   function onCropComplete(event) {
-  // event.detail = { percent: {...}, pixels: {...} }
-  console.log('Crop completed detail:', event.detail);
-  // берём именно пиксельные размеры обрезки
-  croppedAreaPixels = event.detail.pixels;
-}
+    // event.detail = { percent: {...}, pixels: {...} }
+    croppedAreaPixels = event.detail.pixels;
+  }
 
 
   async function getCroppedImg(imageSrc, pixelCrop) {
     const image = new Image();
     image.src = imageSrc;
-    await image.decode();
+    // Use crossorigin anonymous to handle potential CORS issues even with blob URLs in some browsers
+    image.crossOrigin = 'Anonymous'; 
+    
+    // Waiting for image to load to prevent tainted canvas issues.
+    await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = reject;
+    });
 
     const canvas = document.createElement('canvas');
     canvas.width  = pixelCrop.width;
@@ -83,37 +78,68 @@
 
     return new Promise(resolve => {
       canvas.toBlob(blob => {
-        resolve(new File([blob], 'cover.png', { type: blob.type }));
-      });
+        // Resolve with a File object
+        resolve(new File([blob], coverImageFile?.name || 'cover.png', { type: blob.type }));
+      }, 'image/png');
     });
   }
 
   async function handleSubmit() {
-    formError = null;
     isLoading = true;
+    formError = null;
 
+    if (!editingLesson && !title.trim()) {
+        formError = 'Название урока не может быть пустым.';
+        isLoading = false;
+        return;
+    }
+    
     const formData = new FormData();
-    // … остальные поля формы …
+    let changed = false;
 
-    // 1) гарантируем, что есть нормальный pixelCrop
-    const cropToUse = croppedAreaPixels || {
-    x: 0, y: 0,
-    width:  naturalSize.width,
-    height: naturalSize.height
-    };
-    coverImageFile = await getCroppedImg(coverImageUrlPreview, cropToUse);
-
-
-    // 2) режем всегда по cropToUse
-    if (coverImageUrlPreview) {
-      coverImageFile = await getCroppedImg(coverImageUrlPreview, cropToUse);
+    // 1. Title change detection
+    if (!editingLesson) {
+        // For new lessons, always include the title.
+        formData.append('title', title.trim());
+        changed = true;
+    } else {
+        // For existing lessons, only include title if it has changed.
+        if (title.trim() !== initialTitle) {
+            formData.append('title', title.trim());
+            changed = true;
+        }
     }
 
-    // 3) добавляем в форму
+    // 2. Image change detection
+    // 2a. A new image was uploaded. We know this if coverImageFile is not null.
     if (coverImageFile) {
-      formData.append('cover_image', coverImageFile, coverImageFile.name);
-    } else if (lessonToEdit && initialCoverImageUrl && !coverImageUrlPreview) {
-      formData.append('cover_image', '');
+        if (coverImageUrlPreview && croppedAreaPixels && croppedAreaPixels.width > 0) {
+            const croppedImage = await getCroppedImg(coverImageUrlPreview, croppedAreaPixels);
+            formData.append('cover_image', croppedImage, croppedImage.name);
+            changed = true;
+        } else {
+            // As a fallback, if cropping fails for some reason, upload the original file.
+            formData.append('cover_image', coverImageFile, coverImageFile.name);
+            changed = true;
+        }
+    }
+    // 2b. An existing image was removed. We know this if there was an initial image, but now the preview is gone.
+    else if (initialCoverImageUrl && !coverImageUrlPreview) {
+        formData.append('cover_image', ''); // Send empty string to signal removal
+        changed = true;
+    }
+
+    // If we are editing and nothing changed, just close the modal.
+    if (editingLesson && !changed) {
+        closeModal();
+        return;
+    }
+    
+    // For new lessons, if there's no title, it's an error (already checked),
+    // but if there's a title but no image, that's fine. We must have some change to proceed.
+    if (!changed) {
+        closeModal();
+        return;
     }
 
     dispatch('save', formData);
@@ -141,7 +167,7 @@
 
       <div class="form-group">
         <label for="lesson-title">Название урока</label>
-        <input type="text" bind:value={title} placeholder={editingLesson ? `${editingLesson.title}` : "Введите название"} />
+        <input id="lesson-title" type="text" bind:value={title} placeholder="Введите название урока" />
       </div>
 
       <div class="form-group">
@@ -161,7 +187,7 @@
             <label title="Загрузить заново">
               <input type="file" accept="image/*" on:change={handleFileChange} style="display:none;" />
             </label>
-            <button type="button" class="remove-image-btn" on:click={() => (coverImageUrlPreview = null)}>
+            <button type="button" class="remove-image-btn" on:click={() => {coverImageUrlPreview = null; coverImageFile = null;}}>
               <Close size="18px" />
             </button>
           {:else}
@@ -175,7 +201,7 @@
 
       <div class="form-actions">
         <button type="button" class="cancel-button" on:click={closeModal} disabled={isLoading}>Отмена</button>
-        <button type="submit" class="save-button" disabled={isLoading}>{#if isLoading}Сохранение...{:else}{lessonToEdit ? 'Сохранить' : 'Создать'}{/if}</button>
+        <button type="submit" class="save-button" disabled={isLoading}>{#if isLoading}Сохранение...{:else}{editingLesson ? 'Сохранить' : 'Создать'}{/if}</button>
       </div>
     </form>
   </div>

@@ -85,50 +85,63 @@
     function isEditingOriginalItemType() {
         return itemToEdit && itemToEdit.content_details && itemToEdit.content_details.test_type === selectedTestType;
     }
-
+    // TestItemFormContainer.svelte
     async function handleTestFormSave(event) {
-        const specificTestPayloadOrFormData = event.detail;
+        const specificTestPayloadOrFormData = event.detail; // Это FormData из DragDropTestForm
 
         if (specificTestPayloadOrFormData instanceof FormData) {
+            // specificTestPayloadOrFormData уже содержит все нужные файлы (включая дублирующиеся prompt_image_file)
+            // и test_definition (как JSON строку).
+            // Нам нужно только добавить 'item_type' и переименовать 'test_definition' в 'content_data'.
+
             const finalPayload = new FormData();
-            finalPayload.append('item_type', 'test'); 
+            finalPayload.append('item_type', 'test');
 
-            let testDefinitionJsonString = null;
-            const filesToForward = {};
+            let testDefinitionValue = null;
 
+            // Сначала соберем все файлы и другие поля, КРОМЕ 'test_definition'
             for (const [key, value] of specificTestPayloadOrFormData.entries()) {
-                if (key === 'test_definition') { 
-                    testDefinitionJsonString = value; 
-                } else { 
-                    filesToForward[key] = value;
+                if (key === 'test_definition') {
+                    testDefinitionValue = value; // Сохраняем значение test_definition
+                } else {
+                    finalPayload.append(key, value); // Копируем все остальные поля как есть (включая файлы)
                 }
             }
 
-            if (!testDefinitionJsonString) {
-                addNotification("Ошибка: данные определения теста отсутствуют.", "error");
-                if (typeof itemFormModalRef !== 'undefined' && itemFormModalRef?.setLoading) { // Если есть ссылка на родительскую модалку
+            if (testDefinitionValue) {
+                finalPayload.append('content_data', testDefinitionValue); // Добавляем test_definition под новым именем
+            } else {
+                addNotification("Ошибка: данные определения теста (test_definition) отсутствуют в FormData.", "error");
+                if (typeof itemFormModalRef !== 'undefined' && itemFormModalRef?.setLoading) {
                     itemFormModalRef.setLoading(false);
                 } else {
-                    isLoading = false; // Сбрасываем локальный isLoading, если есть
+                    isLoading = false;
                 }
                 return;
             }
             
-            finalPayload.append('content_data', testDefinitionJsonString);
-
-            for (const key in filesToForward) {
-                finalPayload.append(key, filesToForward[key]);
+            // Логирование для проверки
+            console.log("[TestItemFormContainer] FormData перед dispatch('save'):");
+            for (let pair of finalPayload.entries()) {
+                if (pair[1] instanceof File) {
+                    console.log(`  ${pair[0]}: File (name: ${pair[1].name})`);
+                } else {
+                    console.log(`  ${pair[0]}: ${pair[1]}`);
+                }
             }
+
             dispatch('save', finalPayload);
 
         } else { 
+            // Логика для случаев, когда payload не FormData (например, для MCQ тестов без файлов)
             const sectionItemPayload = {
                 item_type: 'test',
                 content_data: {
-                    ...specificTestPayloadOrFormData,
+                    ...specificTestPayloadOrFormData, // Это должен быть объект JS
                     test_type: selectedTestType 
                 }
             };
+            // Если тип теста был изменен в контейнере (маловероятно, если форма уже отработала)
             if (specificTestPayloadOrFormData.test_type !== selectedTestType && selectedTestType) {
                 sectionItemPayload.content_data.test_type = selectedTestType;
             }

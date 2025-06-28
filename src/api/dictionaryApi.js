@@ -1,0 +1,94 @@
+import { API_BASE_URL } from '../config';
+import { apiFetch } from './api';
+
+const dictsBaseUrl = `${API_BASE_URL}/dict`;
+
+export async function fetchDictionarySectionDetails(sectionId) {
+    const url = `${dictsBaseUrl}/${sectionId}/`;
+    const response = await apiFetch(url);
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Error fetching dictionary section details: ${response.status}`);
+    }
+    return response.json();
+}
+
+export async function fetchDictionaryEntries(sectionId, params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const url = `${dictsBaseUrl}/${sectionId}/entries/?${query}`;
+    const response = await apiFetch(url);
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Error fetching dictionary entries: ${response.status}`);
+    }
+    return response.json();
+}
+
+export async function fetchDictionaryMetadata(sectionId) {
+    const url = `${dictsBaseUrl}/${sectionId}/entries/meta/`;
+    const response = await apiFetch(url);
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Error fetching dictionary metadata: ${response.status}`);
+    }
+    return response.json();
+}
+
+export async function markEntryAsLearned(sectionId, entryId) {
+    const url = `${dictsBaseUrl}/${sectionId}/entries/${entryId}/mark_learned/`;
+    const response = await apiFetch(url, { method: 'POST' });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Error marking entry as learned: ${response.status}`);
+    }
+    return response.json();
+}
+
+export async function unmarkEntryAsLearned(sectionId, entryId) {
+    const url = `${dictsBaseUrl}/${sectionId}/entries/${entryId}/unmark_learned/`;
+    const response = await apiFetch(url, { method: 'POST' });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Error unmarking entry: ${response.status}`);
+    }
+    if (response.status === 204) {
+        return { status: 'unmarked' };
+    }
+    return response.json();
+}
+
+// Admin functions
+export async function createDictionaryEntry(sectionId, entryData) {
+    const url = `${dictsBaseUrl}/${sectionId}/entries/`;
+    const response = await apiFetch(url, {
+        method: 'POST',
+        body: entryData
+    });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Error creating dictionary entry: ${response.status}`);
+    }
+    return response.json();
+}
+
+export async function updateDictionaryEntry(sectionId, entryId, entryData) {
+    const url = `${dictsBaseUrl}/${sectionId}/entries/${entryId}/`;
+    const response = await apiFetch(url, {
+        method: 'PATCH',
+        body: entryData
+    });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Error updating dictionary entry: ${response.status}`);
+    }
+    return response.json();
+}
+
+export async function deleteDictionaryEntry(sectionId, entryId) {
+    const url = `${dictsBaseUrl}/${sectionId}/entries/${entryId}/`;
+    const response = await apiFetch(url, { method: 'DELETE' });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Error deleting dictionary entry: ${response.status}`);
+    }
+}

@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "rollup -c",
-    "dev": "concurrently \"rollup -c -w\" \"sirv public --no-clear --dev --single\"",
-    "start": "sirv public --no-clear"
+    "dev": "concurrently \"rollup -c -w\" \"sirv public --no-clear --host 0.0.0.0 --port 5173 --dev --single\"",
+    "start": "sirv public --no-clear --host 0.0.0.0 --port 5173"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^24.1.0",
@@ -49,14 +49,17 @@
     "sirv-cli": "^2.0.0",
     "svelte-app": "file:",
     "svelte-carousel": "^1.0.25",
-    "svelte-dnd-action": "^0.9.61",
+    "svelte-dnd-action": "^0.9.22",
     "svelte-easy-crop": "^3.0.1",
     "svelte-material-icons": "^3.0.5",
-    "svelte-pdf": "^1.0.27",
+    "svelte-pdf": "1.0.20",
     "svelte-routing": "^2.13.0",
     "svelte-tiptap": "^2.1.0",
     "swiper": "^11.2.6",
     "uuid": "^11.1.0",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "svelte-i18n": "^4.0.0",
+    "svelte-navigator": "^3.2.2",
+    "svelte-spa-router": "^4.0.1"
   }
 }

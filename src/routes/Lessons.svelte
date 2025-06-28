@@ -1,9 +1,10 @@
 <script>
     // src/routes/CourseLessons.svelte
     import { onMount, onDestroy, tick } from 'svelte';
-    import { navigate } from 'svelte-routing';
+    import { navigate, useLocation } from 'svelte-routing';
     // Import fly for item transitions
     import { fade, fly } from 'svelte/transition'; 
+    import { flip } from 'svelte/animate';
     // Import nicer easing functions
     import { cubicOut } from 'svelte/easing'; 
 
@@ -14,8 +15,8 @@
 
     // Import Child Components
     import LessonCard from '../components/LessonCard.svelte';
-    import DictionaryCard from '../components/DictionaryCard.svelte';
-    import Pagination from '../components/Pagination.svelte';
+    import DictionarySectionCard from '../components/dictionary/DictionarySectionCard.svelte';
+    import EnhancedPagination from '../components/EnhancedPagination.svelte';
     import LessonFormModal from '../components/LessonFormModal.svelte';
     import DictionarySectionFormModal from '../components/DictionarySectionFormModal.svelte';
 
@@ -33,6 +34,22 @@
     // --- Props ---
     export let courseId;
 
+    // A simple cookie utility
+    const Cookies = {
+        get: (name) => {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        },
+        set: (name, value, days = 30) => {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            const expires = `; expires=${date.toUTCString()}`;
+            document.cookie = `${name}=${value}${expires}; path=/`;
+        }
+    };
+
     // --- State Variables ---
     let lessons = [];
     let dictionarySections = [];
@@ -43,8 +60,8 @@
     let errorSections = null;
     let currentUserRole = null;
     let isPrivilegedUser = false;
-    let viewMode = 'student';
-    let currentPage = $courseLessonsPagination.page; // Use store's initial value
+    let viewMode = 'student'; // Default, will be updated from cookie
+    let currentPage = 1; // Default to 1, will be updated from store/URL
     let pageSize = $courseLessonsPagination.size;
     let totalLessons = 0;
     let sortField = '-created_at';
@@ -53,30 +70,37 @@
     let editingLesson = null;
     let isSectionModalOpen = false; // Explicitly for Section Modal
     let editingSection = null;
+    let lessonsSectionContainer;
     
+    const location = useLocation();
+
     // Animation state for page transitions
     // Determines the fly direction when paginating
     let pageTransitionDirection = 1; // 1 for forward, -1 for backward
 
     // Subscribe to pagination store
     const unsubscribePagination = courseLessonsPagination.subscribe(state => {
+        const searchParams = new URLSearchParams($location.search);
+        const pageFromUrl = parseInt(searchParams.get('page'), 10) || 1;
+
+        if (state.page !== pageFromUrl) {
+             // Sync URL with the store state
+             searchParams.set('page', state.page);
+             // Use replace: true to avoid polluting browser history on simple page changes
+             navigate(`${$location.pathname}?${searchParams.toString()}`, { replace: true });
+        }
+        
+        // Fetch data only if the page has actually changed
         if (currentPage !== state.page) {
-            // Determine transition direction based on page change
             pageTransitionDirection = state.page > currentPage ? 1 : -1;
             currentPage = state.page;
             
-            // Only fetch if we're mounted (avoid initial double fetch)
-            // previousLessons = [...lessons]; // Removed this - individual item transitions are better
-            if (!isLoadingLessons) {
-                isLoadingLessons = true;
-                // Fetch new lessons without clearing progress to keep existing values during transition
-                // Clear progress only on initial load or full refresh, NOT on pagination
-                fetchLessonsInternal(false).finally(() => { 
-                    isLoadingLessons = false;
-                });
-            }
+            isLoadingLessons = true;
+            
+            fetchLessonsInternal(false).finally(() => {
+                isLoadingLessons = false;
+            });
         }
-        pageSize = state.size;
     });
 
     // --- Computed Properties ---
@@ -89,37 +113,57 @@
         title: sortField.includes('title') ? (sortField.startsWith('-') ? 'desc' : 'asc') : null,
         updated_at: sortField.includes('updated_at') ? (sortField.startsWith('-') ? 'desc' : 'asc') : null,
     };
-    // Key for lesson grid transition based on data influencing factors
-    // This key is less needed now that items have transitions, but can help Svelte track the *list* state
-    $: lessonGridKey = `${currentPage}-${sortField}-${totalLessons}-${lessons.length}`; 
+    // Key for lesson grid transition
+    $: lessonGridKey = `${currentPage}-${sortField}-${lessons.length}`; 
     // Key for dictionary section grid transition
     $: dictionaryGridKey = `${dictionarySections.map(s => s.id).join('-')}`; // Changes if sections are added/removed
 
     // --- Lifecycle & User Subscription ---
     const unsubscribeUser = user.subscribe(value => {
         currentUserRole = value?.role;
-        isPrivilegedUser = ['admin', 'teacher', 'assistant'].includes(currentUserRole);
-        // Update viewMode based on privilege, but avoid overriding if already set by toggle
-        if (!isPrivilegedUser) {
-             viewMode = 'student';
-         } else if (isPrivilegedUser && typeof viewMode === 'undefined') { // Set initial if privileged
-             viewMode = 'admin';
-         }
+        const privileged = ['admin', 'teacher', 'assistant'].includes(currentUserRole);
+        
+        if (privileged && !isPrivilegedUser) { // If user just became privileged
+            const storedViewMode = Cookies.get('viewMode');
+            viewMode = storedViewMode || 'admin'; // Default to admin for privileged users
+        } else if (!privileged) {
+            viewMode = 'student';
+        }
+        isPrivilegedUser = privileged;
     });
 
     onMount(async () => {
+        if (history.scrollRestoration) {
+            history.scrollRestoration = 'manual';
+        }
+
         if (!courseId) { /* Error Handling */ return; }
-        // Set initial viewMode after mount based on role
-        viewMode = isPrivilegedUser ? 'admin' : 'student';
         
-        // Update current page from store if needed
-        // currentPage is already initialized from the store, so this might be redundant unless store is async
-        // currentPage = $courseLessonsPagination.page; 
+        // Set initial viewMode after mount based on role and cookie
+        if (isPrivilegedUser) {
+            const storedViewMode = Cookies.get('viewMode');
+            viewMode = storedViewMode || 'admin';
+        } else {
+            viewMode = 'student';
+        }
+
+        const searchParams = new URLSearchParams($location.search);
+        const pageFromUrl = parseInt(searchParams.get('page'), 10) || 1;
         
+        // Set the component's current page from URL first
+        currentPage = pageFromUrl;
+        // Then, sync the store. This won't cause a re-fetch from the subscription
+        // because the currentPage is already aligned with the store's state.
+        courseLessonsPagination.setPage(pageFromUrl);
+
+        // Explicitly fetch all necessary data on initial component load.
         await fetchData();
     });
 
     onDestroy(() => { 
+        if (history.scrollRestoration) {
+            history.scrollRestoration = 'auto';
+        }
         unsubscribeUser(); 
         unsubscribePagination();
     });
@@ -218,8 +262,8 @@
     // --- Event Handlers ---
     function handlePageChange(event) {
         const newPage = event.detail.page;
-        // Update the pagination store rather than directly setting currentPage
-        // The store subscription will handle setting currentPage and fetching data
+        // The store is the single source of truth for page changes.
+        // The subscription will handle fetching and URL updates.
         courseLessonsPagination.setPage(newPage);
     }
 
@@ -231,15 +275,16 @@
         
         if (newSortField !== sortField) {
             sortField = newSortField; 
-            // Reset to page 1 on sort change
+            // Reset to page 1 on sort change.
+            // The subscription will handle fetching and URL updates.
             courseLessonsPagination.setPage(1);
-            isLoadingLessons = true;
-            // Clear progress on sort change as the list is completely new
-            fetchLessonsInternal(true).finally(() => isLoadingLessons = false ); 
         }
     }
 
-    function toggleViewMode() { viewMode = viewMode === 'admin' ? 'student' : 'admin'; }
+    function toggleViewMode() {
+        viewMode = viewMode === 'admin' ? 'student' : 'admin';
+        Cookies.set('viewMode', viewMode);
+    }
 
     // --- Navigation ---
     function navigateToLesson(lessonId) {
@@ -306,15 +351,8 @@
     function handleCloseLessonModal() { isLessonModalOpen = false; editingLesson = null; }
     
     async function handleSaveLesson(event) {
-        let formData = event.detail;
+        const formData = event.detail;
         const isCreating = !editingLesson;
-
-        if (formData.get('croppedImageDataUrl')) {
-            await replaceCroppedImage(formData, 'cover_image', formData.get('croppedImageDataUrl'));
-            formData.delete('croppedImageDataUrl');
-        }
-
-        const cleanedFormData = cleanFormData(formData);
 
         const url = isCreating
             ? `${API_BASE_URL}/courses/${courseId}/lessons/`
@@ -323,8 +361,8 @@
         const method = isCreating ? 'POST' : 'PATCH';
 
         try {
-            const response = await apiFetch(url, { method, body: cleanedFormData });
-            if (!response.ok && response.status !== 201) {
+            const response = await apiFetch(url, { method, body: formData });
+            if (!response.ok && response.status !== 201 && response.status !== 200) {
                 const errorData = await response.json().catch(() => ({ detail: `Не удалось ${isCreating ? 'создать' : 'обновить'} урок.` }));
                 let errorMessage = errorData.detail || `Ошибка ${response.status}.`;
                 if (typeof errorData === 'object' && errorData !== null && !errorData.detail) {
@@ -441,14 +479,14 @@
                     <PlusCircleOutline size="18px" /> Создать Урок
                 </button>
             {/if}
-            <button class="admin-button view-toggle-button" on:click={toggleViewMode} title={isAdminView ? 'Посмотреть как студент' : 'Вернуться в режим управления'}>
+            <button class="admin-button view-toggle-button" on:click={toggleViewMode} title={isAdminView ? 'Посмотреть как студент' : 'Вернуться в режим администратора'}>
                 {#if isAdminView} <EyeOutline size="20px" /> Режим студента
-                {:else} <EyeOffOutline size="20px" /> Режим управления {/if}
+                {:else} <EyeOffOutline size="20px" /> Режим администратора {/if}
             </button>
         </div>
     {/if}
 
-    <div class="lessons-section content-box">
+    <div class="lessons-section content-box" bind:this={lessonsSectionContainer}>
         <div class="controls-header">
             <span class="lesson-count">{lessonCountText}</span>
             {#if lessons.length > 0}
@@ -467,32 +505,36 @@
             {/if}
         </div>
 
-        {#if isLoadingLessons} <p class="loading-message">Загрузка уроков...</p>
+        {#if isLoadingLessons && lessons.length === 0} <p class="loading-message">Загрузка уроков...</p>
         {:else if errorLessons} <p class="error-message">{errorLessons}</p>
         {:else if lessons.length === 0} <p class="no-items-message">Уроков для этого курса пока нет.</p>
         {:else if Array.isArray(lessons)}
-                                    <div class="lessons-grid-container" key={lessonGridKey}>
-                 <div class="lessons-grid">
+            <div class="lessons-grid-container">
+                {#key lessonGridKey}
+                <div class="lessons-grid" class:loading={isLoadingLessons && lessons.length > 0} in:fly={{ y: pageTransitionDirection * 30, duration: 400, delay: 200, easing: cubicOut }}>
                     {#each lessons as lesson, i (lesson.id)}
-                                                <div class="grid-item-wrapper" 
-                              title={lesson.title}
-                              in:fly={{ 
-                                 y: 30 * pageTransitionDirection, // Fly from above/below based on direction
-                                 x: 0, // No horizontal movement
-                                 duration: 400, 
-                                 delay: i * 50, // Staggered delay for each item
-                                 easing: cubicOut 
-                             }}
-                        >
-                                                        <LessonCard on:action={(e) => navigateToLesson(lesson.id)} {lesson} progress={lessonProgress.get(lesson.id) || 0} {isAdminView}
-                                on:edit={handleEditLesson}   on:delete={handleDeleteLesson} />
-                        </div>
+                        <LessonCard 
+                            {lesson} 
+                            progress={lessonProgress.get(lesson.id) || 0}
+                            animationDelay={`${i * 50}ms`}
+                            {isAdminView}
+                            on:action={() => navigateToLesson(lesson.id)}
+                            on:edit={handleEditLesson}
+                            on:delete={handleDeleteLesson}
+                        />
                     {/each}
                 </div>
+                {/key}
             </div>
             {#if totalLessons > pageSize}
              <div class="pagination-container">
-                                <Pagination {currentPage} totalItems={totalLessons} {pageSize} maxVisibleButtons={3} on:changePage={handlePageChange} />
+                                <EnhancedPagination 
+                                    {currentPage} 
+                                    totalPages={Math.ceil(totalLessons / pageSize)} 
+                                    maxVisibleButtons={3} 
+                                    showPageJump={false}
+                                    on:pageChange={handlePageChange} 
+                                />
              </div>
             {/if}
         {:else} <p class="error-message">Ошибка отображения уроков.</p> {/if}
@@ -509,31 +551,29 @@
              </div>
         {/if}
 
-        {#if isLoadingSections} <p class="loading-message">Загрузка разделов практики...</p>
-        {:else if errorSections} <p class="error-message">{errorSections}</p>
-        {:else if Array.isArray(dictionarySections) && dictionarySections.length > 0}
-                                    <div class="dictionary-grid-container" key={dictionaryGridKey}>
+        <!-- DICTIONARY SECTIONS -->
+        <div class="dictionary-section-container">
+            {#if isLoadingSections}
+                <p>Загрузка разделов...</p>
+            {:else if errorSections}
+                <p class="error-message">Не удалось загрузить разделы: {errorSections}</p>
+            {:else if dictionarySections.length > 0}
                 <div class="dictionary-grid">
                     {#each dictionarySections as section, i (section.id)}
-                                                <div class="grid-item-wrapper" 
-                              on:click={() => navigateToPractice(section.id)} 
-                              title={section.title}
-                              in:fly={{ 
-                                 y: 20, // Fly slightly from top
-                                 x: 0,
-                                 duration: 300, 
-                                 delay: i * 40, // Staggered delay
-                                 easing: cubicOut 
-                             }}
-                        >
-                                                        <DictionaryCard {section} {isAdminView}
-                                on:edit={handleEditDictionarySection}    on:delete={handleDeleteDictionarySection} />
-                        </div>
+                        <DictionarySectionCard
+                            {section}
+                            {courseId}
+                            {isAdminView}
+                            animationDelay={`${i * 50}ms`}
+                            on:edit={handleEditDictionarySection}
+                            on:delete={handleDeleteDictionarySection}
+                        />
                     {/each}
                 </div>
-             </div>
-        {:else if !isLoadingSections} <p class="no-items-message">Разделов практики пока нет.</p>
-        {:else} <p class="error-message">Ошибка отображения разделов практики.</p> {/if}
+            {:else}
+                <p class="no-content-message">В этом курсе пока нет разделов для практики.</p>
+            {/if}
+        </div>
     </div>
 </div>
 
@@ -576,7 +616,17 @@
     .sort-button .sort-icon { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; color: inherit; transition: transform 0.2s ease; }
     .sort-button.active .sort-icon { transform: scale(1.1); }
     .sort-button:not(.active) .sort-icon { opacity: 0.6; }
-    .lessons-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--spacing-gap-grid, 25px); }
+    .lessons-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 25px;
+        margin-bottom: 30px;
+        transition: opacity 0.3s ease-out;
+    }
+    .lessons-grid.loading {
+        opacity: 0.5;
+        pointer-events: none;
+    }
     .lessons-grid-container { margin-bottom: var(--spacing-margin-bottom-large, 30px); /* Handles spacing */ } 
     .pagination-container { display: flex; justify-content: flex-end; margin-top: var(--spacing-margin-top-medium, 20px); padding-right: 10px; }
     .grid-item-wrapper { transition: transform 0.2s ease-out;}
@@ -585,21 +635,30 @@
     .practice-section { margin-top: var(--spacing-margin-top-medium, 30px); }
     .practice-section .section-title { font-size: var(--font-size-h2, 1.8rem); color: var(--color-text-dark, #333); margin-bottom: 0; font-weight: var(--font-weight-semi-bold, 600); border-bottom: 1px solid var(--color-border-light, #eee); padding-bottom: 10px; text-align: center; }
     .section-admin-actions { display: flex; justify-content: flex-end; margin-top: 15px; margin-bottom: var(--spacing-margin-bottom-medium, 20px); }
-    .dictionary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--spacing-gap-grid, 25px);}
-    .dictionary-grid-container { margin-top: 20px; } /* Container for transition, adjust spacing if needed */
-    .dictionary-grid .grid-item-wrapper {  place-items: center; display: grid; }
+    .dictionary-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 420px));
+        gap: 35px;
+        justify-content: center;
+    }
+    .dictionary-grid-container { margin-top: 20px; } 
+    .dictionary-section-container {
+        margin-top: 20px;
+    }
+    .dictionary-section-container .section-header {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .no-content-message {
+        text-align: center;
+        padding: 40px;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        color: #666;
+        font-size: 1.1rem;
+    }
     
     /* --- Grid Item Wrapper Styles for Hover, Active, Shadow, and Transition --- */
-    .lessons-grid .grid-item-wrapper {
-        /* Base styles for cards */
-        background-color: var(--color-bg-card, #ffffff);
-        border-radius: var(--spacing-border-radius-block, 12px);
-        box-shadow: var(--color-card-shadow, 0 2px 10px rgba(0, 0, 0, 0.08));
-        overflow: hidden; 
-        place-items: center; 
-        transition: transform 0.3s ease-out, box-shadow 0.3s ease-out; 
-    }
-
     .lessons-grid .grid-item-wrapper {
         /* Base styles for cards */
         background-color: var(--color-bg-card, #ffffff);
@@ -621,16 +680,6 @@
         filter: brightness(0.98); /* Subtle darken */
     }
 
-
-    /* --- Practice Section --- */
-    .practice-section { margin-top: var(--spacing-margin-top-medium, 30px); }
-    .practice-section .section-title { font-size: var(--font-size-h2, 1.8rem); color: var(--color-text-dark, #333); margin-bottom: 0; font-weight: var(--font-weight-semi-bold, 600); border-bottom: 1px solid var(--color-border-light, #eee); padding-bottom: 10px; text-align: center; }
-    .section-admin-actions { display: flex; justify-content: flex-end; margin-top: 15px; margin-bottom: var(--spacing-margin-bottom-medium, 20px); }
-    .dictionary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--spacing-gap-grid, 25px);}
-    .dictionary-grid-container { margin-top: 20px; } 
-    /* Remove specific dictionary wrapper centering if using general grid-item-wrapper styles */
-    /* .dictionary-grid .grid-item-wrapper { place-items: center; display: grid; } */ 
-    
     /* --- Responsiveness --- */
     @media (max-width: 900px) { .lessons-grid, .dictionary-grid { gap: 20px; } }
     @media (max-width: 768px) {
@@ -644,7 +693,7 @@
         .lessons-grid-container { margin-bottom: 20px; }
         .pagination-container { justify-content: center; margin-top: 15px; }
         .practice-section .section-title { font-size: 1.6rem; }
-        .dictionary-grid { gap: 15px; }
+        .dictionary-grid { grid-template-columns: 1fr; gap: 15px; }
     }
      @media (max-width: 600px) { .dictionary-grid { grid-template-columns: 1fr; } }
      @media (max-width: 480px) {
