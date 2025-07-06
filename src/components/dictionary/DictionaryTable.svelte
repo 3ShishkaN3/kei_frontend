@@ -172,7 +172,7 @@
     }
 
     .col-translation {
-        color: var(--color-text-light);
+        color: var(--color-purple-active);
         min-width: 150px;
     }
     
