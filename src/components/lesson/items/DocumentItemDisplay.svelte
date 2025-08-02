@@ -1,197 +1,309 @@
 <script>
     import PdfViewer from 'svelte-pdf';
-    import DownloadOutline from 'svelte-material-icons/DownloadOutline.svelte';
     import ChevronLeft from 'svelte-material-icons/ChevronLeft.svelte';
     import ChevronRight from 'svelte-material-icons/ChevronRight.svelte';
     import { onMount } from 'svelte';
 
     export let contentDetails = null; // { document_file: 'url', title: '...' }
 
-    let numPages = 0;
-    let pageNum = 1;
+    let totalPage = 0;  // Привязывается к svelte-pdf через bind:totalPage
+    let currentPage = 1; // Привязывается к svelte-pdf через bind:pageNum
+    let pdfScale = 1.5;  // Привязывается к svelte-pdf через bind:scale
     let loading = true;
     let error = null;
 
-    let viewer; // Ссылка на компонент PdfViewer
-    let prevScale = 1; // Для отслеживания предыдущего масштаба
+    // Определяем, является ли файл PDF
+    $: isPdf = contentDetails?.document_file && 
+               contentDetails.document_file.toLowerCase().includes('.pdf');
 
-    onMount(() => {
-        if (contentDetails && contentDetails.document_file) {
-            // Дополнительная инициализация, если нужна
-        } else {
-            error = "Файл документа не предоставлен или недействителен.";
-            loading = false;
-        }
-    });
-
-    function onDocumentLoad({ numPages: newNumPages }) {
-        numPages = newNumPages;
+    // Реактивное выражение для отслеживания загрузки PDF
+    $: if (totalPage > 0) {
         loading = false;
         error = null;
     }
 
-    function onDocumentError(err) {
-        error = "Не удалось загрузить документ: " + err.message;
-        loading = false;
-        console.error("PDF loading error:", err);
+    // Реактивная проверка состояния
+    $: {        
+        if (!contentDetails?.document_file) {
+            error = "Файл документа не найден.";
+            loading = false;
+        } else if (!isPdf) {
+            error = "Файл не является PDF документом.";
+            loading = false;
+        } else if (isPdf) {
+            // PDF файл есть - показываем компонент сразу
+            // loading будет управляться через totalPage
+            error = null;
+        }
     }
 
     function goToPrevPage() {
-        if (pageNum > 1) {
-            pageNum--;
+        if (currentPage > 1) {
+            currentPage--;
         }
     }
 
     function goToNextPage() {
-        if (pageNum < numPages) {
-            pageNum++;
+        if (currentPage < totalPage) {
+            currentPage++;
         }
     }
-
-    // Хелпер для отслеживания изменения масштаба, если PdfViewer не предоставляет колбэк
-    // $: {
-    //     if (viewer && viewer.scale !== prevScale) {
-    //         console.log("Scale changed to:", viewer.scale);
-    //         prevScale = viewer.scale;
-    //     }
-    // }
-
 </script>
 
-<div class="document-item-display-wrapper" aria-live="polite">
-    {#if contentDetails?.title}
-        <h4 class="document-title">{contentDetails.title}</h4>
-    {/if}
-
-    {#if loading}
-        <p>Загрузка документа...</p>
-    {:else if error}
-        <p class="error-message">Ошибка: {error}</p>
-    {:else if contentDetails?.document_file}
-        <div class="pdf-viewer-container">
-            <PdfViewer
-                bind:this={viewer}
-                url={contentDetails.document_file}
-                scale={1.25}
-                rotation={0}
-                {pageNum}
-                on:documentLoad={onDocumentLoad}
-                on:documentError={onDocumentError}
-                use = "pdfjs-dist"
-            />
-        </div>
-
-        <div class="pdf-controls">
-            <button on:click={goToPrevPage} disabled={pageNum === 1} class="control-button" aria-label="Предыдущая страница">
-                <ChevronLeft size="24px" />
-            </button>
-            <span class="page-info">
-                Страница {pageNum} из {numPages}
-            </span>
-            <button on:click={goToNextPage} disabled={pageNum === numPages} class="control-button" aria-label="Следующая страница">
-                <ChevronRight size="24px" />
-            </button>
-
-            {#if contentDetails.document_file}
-                <a href={contentDetails.document_file} download class="download-button" aria-label="Скачать документ">
-                    <DownloadOutline size="24px" /> Скачать
-                </a>
+<div class="document-item">
+    {#if error}
+        <div class="error-message">Ошибка: {error}</div>
+    {:else if contentDetails?.document_file && isPdf}
+        <div class="pdf-container">
+            {#if totalPage > 0}
+                <div class="page-counter">
+                    Страница {currentPage} из {totalPage}
+                </div>
             {/if}
+            
+            <div class="pdf-viewer-wrapper">
+                <button class="nav-button nav-left" on:click={goToPrevPage} disabled={currentPage <= 1 || totalPage === 0} aria-label="Предыдущая страница">
+                    <ChevronLeft size="24px"/>
+                </button>
+                
+                <div class="pdf-content">
+                    {#if loading && totalPage === 0}
+                        <div class="loading-placeholder">Загрузка документа...</div>
+                    {/if}
+                    
+                    <PdfViewer
+                        url={contentDetails.document_file}
+                        bind:pageNum={currentPage}
+                        bind:totalPage
+                        bind:scale={pdfScale}
+                        showButtons={[]}
+                    />
+                </div>
+                
+                <button class="nav-button nav-right" on:click={goToNextPage} disabled={currentPage >= totalPage || totalPage === 0} aria-label="Следующая страница">
+                    <ChevronRight size="24px"/>
+                </button>
+            </div>
         </div>
     {:else}
-        <p class="error-message">Документ для отображения отсутствует.</p>
+        <div class="no-file-message">
+            <p>Файл документа не найден.</p>
+        </div>
     {/if}
 </div>
 
 <style>
-.document-item-display-wrapper {
-    background-color: #fff;
-    border: 1px solid var(--color-border-light, #e7eaf3);
-    border-radius: var(--spacing-border-radius-block, 12px);
-    padding: clamp(15px, 3vw, 20px);
-    margin-bottom: 25px;
-    box-shadow: 0 3px 8px rgba(var(--color-primary-rgb, 175, 164, 255), 0.05);
-    display: flex;
-    flex-direction: column;
-    align-items: center; /* Центрируем содержимое */
-}
-.document-title {
-    font-size: clamp(1.2em, 2.8vw, 1.5em);
-    font-weight: var(--font-weight-bold);
-    color: var(--color-text-dark);
-    margin-top: 0;
-    margin-bottom: 15px;
-    text-align: center;
-}
+    .document-item {
+        margin-bottom: var(--spacing-margin-bottom-medium, 20px);
+        border-radius: var(--spacing-border-radius-large, 12px);
+        background-color: var(--color-bg-card, #ffffff);
+        box-shadow: var(--color-card-shadow, 0 2px 8px rgba(0, 0, 0, 0.1));
+        overflow: hidden;
+    }
 
-.error-message {
-    color: var(--color-danger-red, #e74c3c);
-    font-weight: var(--font-weight-medium);
-    text-align: center;
-}
+    .pdf-container {
+        background-color: var(--color-bg-card, #ffffff);
+    }
 
-.pdf-viewer-container {
-    width: 100%; /* Занимаем всю доступную ширину */
-    max-width: 800px; /* Ограничиваем максимальную ширину PDF */
-    height: auto; /* Высота будет подстраиваться */
-    margin-bottom: 20px;
-    border: 1px solid var(--color-border-light, #e7eaf3);
-    border-radius: var(--spacing-border-radius-small);
-    overflow: hidden; /* Скрываем излишки, если PDF больше контейнера */
-}
+    .page-counter {
+        background: linear-gradient(135deg, var(--color-primary, #667eea) 0%, var(--color-primary-dark, #764ba2) 100%);
+        color: white;
+        text-align: center;
+        padding: var(--spacing-padding-medium, 12px);
+        font-weight: 600;
+        font-size: var(--font-size-medium, 16px);
+        letter-spacing: 0.5px;
+    }
 
-/* Стили для PdfViewer, если нужно переопределить внутренние стили */
-.pdf-viewer-container :global(canvas) {
-    width: 100% !important;
-    height: auto !important;
-    display: block; /* Убираем лишнее пространство под canvas */
-}
+    .pdf-viewer-wrapper {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-gap-medium, 16px);
+        padding: var(--spacing-padding-large, 20px);
+        background: var(--color-bg-light, #f8fafc);
+    }
 
-.pdf-controls {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    margin-top: 10px;
-    padding: 10px 15px;
-    background-color: var(--color-bg-light, #f8f8f8);
-    border-radius: var(--spacing-border-radius-button);
-    border: 1px solid var(--color-border-light);
-}
+    .nav-button {
+        background: var(--color-bg-card, #ffffff);
+        border: 2px solid var(--color-border-light, #e2e8f0);
+        border-radius: 50%;
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: var(--color-button-shadow, 0 2px 8px rgba(0, 0, 0, 0.1));
+        flex-shrink: 0;
+    }
 
-.control-button, .download-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 12px;
-    border: 1px solid var(--color-border-admin-button, #d1c9ff);
-    border-radius: var(--spacing-border-radius-button);
-    background-color: var(--color-bg-ultra-light, #fff);
-    color: var(--color-primary-dark, #6D7FC9);
-    font-weight: var(--font-weight-medium);
-    cursor: pointer;
-    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
-    text-decoration: none; /* Для ссылки */
-}
-.control-button:hover:not(:disabled), .download-button:hover {
-    background-color: var(--color-primary-light, #e0d9ff);
-    border-color: var(--color-primary, #AFA4FF);
-    color: var(--color-primary-dark, #6D7FC9);
-}
-.control-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
+    .nav-button:hover:not(:disabled) {
+        background: var(--color-primary, #667eea);
+        border-color: var(--color-primary, #667eea);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
 
-.page-info {
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text-dark);
-    font-size: 0.95em;
-    min-width: 80px; /* Чтобы не прыгало при изменении числа страниц */
-    text-align: center;
-}
+    .nav-button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        transform: none;
+    }
 
-/* Иконки внутри кнопок */
-.control-button :global(svg), .download-button :global(svg) {
-    margin-right: 5px;
-}
+    .pdf-content {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 500px;
+        background: var(--color-bg-card, #ffffff);
+        border-radius: var(--spacing-border-radius-medium, 8px);
+        box-shadow: var(--color-card-shadow-large, 0 8px 24px rgba(0, 0, 0, 0.12));
+        overflow: hidden;
+    }
+
+    /* Скрываем встроенные элементы управления svelte-pdf */
+    .pdf-content :global(.svelte-pdf-container) {
+        max-width: 100%;
+        max-height: 100%;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+
+    .pdf-content :global(canvas) {
+        max-width: 100%;
+        max-height: 80vh;
+        object-fit: contain;
+        border-radius: var(--spacing-border-radius-medium, 8px);
+        background: white;
+    }
+
+    /* Скрываем встроенные кнопки svelte-pdf */
+    .pdf-content :global(.pdf-controls),
+    .pdf-content :global(.page-info),
+    .pdf-content :global(.button-control) {
+        display: none !important;
+    }
+
+    /* Стили для макета PDF */
+    .pdf-mock {
+        width: 100%;
+        max-width: 600px;
+        background: white;
+        border-radius: var(--spacing-border-radius-medium, 8px);
+        box-shadow: var(--color-card-shadow, 0 4px 12px rgba(0, 0, 0, 0.1));
+        overflow: hidden;
+    }
+
+    .pdf-page {
+        padding: var(--spacing-padding-xl, 32px);
+        text-align: center;
+    }
+
+    .pdf-page h3 {
+        color: var(--color-primary, #6D7FC9);
+        margin-bottom: var(--spacing-margin-bottom-medium, 16px);
+        font-size: 1.5rem;
+        font-weight: var(--font-weight-bold, 700);
+    }
+
+    .pdf-page p {
+        margin-bottom: var(--spacing-margin-bottom-small, 12px);
+        color: var(--color-text-primary, #333);
+        line-height: 1.6;
+    }
+
+    .mock-content {
+        background: var(--color-bg-light, #f9fafb);
+        border-radius: var(--spacing-border-radius-small, 6px);
+        padding: var(--spacing-padding-large, 24px);
+        margin-top: var(--spacing-margin-top-large, 24px);
+        border-left: 4px solid var(--color-primary, #6D7FC9);
+    }
+
+    .mock-content p {
+        margin-bottom: var(--spacing-margin-bottom-small, 8px);
+        font-size: 0.95rem;
+    }
+
+    .loading-placeholder, 
+    .error-message, 
+    .no-file-message, 
+    .non-pdf-message {
+        text-align: center;
+        padding: var(--spacing-padding-xl, 40px) var(--spacing-padding-large, 20px);
+        color: var(--color-text-secondary, #64748b);
+        font-size: var(--font-size-medium, 16px);
+        border-radius: var(--spacing-border-radius-medium, 8px);
+        margin: var(--spacing-margin-medium, 16px);
+    }
+
+    .error-message {
+        background: var(--color-error-bg, #fee2e2);
+        color: var(--color-error, #dc2626);
+        border: 1px solid var(--color-error-border, #fecaca);
+    }
+
+    .loading-placeholder {
+        background: var(--color-info-bg, #f0f9ff);
+        color: var(--color-info, #0369a1);
+        border: 1px solid var(--color-info-border, #bae6fd);
+    }
+
+    .no-file-message, 
+    .non-pdf-message {
+        background: var(--color-bg-light, #f9fafb);
+        color: var(--color-text-secondary, #6b7280);
+        border: 1px solid var(--color-border-light, #e5e7eb);
+    }
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+        .pdf-viewer-wrapper {
+            flex-direction: column;
+            gap: var(--spacing-gap-small, 12px);
+            padding: var(--spacing-padding-medium, 16px);
+        }
+
+        .nav-button {
+            width: 40px;
+            height: 40px;
+        }
+
+        .page-counter {
+            font-size: var(--font-size-small, 14px);
+            padding: var(--spacing-padding-small, 10px);
+        }
+
+        .pdf-content {
+            min-height: 400px;
+            width: 100%;
+        }
+
+        .pdf-content :global(canvas) {
+            max-height: 60vh;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .document-item {
+            margin-bottom: var(--spacing-margin-bottom-small, 16px);
+            border-radius: var(--spacing-border-radius-medium, 8px);
+        }
+
+        .pdf-viewer-wrapper {
+            padding: var(--spacing-padding-small, 12px);
+        }
+
+        .pdf-content {
+            min-height: 300px;
+        }
+
+        .pdf-content :global(canvas) {
+            max-height: 50vh;
+        }
+    }
 </style>

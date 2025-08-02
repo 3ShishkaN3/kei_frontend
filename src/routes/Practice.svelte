@@ -308,12 +308,23 @@
                     cardChunks.set(chunkIndex, updatedChunk);
                 }
                 
-                // Если в режиме студента и слово стало изученным, может потребоваться перезагрузка
+                // В режиме студента после отметки слова как изученного обновим только текущий чанк
                 if (!isAdminView && entry.is_learned) {
-                    // Перезагрузим метаданные и карточки
+                    // Обновим метаданные (чтобы скорректировать общее количество)
                     const metaResponse = await fetchDictionaryMetadata(sectionId);
                     metaData = metaResponse;
-                    initializeCards();
+                    // Очистим кеш чанков для подгрузки без изученных записей
+                    cardChunks.clear();
+                    loadingChunks.clear();
+                    // Подгрузим текущий чанк заново
+                    const currentChunk = Math.floor(currentCardIndex / CARDS_CHUNK_SIZE);
+                    await ensureChunkLoaded(currentChunk);
+                    // Перейти к следующей карточке автоматически
+                    if (currentCardIndex < totalCardsCount - 1) {
+                        await goToNextCard();
+                    } else {
+                        currentCardIndex = 0;
+                    }
                 }
             }
 

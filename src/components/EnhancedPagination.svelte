@@ -8,6 +8,8 @@
     export let totalPages = 1;
     export let maxVisibleButtons = 3; // Number of page number buttons to show
     export let showPageJump = false; // Show input to jump to specific page
+    // Track paginator range start for flipping visible page buttons
+    let pageRangeStart = 1;
 
     const dispatch = createEventDispatcher();
 
@@ -16,33 +18,31 @@
     // Calculate the range of page number buttons to display
     $: visiblePages = (() => {
         if (totalPages <= maxVisibleButtons) {
-            // Show all pages if total is less than or equal to max
             return Array.from({ length: totalPages }, (_, i) => i + 1);
         }
-
-        const half = Math.floor(maxVisibleButtons / 2);
-        let start = currentPage - half;
-        let end = currentPage + half;
-
-        // Adjust for odd number of buttons
-        if (maxVisibleButtons % 2 === 0) {
-            start = currentPage - half + 1;
-            end = currentPage + half;
-        }
-
-        if (start <= 1) {
-            start = 1;
-            end = maxVisibleButtons;
-        } else if (end >= totalPages) {
-            start = totalPages - maxVisibleButtons + 1;
-            end = totalPages;
-        }
-
-        // Ensure start is never less than 1
-        start = Math.max(1, start);
-
-        return Array.from({ length: Math.min(maxVisibleButtons, totalPages - start + 1) }, (_, i) => start + i);
+        const start = pageRangeStart;
+        const end = Math.min(start + maxVisibleButtons - 1, totalPages);
+        return Array.from({ length: end - start + 1 }, (_, i) => start + i);
     })();
+
+    // Ensure currentPage always stays within visible range
+    $: {
+        if (currentPage < pageRangeStart) {
+            pageRangeStart = currentPage;
+        } else if (currentPage > pageRangeStart + maxVisibleButtons - 1) {
+            pageRangeStart = Math.max(1, currentPage - maxVisibleButtons + 1);
+        }
+    }
+
+    // Add functions to flip paginator range
+    function shiftPaginatorLeft() {
+        pageRangeStart = Math.max(1, pageRangeStart - maxVisibleButtons);
+    }
+
+    function shiftPaginatorRight() {
+        const maxStart = Math.max(totalPages - maxVisibleButtons + 1, 1);
+        pageRangeStart = Math.min(maxStart, pageRangeStart + maxVisibleButtons);
+    }
 
     $: pageJumpInput = currentPage; // Update input when currentPage changes
 
@@ -71,10 +71,10 @@
     <div class="pagination">
         <button
             class="arrow"
-            disabled={currentPage === 1}
-            on:click={() => goToPage(currentPage - 1)}
-            aria-label="Предыдущая страница"
-            title="Предыдущая страница"
+            disabled={pageRangeStart === 1}
+            on:click={shiftPaginatorLeft}
+            aria-label="Предыдущие страницы"
+            title="Предыдущие страницы"
         >
             <ChevronLeft size="24px"/>
         </button>
@@ -96,10 +96,10 @@
 
         <button
             class="arrow"
-            disabled={currentPage === totalPages}
-            on:click={() => goToPage(currentPage + 1)}
-            aria-label="Следующая страница"
-            title="Следующая страница"
+            disabled={pageRangeStart + maxVisibleButtons - 1 >= totalPages}
+            on:click={shiftPaginatorRight}
+            aria-label="Следующие страницы"
+            title="Следующие страницы"
         >
             <ChevronRight size="24px"/>
         </button>

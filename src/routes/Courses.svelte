@@ -31,7 +31,8 @@
     let isModalOpen = false;
     let editingCourse = null;
     let pageVisible = false;
-    let isCarouselReady = false; 
+    let isCarouselReady = false;
+    let currentSortOrder = '-created_at'; // По умолчанию сортировка по дате создания (новые сначала) 
 
     const unsubscribeUser = user.subscribe(value => {
         if (value.isAuthenticated) {
@@ -122,7 +123,12 @@
     async function fetchCoursesBasedOnViewMode() {
         let url = `${API_BASE_URL}/courses/`;
         const params = new URLSearchParams();
-        params.append('ordering', 'title'); 
+        
+        // Для студентов и помощников с записями не отправляем параметр ordering, так как у них специальная сортировка на backend
+        if (currentSortOrder && currentUserRole !== 'student' && currentUserRole !== 'assistant') {
+            params.append('ordering', currentSortOrder);
+        }
+        
         if (params.toString()) {
             url += `?${params.toString()}`;
         }
@@ -185,6 +191,13 @@
     function handleCloseModal() {
          isModalOpen = false;
          editingCourse = null;
+    }
+
+    async function handleSortChange(newSortOrder) {
+        if (currentSortOrder !== newSortOrder) {
+            currentSortOrder = newSortOrder;
+            await fetchData();
+        }
     }
 
     async function handleSaveCourse(event) {
@@ -290,6 +303,34 @@
 
 <div class="courses-page {pageVisible ? 'visible' : ''}" key={viewMode}>
     <h1 class="page-title entrance-animation">Курсы</h1>
+    
+    {#if courses.length > 0 && currentUserRole !== 'student' && currentUserRole !== 'assistant'}
+        <div class="sort-controls entrance-animation">
+            <span class="sort-label">Сортировать:</span>
+            <button 
+                class="sort-button {currentSortOrder === '-created_at' ? 'active' : ''}" 
+                on:click={() => handleSortChange('-created_at')}
+                title="Сначала новые курсы"
+            >
+                Новые сначала
+            </button>
+            <button 
+                class="sort-button {currentSortOrder === 'created_at' ? 'active' : ''}" 
+                on:click={() => handleSortChange('created_at')}
+                title="Сначала старые курсы"
+            >
+                Старые сначала
+            </button>
+            <button 
+                class="sort-button {currentSortOrder === 'title' ? 'active' : ''}" 
+                on:click={() => handleSortChange('title')}
+                title="По алфавиту"
+            >
+                По названию
+            </button>
+        </div>
+    {/if}
+    
     {#if isAdminOrTeacher || isAssistant}
         <div class="admin-controls entrance-animation">
              {#if isAdminOrTeacher}
@@ -464,6 +505,61 @@
         transform: translateY(0);
         filter: brightness(0.98);
     }
+    
+    .sort-controls {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: var(--spacing-gap-small);
+        margin-bottom: var(--spacing-margin-bottom-medium);
+        flex-wrap: wrap;
+    }
+    
+    .sort-label {
+        font-size: var(--font-size-small);
+        color: var(--color-text-muted);
+        font-weight: var(--font-weight-medium);
+    }
+    
+    .sort-button {
+        background-color: var(--color-bg-light);
+        color: var(--color-text-dark);
+        border: var(--border-width-button) solid var(--color-border-light);
+        border-radius: var(--spacing-border-radius-button);
+        padding: 8px 16px;
+        font-family: var(--font-family-primary);
+        font-size: var(--font-size-small);
+        font-weight: var(--font-weight-medium);
+        cursor: pointer;
+        transition: all var(--animation-duration-transition) ease;
+    }
+    
+    .sort-button:hover {
+        background-color: var(--color-bg-hover);
+        border-color: var(--color-purple-light);
+        transform: translateY(-1px);
+    }
+    
+    .sort-button.active {
+        background-color: var(--color-purple-light);
+        color: white;
+        border-color: var(--color-purple-light);
+        font-weight: var(--font-weight-semi-bold);
+    }
+    
+    .sort-button:active {
+        transform: translateY(0);
+    }
+    
+    .student-sort-info {
+        text-align: center;
+        margin-bottom: var(--spacing-margin-bottom-medium);
+        padding: 12px 20px;
+        background-color: var(--color-bg-light);
+        border: 1px solid var(--color-border-light);
+        border-radius: var(--spacing-border-radius-button);
+    }
+
     .admin-button.create-button {
         background-color: var(--color-bg-admin-button-create);
         color: var(--color-text-admin-button-create);

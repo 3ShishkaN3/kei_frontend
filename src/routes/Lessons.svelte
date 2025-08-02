@@ -64,7 +64,7 @@
     let currentPage = 1; // Default to 1, will be updated from store/URL
     let pageSize = $courseLessonsPagination.size;
     let totalLessons = 0;
-    let sortField = '-created_at';
+    let sortField = 'created_at';
     let searchTerm = '';
     let isLessonModalOpen = false; // Explicitly for Lesson Modal
     let editingLesson = null;
@@ -155,6 +155,9 @@
         // Then, sync the store. This won't cause a re-fetch from the subscription
         // because the currentPage is already aligned with the store's state.
         courseLessonsPagination.setPage(pageFromUrl);
+        // Set initial sort from URL if present
+        const orderingFromUrl = searchParams.get('ordering');
+        sortField = orderingFromUrl || sortField;
 
         // Explicitly fetch all necessary data on initial component load.
         await fetchData();
@@ -269,15 +272,22 @@
 
     function handleSort(field) {
         let newSortField;
-        if (sortField === field) newSortField = `-${field}`; 
-        else if (sortField === `-${field}`) newSortField = field; 
+        if (sortField === field) newSortField = `-${field}`;
+        else if (sortField === `-${field}`) newSortField = field;
         else newSortField = field;
-        
+
         if (newSortField !== sortField) {
-            sortField = newSortField; 
-            // Reset to page 1 on sort change.
-            // The subscription will handle fetching and URL updates.
-            courseLessonsPagination.setPage(1);
+            sortField = newSortField;
+            // Update URL params for ordering without resetting page
+            const searchParams = new URLSearchParams($location.search);
+            searchParams.set('ordering', sortField);
+            searchParams.set('page', currentPage);
+            navigate(`${$location.pathname}?${searchParams.toString()}`, { replace: true });
+            // Fetch lessons with new sort order
+            isLoadingLessons = true;
+            fetchLessonsInternal(false).finally(() => {
+                isLoadingLessons = false;
+            });
         }
     }
 

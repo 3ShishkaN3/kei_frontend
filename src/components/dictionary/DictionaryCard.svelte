@@ -202,7 +202,7 @@
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        padding: 2rem;
+        /* padding: 2rem; */
         border-radius: var(--spacing-border-radius-card, 20px);
         transition: all 0.3s ease;
         transform-origin: center center;
@@ -240,7 +240,10 @@
         align-items: center;
         min-width: 0;
         position: relative;
-        z-index: 10;
+        z-index: 1;
+        padding-top: 60px;
+        padding-left: 60px;
+        padding-right: 60px;
     }
 
     .term {
@@ -312,10 +315,13 @@
         position: absolute;
         top: 20px;
         left: 20px;
-        z-index: 10;
+        z-index: 30;
+        pointer-events: auto;
     }
 
     .learned-button {
+        position: relative;
+        z-index: 40;
         width: 40px;
         height: 40px;
         border-radius: 50%;
@@ -329,6 +335,11 @@
         align-items: center;
         justify-content: center;
         animation: bounceIn 0.6s ease-out;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        pointer-events: auto;
     }
 
     .learned-button:hover {
@@ -348,6 +359,21 @@
         border-color: #45a049;
     }
 
+    .learned-button :global(svg) {
+        width: 16px;
+        height: 16px;
+    }
+
+    .learned-button::before {
+        content: '';
+        position: absolute;
+        top: -5px;
+        left: -5px;
+        right: -5px;
+        bottom: -5px;
+        z-index: -1;
+    }
+
     .audio-button {
         position: absolute;
         top: 20px;
@@ -364,7 +390,7 @@
         cursor: pointer;
         color: var(--color-purple-active);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: 5;
+        z-index: 30;
         animation: bounceIn 0.8s ease-out;
     }
 
@@ -516,7 +542,7 @@
         }
 
         .card-face {
-            padding: 1.5rem;
+            /* padding: 1.5rem; */
         }
 
         .term {
@@ -536,6 +562,12 @@
             height: 45px;
             top: 15px;
             right: 15px;
+        }
+
+        .main-content {
+            padding-top: 55px;
+            padding-left: 55px;
+            padding-right: 55px;
         }
 
         .learned-button {
@@ -569,7 +601,7 @@
         }
 
         .card-face {
-            padding: 1.2rem;
+            /* padding: 1.2rem; */
             min-width: 0;
         }
 
@@ -577,6 +609,9 @@
             width: 100%;
             min-width: 0;
             overflow-wrap: break-word;
+            padding-top: 50px;
+            padding-left: 50px;
+            padding-right: 50px;
         }
 
         .term {

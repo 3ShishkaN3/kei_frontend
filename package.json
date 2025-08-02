@@ -42,7 +42,7 @@
     "marked": "^15.0.11",
     "nanoid": "^5.1.5",
     "npm": "^11.4.0",
-    "pdfjs-dist": "^5.1.91",
+    "pdfjs-dist": "^2.16.105",
     "plyr": "^3.7.8",
     "rollup-plugin-dotenv": "^0.5.1",
     "scrolltrigger": "^1.0.1",
@@ -51,15 +51,15 @@
     "svelte-carousel": "^1.0.25",
     "svelte-dnd-action": "^0.9.22",
     "svelte-easy-crop": "^3.0.1",
+    "svelte-i18n": "^4.0.0",
     "svelte-material-icons": "^3.0.5",
+    "svelte-navigator": "^3.2.2",
     "svelte-pdf": "1.0.20",
     "svelte-routing": "^2.13.0",
+    "svelte-spa-router": "^4.0.1",
     "svelte-tiptap": "^2.1.0",
     "swiper": "^11.2.6",
     "uuid": "^11.1.0",
-    "vite": "^6.2.3",
-    "svelte-i18n": "^4.0.0",
-    "svelte-navigator": "^3.2.2",
-    "svelte-spa-router": "^4.0.1"
+    "vite": "^6.2.3"
   }
 }
