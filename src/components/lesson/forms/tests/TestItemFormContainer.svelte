@@ -12,7 +12,7 @@
     import MCQTestForm from './MCQTestForm.svelte';
     import WordOrderTestForm from './WordOrderTestForm.svelte'; // Добавили форму WordOrder
     import DragDropTestForm from './DragDropTestForm.svelte';   // Добавили форму DragDrop
-    // import FreeTextTestForm from './FreeTextTestForm.svelte';
+    import FreeTextTestForm from './FreeTextTestForm.svelte';
     // import PronunciationTestForm from './PronunciationTestForm.svelte';
     // import SpellingTestForm from './SpellingTestForm.svelte';
     import { addNotification } from '../../../../stores/notifications.js'; // Для уведомлений, если нужно
@@ -31,7 +31,7 @@
         { value: 'mcq-multi', label: 'MCQ (Несколько ответов)', component: MCQTestForm, model: MCQTestModel },
         { value: 'word-order', label: 'Порядок слов (из пула)', component: WordOrderTestForm, model: WordOrderTestModel },
         { value: 'drag-and-drop', label: 'Перетаскивание (Облачка и Ячейки)', component: DragDropTestForm, model: DragDropTestModel},
-        // { value: 'free-text', label: 'Свободный ответ', component: FreeTextTestForm, model: FreeTextTestModel },
+        { value: 'free-text', label: 'Свободный ответ', component: FreeTextTestForm, model: FreeTextTestModel },
         // { value: 'pronunciation', label: 'Произношение', component: PronunciationTestForm, model: PronunciationTestModel },
         // { value: 'spelling', label: 'Правописание', component: SpellingTestForm, model: SpellingTestModel },
     ];

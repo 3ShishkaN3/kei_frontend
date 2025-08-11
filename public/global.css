@@ -24,6 +24,15 @@
   --color-bg-admin-button-create-hover: #5f55d1;
   --color-border-admin-button: #C2B6FC;
   --color-danger-red: #ff4d4d;
+  
+  /* Пастельные цвета для MCQ тестов */
+  --color-mcq-correct: #d4f4dd;
+  --color-mcq-correct-border: #7eb88a;
+  --color-mcq-correct-text: #1f5f2b;
+  --color-mcq-incorrect: #fce4e6;
+  --color-mcq-incorrect-border: #e57373;
+  --color-mcq-incorrect-text: #8b2635;
+  
   --color-telegram: #0088cc; 
   --color-telegram-text: #333; 
   --color-telegram-gradient-start: #d6ebff;

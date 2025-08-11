@@ -32,63 +32,88 @@
 
     function getOptionDisplayStatusForMcq(option) {
         if (viewMode === 'admin' || isTestSubmittedByStudent) {
-            const isSelected = studentActualChoicesIds.includes(option.id);
-            if (option.is_correct) { 
-                return isSelected ? 'student_correct' : 'missed_correct';
-            } else { 
+            // Определяем выбран ли вариант на основе локальных данных или серверных
+            let isSelected = false;
+            if (studentActualChoicesIds.length > 0) {
+                // Используем данные с сервера если они есть
+                isSelected = studentActualChoicesIds.includes(option.id);
+            } else {
+                // Используем локальные данные если нет данных с сервера
+                if (testData.test_type === 'mcq-single') {
+                    isSelected = localSelectedRadioOption === option.id;
+                } else if (testData.test_type === 'mcq-multi') {
+                    isSelected = !!localSelectedOptionsMap[option.id];
+                }
+            }
+            
+            // use built-in flag for correctness for both admin and student
+            const isCorrect = option.is_correct;
+            if (isCorrect) {
+                // Все правильные ответы должны быть подсвечены зеленым
+                return 'correct';
+            } else {
                 return isSelected ? 'student_incorrect' : 'neutral_incorrect';
             }
         }
         return 'pending';
     }
+
+
 </script>
 
 <fieldset class="mcq-options-group" role={testData.test_type === 'mcq-single' ? 'radiogroup' : 'group'} aria-labelledby={"test-title-" + (testData?.id || 'unknown')}>
     <legend class="sr-only">Варианты ответа для теста "{testData?.title}"</legend>
     {#each testData.mcq_options || [] as option (option.id)}
-        {@const displayStatus = getOptionDisplayStatusForMcq(option)}
+        {#key isTestSubmittedByStudent}
         <div 
-            class="mcq-option-display-item status-{displayStatus}"
+            class="mcq-option-display-item status-{getOptionDisplayStatusForMcq(option)}"
             class:disabled={!canStudentInteract}
         >
-            <label class="mcq-option-label">
-                <input 
-                    type={testData.test_type === 'mcq-single' ? 'radio' : 'checkbox'}
-                    name={"mcq_option_group_" + sectionItemId + "_" + (testData.id || 'new')} 
-                    value={option.id}
-                    checked={testData.test_type === 'mcq-single' ? localSelectedRadioOption === option.id : !!localSelectedOptionsMap[option.id]}
-                    on:change={(e) => handleMcqOptionChange(option.id, e)}
-                    disabled={!canStudentInteract}
-                    class="mcq-option-input"
-                    aria-describedby={option.explanation ? ("explanation-" + sectionItemId + "-" + option.id) : null}
-                />
-                <span class="mcq-option-checkbox-visual">
-                    {#if testData.test_type === 'mcq-single'}
-                        <svelte:component this={(isTestSubmittedByStudent ? studentActualChoicesIds.includes(option.id) : localSelectedRadioOption === option.id) ? RadioboxMarked : RadioboxBlank} size="22px" />
-                    {:else}
-                        <svelte:component this={(isTestSubmittedByStudent ? studentActualChoicesIds.includes(option.id) : localSelectedOptionsMap[option.id]) ? CheckboxMarked : CheckboxBlankOutline} size="22px" />
-                    {/if}
-                </span>
-                <span class="mcq-option-text-content">{@html option.text.replace(/\n/g, '<br>')}</span>
-            </label>
-            
-            {#if option.explanation && (viewMode === 'admin' || (isTestSubmittedByStudent && (displayStatus === 'student_correct' || displayStatus === 'student_incorrect' || displayStatus === 'missed_correct')))}
-                <div 
-                    class="mcq-option-explanation status-{displayStatus} visible" 
-                    id={"explanation-" + sectionItemId + "-" + option.id}
-                >
-                    <strong>Пояснение:</strong> {@html option.explanation.replace(/\n/g, '<br>')}
-                </div>
-            {/if}
+            <div class="mcq-option-content">
+                <label class="mcq-option-label">
+                    <input 
+                        type={testData.test_type === 'mcq-single' ? 'radio' : 'checkbox'}
+                        name={"mcq_option_group_" + sectionItemId + "_" + (testData.id || 'new')} 
+                        value={option.id}
+                        checked={testData.test_type === 'mcq-single' ? 
+                            (studentActualChoicesIds.length > 0 ? studentActualChoicesIds.includes(option.id) : localSelectedRadioOption === option.id) : 
+                            (studentActualChoicesIds.length > 0 ? studentActualChoicesIds.includes(option.id) : !!localSelectedOptionsMap[option.id])}
+                        on:change={(e) => handleMcqOptionChange(option.id, e)}
+                        disabled={!canStudentInteract}
+                        class="mcq-option-input"
+                        aria-describedby={option.explanation ? ("explanation-" + sectionItemId + "-" + option.id) : null}
+                    />
+                    <span class="mcq-option-checkbox-visual">
+                        {#if testData.test_type === 'mcq-single'}
+                            <svelte:component this={(studentActualChoicesIds.length > 0 ? studentActualChoicesIds.includes(option.id) : localSelectedRadioOption === option.id) ? RadioboxMarked : RadioboxBlank} size="22px" />
+                        {:else}
+                            <svelte:component this={(studentActualChoicesIds.length > 0 ? studentActualChoicesIds.includes(option.id) : !!localSelectedOptionsMap[option.id]) ? CheckboxMarked : CheckboxBlankOutline} size="22px" />
+                        {/if}
+                    </span>
+                    <span class="mcq-option-text-content">{@html option.text.replace(/\n/g, '<br>')}</span>
+                </label>
+                
+                {#if option.explanation && (viewMode === 'admin' || (isTestSubmittedByStudent && (getOptionDisplayStatusForMcq(option) === 'correct' || getOptionDisplayStatusForMcq(option) === 'student_incorrect')))}
+                    <div 
+                        class="mcq-option-explanation status-{getOptionDisplayStatusForMcq(option)} visible" 
+                        id={"explanation-" + sectionItemId + "-" + option.id}
+                    >
+                        <strong>Пояснение:</strong> {@html option.explanation.replace(/\n/g, '<br>')}
+                    </div>
+                {/if}
+            </div>
         </div>
+        {/key}
     {/each}
 </fieldset>
+<!-- Removed redundant summary block -->
 
 <style>
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
     .mcq-options-group { border: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
     .mcq-option-display-item { border: 1px solid #d1c9ff; border-radius: 8px; background-color: #fff; transition: background-color 0.2s, border-color 0.2s; overflow: hidden; }
-    .mcq-option-label { display: flex; align-items: flex-start; gap: 10px; padding: 12px 15px; cursor: pointer; width: 100%; }
+    .mcq-option-content { display: flex; align-items: flex-start; gap: 15px; }
+    .mcq-option-label { display: flex; align-items: flex-start; gap: 10px; padding: 12px 15px; cursor: pointer; flex: 1; }
     .mcq-option-display-item.disabled .mcq-option-label { cursor: default; }
     .mcq-option-display-item:not(.disabled) .mcq-option-label:hover { background-color: #f8f6ff; }
     .mcq-option-input { position: absolute; opacity: 0; width: 0; height: 0; }
@@ -96,15 +121,48 @@
     .mcq-option-input:checked + .mcq-option-checkbox-visual { color: var(--color-primary, #AFA4FF); }
     .mcq-option-input:disabled + .mcq-option-checkbox-visual { color: #ced4da; }
     .mcq-option-text-content { flex-grow: 1; line-height: 1.55; font-size: 0.95em; word-break: break-word; color: #343a40; }
-    .mcq-option-display-item.status-student_correct { background-color: #e6ffed; border-left: 4px solid #28a745; }
-    .mcq-option-display-item.status-student_incorrect { background-color: #ffebee; border-left: 4px solid #dc3545; }
-    .mcq-option-display-item.status-missed_correct { border-left: 4px solid #ffc107; }
-    .mcq-option-display-item.status-missed_correct.admin-view, .mcq-option-display-item.status-student_correct.admin-view { border-left: 4px solid #28a745; }
-    .mcq-option-explanation { font-size: 0.9em; color: #495057; margin: 0 15px 12px 44px; padding: 10px; background-color: #f8f9fa; border-radius: 6px; border-left: 3px solid #ced4da; line-height: 1.6; display: none; }
+    /* Подсветка для правильных ответов (все правильные ответы зеленые) */
+    .mcq-option-display-item.status-correct { 
+        background-color: var(--color-mcq-correct, #d4f4dd); 
+        border-left: 4px solid var(--color-mcq-correct-border, #7eb88a); 
+    }
+    .mcq-option-display-item.status-correct .mcq-option-text-content {
+        color: var(--color-mcq-correct-text, #1f5f2b);
+    }
+    
+    /* Подсветка для неправильных выбранных ответов */
+    .mcq-option-display-item.status-student_incorrect { 
+        background-color: var(--color-mcq-incorrect, #fce4e6); 
+        border-left: 4px solid var(--color-mcq-incorrect-border, #e57373); 
+    }
+    .mcq-option-display-item.status-student_incorrect .mcq-option-text-content {
+        color: var(--color-mcq-incorrect-text, #8b2635);
+    }
+    .mcq-option-explanation {
+        font-size: 0.9em;
+        color: var(--color-text-dark, #343a40);
+        margin: 0 15px 0 0;
+        padding: 0;
+        background-color: #f8f6ff;
+        border-radius: 8px;
+        line-height: 1.6;
+        display: none;
+        min-width: 200px;
+        max-width: 300px;
+        flex-shrink: 0;
+        align-self: center;
+    }
     .mcq-option-explanation.visible { display: block; }
-    .mcq-option-display-item.status-student_correct .mcq-option-explanation.visible { border-left-color: #28a745; background-color: #e6ffed; color: #155724; }
-    .mcq-option-display-item.status-student_incorrect .mcq-option-explanation.visible { border-left-color: #dc3545; background-color: #ffebee; color: #721c24; }
-    .mcq-option-display-item.status-missed_correct .mcq-option-explanation.visible { border-left-color: var(--color-primary, #AFA4FF); background-color: #f8f6ff; color: var(--color-primary-dark, #5845d8); }
-    .mcq-option-display-item.status-missed_correct.admin-view .mcq-option-explanation.visible, .mcq-option-display-item.status-student_correct.admin-view .mcq-option-explanation.visible { border-left-color: #28a745; background-color: #e6ffed; color: #155724; }
-    .mcq-option-display-item.status-student_incorrect.admin-view .mcq-option-explanation.visible, .mcq-option-display-item.status-neutral_incorrect.admin-view .mcq-option-explanation.visible { border-left-color: #6c757d; background-color: #f1f3f5;}
+    
+    /* Пояснения для правильных ответов */
+    .mcq-option-display-item.status-correct .mcq-option-explanation.visible {
+        background-color: var(--color-mcq-correct, #d4f4dd);
+        color: var(--color-mcq-correct-text, #1f5f2b);
+    }
+    
+    /* Пояснения для неправильных выбранных ответов */
+    .mcq-option-display-item.status-student_incorrect .mcq-option-explanation.visible {
+        background-color: var(--color-mcq-incorrect, #fce4e6);
+        color: var(--color-mcq-incorrect-text, #8b2635);
+    }
 </style>

@@ -454,7 +454,7 @@ h2 {
     white-space: pre-line;
     font-weight: var(--font-weight-medium);
     font-size: var(--font-size-p);
-    color: var(--color-text-light); /* Исправил на правильную переменную */
+    color: var(--color-text-dark); /* Исправил на правильную переменную */
     line-height: var(--line-height-title);
     opacity: 0; /* Начальная прозрачность для анимации */
     transform: translateX(30px); /* Начальное положение для анимации */

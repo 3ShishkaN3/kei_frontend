@@ -6,7 +6,8 @@ import { apiFetch } from './api'; // Предполагаем, что apiFetch �
 const coursesBaseUrl = `${API_BASE_URL}/courses`;
 const materialsBaseUrl = `${API_BASE_URL}/materials`;
 const testsBaseUrl = `${API_BASE_URL}/materials/tests`;
-const submissionsBaseUrl = `${API_BASE_URL}/submissions`;
+// Submissions живут под тем же префиксом, что и tests
+const submissionsBaseUrl = `${API_BASE_URL}/materials/submissions`;
 
 /**
  * =======================================================================

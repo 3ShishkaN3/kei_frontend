@@ -5,11 +5,14 @@
     import McqTestDisplay from './tests/McqTestDisplay.svelte';
     import DragDropTestDisplay from './tests/DragDropTestDisplay.svelte';
     import WordOrderTestDisplay from './tests/WordOrderTestDisplay.svelte';
+    import FreeTextTestDisplay from './tests/FreeTextTestDisplay.svelte';
 
     export let testData = null;        
     export let sectionItemId = null;   
     export let viewMode = 'student'; 
     export let studentSubmission = null; 
+    // Управляет тем, показывать ли подсказки/подсветку правильности (разрешаем только для отправок в текущей сессии)
+    export let shouldRevealAnswers = false;
 
     const dispatch = createEventDispatcher();
 
@@ -18,6 +21,7 @@
     let localSelectedRadioOption = null; 
     let isSubmitting = false;
     let dndBasePoolForCurrentTest = []; // Базовый пул для word-order
+    let localStudentAnswerText = ''; // Для free-text тестов
     
     // --- Вычисляемые состояния на основе пропсов ---
     let isTestSubmittedByStudent = false;
@@ -42,14 +46,17 @@
     }
 
     function updateDraggableItemsPoolForDisplay(event) {
+        console.log('Parent: updateDraggableItemsPoolForDisplay', event.detail);
         draggableItemsPoolForDisplay = event.detail;
     }
 
     function updateFilledSlotsForDisplay(event) {
+        console.log('Parent: updateFilledSlotsForDisplay', event.detail);
         filledSlotsForDisplay = event.detail;
     }
 
     function updateSelectedDraggableOptionForSlot(event) {
+        console.log('Parent: updateSelectedDraggableOptionForSlot', event.detail);
         selectedDraggableOptionForSlot = event.detail;
     }
 
@@ -61,10 +68,19 @@
         wordOrderAvailableOptionsInPool = event.detail;
     }
 
+
+    function updateLocalStudentAnswerText(event) {
+        localStudentAnswerText = event.detail;
+    }
+
     function syncStateWithProps(currentTestData, currentStudentSubmission, currentViewMode, currentIsSubmittingFlag) {
-        const newIsTestSubmittedByStudent = !!currentStudentSubmission && 
-                                           currentStudentSubmission.test?.id === currentTestData?.id && 
-                                           currentViewMode === 'student';
+        // Determine submission based on presence of studentSubmission for this section item
+        // The currentStudentSubmission can be either full submission details OR fallback submissionResult
+        // Both indicate that the test has been submitted by the student
+        // Также проверяем наличие прошлых отправок в testData.student_submission_details
+        const hasCurrentSubmission = !!currentStudentSubmission;
+        const hasPastSubmission = !!(currentTestData && currentTestData.student_submission_details);
+        const newIsTestSubmittedByStudent = (hasCurrentSubmission || hasPastSubmission) && currentViewMode === 'student';
         
         let newIsSubmittingState = currentIsSubmittingFlag;
         if (currentIsSubmittingFlag && newIsTestSubmittedByStudent && currentStudentSubmission?.id !== studentSubmission?.id) {
@@ -75,11 +91,14 @@
         
         isTestSubmittedByStudent = newIsTestSubmittedByStudent;
         isSubmitting = newIsSubmittingState;
-        canStudentInteract = currentViewMode === 'student' && !isTestSubmittedByStudent && !isSubmitting;
+        // Не блокируем повторное прохождение, даже если есть предыдущая отправка —
+        // показываем только блок результата
+        canStudentInteract = currentViewMode === 'student' && !isSubmitting;
         
-        // Only reset if testData changes, or if not submitted by student
+        // Only reset if testData changes
         // This prevents DND state from being wiped during minor prop updates (e.g., isSubmitting flag)
-        if (testData?.id !== currentTestData?.id || testData?.test_type !== currentTestData?.test_type || !newIsTestSubmittedByStudent) {
+        // Do NOT reset when test is submitted - we need these values for highlighting
+        if (testData?.id !== currentTestData?.id || testData?.test_type !== currentTestData?.test_type) {
             localSelectedOptionsMap = {};
             localSelectedRadioOption = null;
             studentActualChoicesIds = [];
@@ -90,6 +109,7 @@
             wordOrderAvailableOptionsInPool = [];
             dndBasePoolForCurrentTest = []; // Сброс базового пула
             selectedDraggableOptionForSlot = null;
+            localStudentAnswerText = ''; // Сброс текстового ответа
         }
 
         if (currentTestData) {
@@ -127,34 +147,92 @@
                 );
             }
 
-            if (isTestSubmittedByStudent && currentStudentSubmission && currentStudentSubmission.answers) {
-                const answersFromServer = currentStudentSubmission.answers;
+            // Проверяем наличие прошлых ответов в двух местах:
+            // 1. В studentSubmission (для текущей сессии)
+            // 2. В testData.content_details.student_submission_details (для прошлых сессий)
+            let submissionToUse = currentStudentSubmission;
+            if (!submissionToUse && currentTestData && currentTestData.student_submission_details) {
+                submissionToUse = currentTestData.student_submission_details;
+            }
+            
+            if (isTestSubmittedByStudent && submissionToUse) {
+                // Поддерживаем оба формата: старый (answers) и детальный (mcq_answers/free_text_answer/...)
+                const answersFromServer = submissionToUse.answers;
 
+                // MCQ: берём selected_option_ids из answers или из mcq_answers
                 if (currentTestData.test_type === 'mcq-multi' || currentTestData.test_type === 'mcq-single') {
-                    const mcqAnswerIds = answersFromServer.selected_option_ids ||
-                                       (Array.isArray(answersFromServer) ? answersFromServer.map(a => a.id) : []);
-                    studentActualChoicesIds = mcqAnswerIds;
-                    if (currentTestData.test_type === 'mcq-multi') {
-                        studentActualChoicesIds.forEach(id => { localSelectedOptionsMap[id] = true; });
-                    } else if (studentActualChoicesIds.length > 0) {
-                        localSelectedRadioOption = studentActualChoicesIds[0];
-                    }
-                } else if (currentTestData.test_type === 'drag-and-drop' && Array.isArray(answersFromServer.answers)) {
-                    answersFromServer.answers.forEach(ans => {
-                        if (ans && typeof ans.slot_id !== 'undefined' && typeof ans.dropped_option_text !== 'undefined') {
-                            const poolItem = draggableItemsPoolForDisplay.find(pItem => pItem.text === ans.dropped_option_text);
-                            filledSlotsForDisplay[ans.slot_id] = poolItem ? { id: poolItem.id, text: ans.dropped_option_text } : { id: generateUiId(), text: ans.dropped_option_text };
+                    let mcqAnswerIds = [];
+                    if (answersFromServer && (answersFromServer.selected_option_ids || Array.isArray(answersFromServer))) {
+                        mcqAnswerIds = answersFromServer.selected_option_ids || (Array.isArray(answersFromServer) ? answersFromServer.map(a => a.id) : []);
+                    } else if (submissionToUse.mcq_answers) {
+                        if (Array.isArray(submissionToUse.mcq_answers.selected_option_ids)) {
+                            mcqAnswerIds = submissionToUse.mcq_answers.selected_option_ids;
+                        } else if (Array.isArray(submissionToUse.mcq_answers.selected_options)) {
+                            mcqAnswerIds = submissionToUse.mcq_answers.selected_options.map(o => o.id);
                         }
-                    });
-                } else if (currentTestData.test_type === 'word-order' && Array.isArray(answersFromServer.submitted_order_words)) {
-                    currentWordSequence = answersFromServer.submitted_order_words.map(text => {
-                        const poolItem = dndBasePoolForCurrentTest.find(p => p.text === text);
-                        return poolItem ? { id: poolItem.id, text: text } : { id: generateUiId(), text: text };
-                    });
-                    // Обновляем доступный пул, исключая использованные слова
-                    wordOrderAvailableOptionsInPool = dndBasePoolForCurrentTest.filter(
-                        poolItem => !currentWordSequence.find(seqItem => seqItem.id === poolItem.id)
-                    );
+                    }
+                    
+                    if (Array.isArray(mcqAnswerIds) && mcqAnswerIds.length > 0) {
+                        studentActualChoicesIds = mcqAnswerIds;
+                        if (currentTestData.test_type === 'mcq-multi') {
+                            studentActualChoicesIds.forEach(id => { localSelectedOptionsMap[id] = true; });
+                        } else {
+                            localSelectedRadioOption = studentActualChoicesIds[0];
+                        }
+                    }
+                }
+
+                // Drag-n-drop: берём из старого формата answers.answers или из drag_drop_answers
+                if (currentTestData.test_type === 'drag-and-drop') {
+                    let dndAnswersArray = [];
+                    if (answersFromServer && Array.isArray(answersFromServer.answers)) {
+                        dndAnswersArray = answersFromServer.answers;
+                    } else if (Array.isArray(submissionToUse.drag_drop_answers)) {
+                        dndAnswersArray = submissionToUse.drag_drop_answers.map(a => ({ slot_id: a.slot_id, dropped_option_text: a.dropped_option_text }));
+                    }
+                    if (Array.isArray(dndAnswersArray) && dndAnswersArray.length > 0) {
+                        dndAnswersArray.forEach(ans => {
+                            if (ans && typeof ans.slot_id !== 'undefined' && typeof ans.dropped_option_text !== 'undefined') {
+                                const poolItem = draggableItemsPoolForDisplay.find(pItem => pItem.text === ans.dropped_option_text);
+                                filledSlotsForDisplay[ans.slot_id] = poolItem ? { id: poolItem.id, text: ans.dropped_option_text } : { id: generateUiId(), text: ans.dropped_option_text };
+                            }
+                        });
+                        // Удаляем предзаполненные элементы из пула, чтобы не дублировались
+                        const selectedTexts = new Set(dndAnswersArray.map(a => a.dropped_option_text));
+                        draggableItemsPoolForDisplay = draggableItemsPoolForDisplay.filter(pItem => !selectedTexts.has(pItem.text));
+                    }
+                }
+
+                // Word order: из старого submitted_order_words или из word_order_answer
+                if (currentTestData.test_type === 'word-order') {
+                    let submittedOrder = [];
+                    if (answersFromServer && Array.isArray(answersFromServer.submitted_order_words)) {
+                        submittedOrder = answersFromServer.submitted_order_words;
+                    } else if (submissionToUse.word_order_answer && Array.isArray(submissionToUse.word_order_answer.submitted_order_words)) {
+                        submittedOrder = submissionToUse.word_order_answer.submitted_order_words;
+                    }
+                    if (Array.isArray(submittedOrder) && submittedOrder.length > 0) {
+                        currentWordSequence = submittedOrder.map(text => {
+                            const poolItem = dndBasePoolForCurrentTest.find(p => p.text === text);
+                            return poolItem ? { id: poolItem.id, text: text } : { id: generateUiId(), text: text };
+                        });
+                        wordOrderAvailableOptionsInPool = dndBasePoolForCurrentTest.filter(
+                            poolItem => !currentWordSequence.find(seqItem => seqItem.id === poolItem.id)
+                        );
+                    }
+                }
+
+                // Free text: из старого answer_text или из free_text_answer
+                if (currentTestData.test_type === 'free-text') {
+                    let answerText = '';
+                    if (answersFromServer && typeof answersFromServer.answer_text === 'string') {
+                        answerText = answersFromServer.answer_text;
+                    } else if (submissionToUse.free_text_answer && typeof submissionToUse.free_text_answer.answer_text === 'string') {
+                        answerText = submissionToUse.free_text_answer.answer_text;
+                    }
+                    if (answerText) {
+                        localStudentAnswerText = answerText;
+                    }
                 }
             }
         }
@@ -166,6 +244,7 @@
         draggableItemsPoolForDisplay = [...draggableItemsPoolForDisplay];
         wordOrderAvailableOptionsInPool = [...wordOrderAvailableOptionsInPool];
         dndBasePoolForCurrentTest = [...dndBasePoolForCurrentTest];
+        localStudentAnswerText = localStudentAnswerText; // Обновляем реактивность
     }
 
     onMount(() => {
@@ -218,6 +297,12 @@
                 formIsValid = false;
             }
             answersPayload = { submitted_order_words: currentWordSequence.map(item => item.text) };
+        } else if (testData.test_type === 'free-text') {
+            const trimmedAnswer = localStudentAnswerText.trim();
+            if (!trimmedAnswer && viewMode === 'student') {
+                formIsValid = false;
+            }
+            answersPayload = { answer_text: trimmedAnswer };
         } else { return; }
 
         if (!formIsValid && viewMode === 'student') {
@@ -257,7 +342,7 @@
                 {canStudentInteract}
                 bind:localSelectedOptionsMap
                 bind:localSelectedRadioOption
-                {isTestSubmittedByStudent}
+                isTestSubmittedByStudent={shouldRevealAnswers}
                 on:update:localSelectedOptionsMap={updateLocalSelectedOptionsMap}
                 on:update:localSelectedRadioOption={updateLocalSelectedRadioOption}
             />
@@ -270,7 +355,8 @@
                 bind:draggableItemsPoolForDisplay
                 bind:filledSlotsForDisplay
                 bind:selectedDraggableOptionForSlot
-                {isTestSubmittedByStudent}
+                isTestSubmittedByStudent={shouldRevealAnswers}
+                {studentSubmission}
                 on:update:draggableItemsPoolForDisplay={updateDraggableItemsPoolForDisplay}
                 on:update:filledSlotsForDisplay={updateFilledSlotsForDisplay}
                 on:update:selectedDraggableOptionForSlot={updateSelectedDraggableOptionForSlot}
@@ -284,9 +370,19 @@
                 bind:currentWordSequence
                 bind:wordOrderAvailableOptionsInPool
                 {dndBasePoolForCurrentTest}
-                {isTestSubmittedByStudent}
+                isTestSubmittedByStudent={shouldRevealAnswers}
                 on:update:currentWordSequence={updateCurrentWordSequence}
                 on:update:wordOrderAvailableOptionsInPool={updateWordOrderAvailableOptionsInPool}
+            />
+        {:else if testData?.test_type === 'free-text'}
+            <FreeTextTestDisplay 
+                {testData} 
+                {sectionItemId} 
+                {viewMode} 
+                {canStudentInteract}
+                isTestSubmittedByStudent={shouldRevealAnswers}
+                studentAnswerText={localStudentAnswerText}
+                on:update:studentAnswerText={updateLocalStudentAnswerText}
             />
         {/if}
     
@@ -298,7 +394,7 @@
             </div>
         {/if}
 
-        {#if viewMode === 'student' && isTestSubmittedByStudent && studentSubmission}
+        {#if viewMode === 'student' && studentSubmission}
             <div class="submission-result-display status-{studentSubmission.status.toLowerCase()}">
                 <h4>Результаты:</h4>
                 <p>Статус: 

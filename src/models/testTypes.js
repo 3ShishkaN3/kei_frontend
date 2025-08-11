@@ -92,12 +92,22 @@ export class MCQTestModel extends BaseTestModel {
  * Модель для теста со свободным текстовым ответом.
  */
 export class FreeTextTestModel extends BaseTestModel {
-    constructor({ reference_answer = "", explanation = "", ...baseData }) {
+    constructor({ 
+        reference_answer = "", 
+        explanation = "", 
+        prompt_text = "",
+        prompt_image_file = null,
+        prompt_audio_file = null,
+        ...baseData 
+    }) {
         super({ ...baseData, test_type: 'free-text' });
         // На бэкенде это поле называется free_text_question и является объектом
         this.free_text_question = { 
             reference_answer: reference_answer,
             explanation: explanation,
+            prompt_text: prompt_text,
+            prompt_image_file: prompt_image_file,
+            prompt_audio_file: prompt_audio_file,
         };
     }
 

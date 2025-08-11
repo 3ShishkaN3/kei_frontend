@@ -54,6 +54,9 @@
     let currentSectionData = null;
 
     let studentSubmissionsMap = {}; 
+    // Показывать подсказки/подсветку только для тех тестов,
+    // которые студент СЕЙЧАС отправил в текущей сессии
+    let revealAnswersMap = {};
 
 	let isMobileSidebarOpen = false;
 	let isItemModalOpen = false;
@@ -139,7 +142,9 @@
             }
 
             if (!preserveSubmissions) {
-                studentSubmissionsMap = {}; 
+                studentSubmissionsMap = {};
+                revealAnswersMap = {};
+                // 1) Берём, что уже пришло внутри lesson details (если бэкенд это отдаёт)
                 newSections.forEach(section => {
                     (section.items || []).forEach(item => {
                         if (item.item_type === 'test' && item.content_details?.student_submission_details) {
@@ -147,7 +152,49 @@
                         }
                     });
                 });
-                studentSubmissionsMap = {...studentSubmissionsMap};
+
+                // 2) Дополняем из общего списка отправок по текущему уроку,
+                // чтобы статусы отображались у всех ранее пройденных тестов
+                try {
+                    const submissionsList = await lessonApi.fetchTestSubmissions({
+                        lesson_id: lessonId,
+                        ordering: '-submitted_at'
+                    });
+
+                    // Построим соответствие test.id → массив sectionItem.id в этом уроке
+                    const testIdToItemIdsMap = {};
+                    newSections.forEach(section => {
+                        (section.items || []).forEach(item => {
+                            if (item.item_type === 'test' && item.content_details?.id) {
+                                const testId = item.content_details.id;
+                                if (!testIdToItemIdsMap[testId]) testIdToItemIdsMap[testId] = [];
+                                testIdToItemIdsMap[testId].push(item.id);
+                            }
+                        });
+                    });
+
+                    // Проставляем статусы для тех sectionItem, где ещё нет данных
+                    submissionsList.forEach(sub => {
+                        const itemIds = testIdToItemIdsMap[sub.test] || [];
+                        itemIds.forEach(itemId => {
+                            if (!studentSubmissionsMap[itemId]) {
+                                // Берём только агрегированную информацию (без ответов)
+                                studentSubmissionsMap[itemId] = {
+                                    id: sub.id,
+                                    test: sub.test,
+                                    submitted_at: sub.submitted_at,
+                                    status: sub.status,
+                                    score: sub.score,
+                                    // Доп. поля могут отсутствовать в листе — это нормально
+                                };
+                            }
+                        });
+                    });
+                } catch (e) {
+                    console.warn('Не удалось загрузить список отправок для урока, статусы пройденных тестов могут не отобразиться полностью:', e);
+                }
+
+                studentSubmissionsMap = { ...studentSubmissionsMap };
             }
 
 		} catch (err) {
@@ -448,13 +495,21 @@
             }
             
             const submissionResult = await lessonApi.submitTestAnswers(testId, payloadToSend);
-
-            const testTitleFromResult = submissionResult?.test?.title || `Тест #${testId}`;
-            addNotification(`Тест "${testTitleFromResult}" отправлен! Статус: ${submissionResult.status}`, 'success');
-            
+            // Attempt to fetch full submission details for correct answers; fallback if endpoint unavailable
+            let resultSubmission = submissionResult;
+            try {
+                resultSubmission = await lessonApi.fetchTestSubmissionDetails(submissionResult.id);
+            } catch (err) {
+                console.warn('Could not fetch submission details, using submissionResult', err);
+            }
             studentSubmissionsMap = {
                 ...studentSubmissionsMap,
-                [sectionItemId]: submissionResult 
+                [sectionItemId]: resultSubmission
+            };
+            // Разрешаем подсветку/подсказки только для этого конкретного теста
+            revealAnswersMap = {
+                ...revealAnswersMap,
+                [sectionItemId]: true
             };
             // Не вызываем loadLessonData, чтобы studentSubmissionsMap не перезаписался,
             // если бэкенд не отдает student_submission_details с lessonData.
@@ -553,6 +608,7 @@
                                                 on:submitTest={handleTestSubmitEvent} 
                                                 {viewMode}
                                                 studentSubmission={studentSubmissionsMap[item.id] || null}
+                                                shouldRevealAnswers={revealAnswersMap[item.id] || false}
                                                 on:notify={handleNotifyEvent}
                                             />
 										{:else} <p class="error-message">Неизвестный тип элемента: {item.item_type}</p> {/if}

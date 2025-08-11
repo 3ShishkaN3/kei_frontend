@@ -48,6 +48,55 @@
             currentPage++;
         }
     }
+
+    let fullScreenContainer;
+    let hintVisible = false;
+    let hintMessage = '';
+    let isTouch = false;
+    let touchStartX = 0;
+    let touchEndX = 0;
+    let hintTimeout;
+
+    onMount(() => {
+        isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+        const handleKeyDown = (e) => {
+            if (document.fullscreenElement === fullScreenContainer) {
+                if (e.key === 'ArrowLeft') goToPrevPage();
+                else if (e.key === 'ArrowRight') goToNextPage();
+            }
+        };
+
+        const handleTouchStart = (e) => { if (document.fullscreenElement === fullScreenContainer) touchStartX = e.touches[0].clientX; };
+        const handleTouchEnd = (e) => {
+            if (document.fullscreenElement !== fullScreenContainer) return;
+            touchEndX = e.changedTouches[0].clientX;
+            const diff = touchStartX - touchEndX;
+            if (diff > 50) goToNextPage();
+            else if (diff < -50) goToPrevPage();
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        fullScreenContainer.addEventListener('touchstart', handleTouchStart);
+        fullScreenContainer.addEventListener('touchend', handleTouchEnd);
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            fullScreenContainer.removeEventListener('touchstart', handleTouchStart);
+            fullScreenContainer.removeEventListener('touchend', handleTouchEnd);
+        };
+    });
+
+    function enterFullScreen() {
+        if (!fullScreenContainer) return;
+        fullScreenContainer.requestFullscreen();
+        hintMessage = isTouch
+            ? 'Перелистните экран, чтобы перелистывать слайды'
+            : 'Листайте стрелками на клавиатуре, чтобы перелистывать слайды';
+        hintVisible = true;
+        clearTimeout(hintTimeout);
+        hintTimeout = setTimeout(() => { hintVisible = false; }, 3000);
+    }
 </script>
 
 <div class="document-item">
@@ -66,7 +115,14 @@
                     <ChevronLeft size="24px"/>
                 </button>
                 
-                <div class="pdf-content">
+                <div class="pdf-content"
+                     on:click={enterFullScreen}
+                     on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') enterFullScreen(); }}
+                     bind:this={fullScreenContainer}
+                     role="button"
+                     tabindex="0"
+                     aria-label="Открыть слайды в полноэкранном режиме"
+                >
                     {#if loading && totalPage === 0}
                         <div class="loading-placeholder">Загрузка документа...</div>
                     {/if}
@@ -91,6 +147,7 @@
         </div>
     {/if}
 </div>
+<div class="fullscreen-hint" class:visible={hintVisible}>{hintMessage}</div>
 
 <style>
     .document-item {
@@ -306,4 +363,21 @@
             max-height: 50vh;
         }
     }
+.fullscreen-hint {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px 16px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+    z-index: 1000;
+}
+.fullscreen-hint.visible {
+    opacity: 1;
+}
 </style>
