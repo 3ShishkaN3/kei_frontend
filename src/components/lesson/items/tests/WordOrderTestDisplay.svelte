@@ -2,6 +2,7 @@
     import { createEventDispatcher } from 'svelte';
     import { dndzone } from 'svelte-dnd-action';
     import DragVertical from 'svelte-material-icons/DragVertical.svelte'; 
+    import Refresh from 'svelte-material-icons/Refresh.svelte';
 
     export let testData;
     export let sectionItemId;
@@ -18,6 +19,37 @@
     
     // Уникальный тип для этого компонента
     const dndType = `wordOrder_${sectionItemId}`;
+
+    // Функция сброса теста к дефолтному состоянию
+    function resetTestToDefault(event) {
+        if (!canStudentInteract) return;
+        
+        // Предотвращаем всплытие события, чтобы избежать отправки формы
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // Возвращаем все слова из последовательности обратно в пул
+        const allItemsFromSequence = [...currentWordSequence];
+        wordOrderAvailableOptionsInPool = [...wordOrderAvailableOptionsInPool, ...allItemsFromSequence];
+        
+        // Очищаем последовательность
+        currentWordSequence = [];
+        
+        // Сортируем пул по исходному порядку
+        wordOrderAvailableOptionsInPool = wordOrderAvailableOptionsInPool
+            .sort((a, b) => {
+                const indexA = dndBasePoolForCurrentTest.findIndex(p => p.id === a.id);
+                const indexB = dndBasePoolForCurrentTest.findIndex(p => p.id === b.id);
+                return indexA - indexB;
+            });
+        
+        // Отправляем обновления
+        dispatch('update:currentWordSequence', currentWordSequence);
+        dispatch('update:wordOrderAvailableOptionsInPool', wordOrderAvailableOptionsInPool);
+        
+        // Отправляем событие о сбросе теста
+        dispatch('testReset');
+    }
 
     // Обработчики для пула слов
     function handleDndPoolConsider(e) {
@@ -115,7 +147,19 @@
     }
 </script>
 
-<div class="word-order-test-area">
+<div class="word-order-test-area" style="position: relative;">
+    <!-- Иконка перезагрузки -->
+    {#if canStudentInteract}
+        <button 
+            class="reset-test-button" 
+            on:click={resetTestToDefault}
+            title="Сбросить тест к начальному состоянию"
+            aria-label="Сбросить тест к начальному состоянию"
+        >
+            <Refresh size="20px" />
+        </button>
+    {/if}
+    
     {#if testData.word_order_sentence?.display_prompt}
         <p class="instruction-text"><strong>Задание:</strong> {@html testData.word_order_sentence.display_prompt.replace(/\n/g, '<br>')}</p>
     {/if}
@@ -232,6 +276,36 @@
 </div>
 
 <style>
+    /* Кнопка сброса теста */
+    .reset-test-button {
+        position: absolute;
+        top: -15px;
+        right: 10px;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        z-index: 10;
+    }
+    
+    .reset-test-button:hover {
+        background: #f8f9fa;
+        border-color: #5845d8;
+        transform: scale(1.05);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .reset-test-button:active {
+        transform: scale(0.95);
+    }
+
     .word-order-test-area { 
         margin-top: 25px; 
         padding-top: 20px; 

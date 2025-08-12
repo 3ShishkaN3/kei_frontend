@@ -4,6 +4,7 @@
     import { flip } from 'svelte/animate';
     import ImageItemDisplay from '../ImageItemDisplay.svelte';
     import AudioItemDisplay from '../AudioItemDisplay.svelte';
+    import Refresh from 'svelte-material-icons/Refresh.svelte';
 
     export let testData;
     export let sectionItemId;
@@ -175,6 +176,33 @@
         return 'pending';
     }
 
+    // Функция сброса теста к дефолтному состоянию
+    function resetTestToDefault(event) {
+        if (!canStudentInteract) return;
+        
+        // Предотвращаем всплытие события, чтобы избежать отправки формы
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // Возвращаем все слова из слотов обратно в пул
+        const allItemsFromSlots = Object.values(filledSlotsForDisplay);
+        draggableItemsPoolForDisplay = [...draggableItemsPoolForDisplay, ...allItemsFromSlots];
+        
+        // Очищаем все слоты
+        filledSlotsForDisplay = {};
+        
+        // Сбрасываем выбранное слово
+        selectedDraggableOptionForSlot = null;
+        
+        // Отправляем обновления
+        dispatch('update:draggableItemsPoolForDisplay', draggableItemsPoolForDisplay);
+        dispatch('update:filledSlotsForDisplay', filledSlotsForDisplay);
+        dispatch('update:selectedDraggableOptionForSlot', selectedDraggableOptionForSlot);
+        
+        // Отправляем событие о сбросе теста
+        dispatch('testReset');
+    }
+
     // Очистка при размонтировании компонента
     onDestroy(() => {
         try {
@@ -201,6 +229,18 @@
 
 
 <div class="drag-drop-test-area">
+    <!-- Иконка перезагрузки -->
+    {#if canStudentInteract}
+        <button 
+            class="reset-test-button" 
+            on:click={resetTestToDefault}
+            title="Сбросить тест к начальному состоянию"
+            aria-label="Сбросить тест к начальному состоянию"
+        >
+            <Refresh size="20px" />
+        </button>
+    {/if}
+    
     {#if testData.description && viewMode === 'admin'} 
     {:else if !testData.description && testData.test_type === 'drag-and-drop' }
         <p class="instruction-text">Распределите предложенные варианты по соответствующим ячейкам. Можно перетаскивать слова или кликать для выбора.</p>
@@ -328,8 +368,42 @@
 </div>
 
 <style>
+    /* Кнопка сброса теста */
+    .reset-test-button {
+        position: absolute;
+        top: -15px;
+        right: 10px;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        z-index: 10;
+    }
+    
+    .reset-test-button:hover {
+        background: #f8f9fa;
+        border-color: #5845d8;
+        transform: scale(1.05);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .reset-test-button:active {
+        transform: scale(0.95);
+    }
 
-    .drag-drop-test-area { margin-top: 25px; padding-top: 20px; border-top: 1px solid #f0f0f0; }
+    .drag-drop-test-area { 
+        margin-top: 25px; 
+        padding-top: 20px; 
+        border-top: 1px solid #f0f0f0; 
+        position: relative; /* Для позиционирования кнопки сброса */
+    }
     .instruction-text { font-size: 0.95em; color: var(--color-text-muted); margin-bottom: 15px; line-height: 1.6; }
     .drag-drop-test-area h4 { font-size: 1.05em; font-weight: 600; margin-top: 20px; margin-bottom: 12px; color: var(--color-secondary); }
 

@@ -73,6 +73,29 @@
         localStudentAnswerText = event.detail;
     }
 
+    function handleTestReset() {
+        // Принудительно обновляем состояние в родительском компоненте
+        if (testData?.test_type === 'mcq-multi') {
+            localSelectedOptionsMap = {};
+            localSelectedOptionsMap = {...localSelectedOptionsMap}; // Принудительное обновление
+        } else if (testData?.test_type === 'mcq-single') {
+            localSelectedRadioOption = null;
+        } else if (testData?.test_type === 'drag-and-drop') {
+            // Возвращаем все слова из слотов обратно в пул
+            const allItemsFromSlots = Object.values(filledSlotsForDisplay);
+            draggableItemsPoolForDisplay = [...draggableItemsPoolForDisplay, ...allItemsFromSlots];
+            filledSlotsForDisplay = {};
+            selectedDraggableOptionForSlot = null;
+        } else if (testData?.test_type === 'word-order') {
+            // Возвращаем все слова из последовательности обратно в пул
+            const allItemsFromSequence = [...currentWordSequence];
+            wordOrderAvailableOptionsInPool = [...wordOrderAvailableOptionsInPool, ...allItemsFromSequence];
+            currentWordSequence = [];
+        } else if (testData?.test_type === 'free-text') {
+            localStudentAnswerText = '';
+        }
+    }
+
     function syncStateWithProps(currentTestData, currentStudentSubmission, currentViewMode, currentIsSubmittingFlag) {
         // Determine submission based on presence of studentSubmission for this section item
         // The currentStudentSubmission can be either full submission details OR fallback submissionResult
@@ -91,8 +114,8 @@
         
         isTestSubmittedByStudent = newIsTestSubmittedByStudent;
         isSubmitting = newIsSubmittingState;
-        // Не блокируем повторное прохождение, даже если есть предыдущая отправка —
-        // показываем только блок результата
+        // Разрешаем взаимодействие студенту, даже если есть предыдущие ответы
+        // Студент может пройти тест заново
         canStudentInteract = currentViewMode === 'student' && !isSubmitting;
         
         // Only reset if testData changes
@@ -345,6 +368,7 @@
                 isTestSubmittedByStudent={shouldRevealAnswers}
                 on:update:localSelectedOptionsMap={updateLocalSelectedOptionsMap}
                 on:update:localSelectedRadioOption={updateLocalSelectedRadioOption}
+                on:testReset={handleTestReset}
             />
         {:else if testData?.test_type === 'drag-and-drop'}
             <DragDropTestDisplay 
@@ -360,6 +384,7 @@
                 on:update:draggableItemsPoolForDisplay={updateDraggableItemsPoolForDisplay}
                 on:update:filledSlotsForDisplay={updateFilledSlotsForDisplay}
                 on:update:selectedDraggableOptionForSlot={updateSelectedDraggableOptionForSlot}
+                on:testReset={handleTestReset}
             />
         {:else if testData?.test_type === 'word-order'}
             <WordOrderTestDisplay 
@@ -373,6 +398,7 @@
                 isTestSubmittedByStudent={shouldRevealAnswers}
                 on:update:currentWordSequence={updateCurrentWordSequence}
                 on:update:wordOrderAvailableOptionsInPool={updateWordOrderAvailableOptionsInPool}
+                on:testReset={handleTestReset}
             />
         {:else if testData?.test_type === 'free-text'}
             <FreeTextTestDisplay 
@@ -383,6 +409,7 @@
                 isTestSubmittedByStudent={shouldRevealAnswers}
                 studentAnswerText={localStudentAnswerText}
                 on:update:studentAnswerText={updateLocalStudentAnswerText}
+                on:testReset={handleTestReset}
             />
         {/if}
     

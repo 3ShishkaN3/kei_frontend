@@ -2,6 +2,7 @@
     import { createEventDispatcher } from 'svelte';
     import ImageItemDisplay from '../ImageItemDisplay.svelte';
     import AudioItemDisplay from '../AudioItemDisplay.svelte';
+    import Refresh from 'svelte-material-icons/Refresh.svelte';
 
     export let testData = null;
     export let sectionItemId = null;
@@ -12,6 +13,21 @@
 
     const dispatch = createEventDispatcher();
 
+    // Функция сброса теста к дефолтному состоянию
+    function resetTestToDefault(event) {
+        if (!canStudentInteract) return;
+        
+        // Предотвращаем всплытие события, чтобы избежать отправки формы
+        event.preventDefault();
+        event.stopPropagation();
+        
+        studentAnswerText = '';
+        dispatch('update:studentAnswerText', '');
+        
+        // Отправляем событие о сбросе теста
+        dispatch('testReset');
+    }
+
     function handleTextChange(event) {
         const newValue = event.target.value;
         studentAnswerText = newValue;
@@ -19,7 +35,18 @@
     }
 </script>
 
-<div class="free-text-test-display" data-testid="free-text-test-display">
+<div class="free-text-test-display" data-testid="free-text-test-display" style="position: relative;">
+    <!-- Иконка перезагрузки -->
+    {#if canStudentInteract}
+        <button 
+            class="reset-test-button" 
+            on:click={resetTestToDefault}
+            title="Сбросить тест к начальному состоянию"
+            aria-label="Сбросить тест к начальному состоянию"
+        >
+            <Refresh size="20px" />
+        </button>
+    {/if}
     
     <!-- Отображение вопроса -->
     {#if testData?.free_text_question?.prompt_text}
@@ -205,6 +232,35 @@
         background-color: #fff;
         padding: 10px;
         border-radius: 4px;
+    }
+
+    .reset-test-button {
+        position: absolute;
+        top: -15px;
+        right: 10px;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        z-index: 10;
+    }
+    
+    .reset-test-button:hover {
+        background: #f8f9fa;
+        border-color: #5845d8;
+        transform: scale(1.05);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .reset-test-button:active {
+        transform: scale(0.95);
     }
 
     @media (max-width: 768px) {
