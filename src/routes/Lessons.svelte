@@ -11,7 +11,6 @@
     import { user } from '../stores/user.js';
     import { API_BASE_URL } from '../config.js';
     import { apiFetch } from '../api/api.js';
-    import { getLessonProgress } from '../api/progressApi.js';
     import { courseLessonsPagination } from '../stores/pagination.js'; // Import our pagination store
 
     // Import Child Components
@@ -54,7 +53,7 @@
     // --- State Variables ---
     let lessons = [];
     let dictionarySections = [];
-    let lessonProgress = new Map(); // Note: You'll need to fetch real progress data eventually
+    let lessonProgress = new Map();
     let isLoadingLessons = true;
     let isLoadingSections = true;
     let errorLessons = null;
@@ -224,43 +223,13 @@
                 return; // Exit this fetch
             }
             
-            // Загружаем реальные данные о прогрессе уроков
-            try {
-                console.log('Начинаем загрузку прогресса для курса:', courseId);
-                const progressData = await getLessonProgress(courseId);
-                console.log('Полученные данные прогресса:', progressData);
-                
-                // Создаем Map с прогрессом для быстрого доступа
-                const progressMap = new Map();
-                progressData.forEach(progress => {
-                    console.log('Обрабатываем прогресс:', progress);
-                    // Используем id как lesson_id, так как в данных нет отдельного поля lesson_id
-                    // Округляем процент до целых чисел
-                    const roundedProgress = Math.round(parseFloat(progress.completion_percentage));
-                    progressMap.set(progress.id, roundedProgress);
-                });
-                console.log('Созданная карта прогресса:', progressMap);
-                
-                // Обновляем прогресс для всех уроков
-                lessons.forEach(lesson => {
-                    const progress = progressMap.get(lesson.id) || 0;
-                    console.log(`Устанавливаем прогресс для урока ${lesson.id}: ${progress}%`);
-                    lessonProgress.set(lesson.id, progress);
-                });
-                
-                // Обновляем Map для реактивности
-                lessonProgress = new Map(lessonProgress);
-                console.log('Финальная карта прогресса:', lessonProgress);
-            } catch (error) {
-                console.error('Ошибка загрузки прогресса уроков:', error);
-                // В случае ошибки устанавливаем прогресс 0 для всех уроков
-                lessons.forEach(lesson => {
-                    if (!lessonProgress.has(lesson.id)) {
-                        lessonProgress.set(lesson.id, 0);
-                    }
-                });
-                lessonProgress = new Map(lessonProgress);
-            }
+            // Заполняем прогресс из ответа бекенда по каждому уроку
+            const nextProgress = new Map();
+            lessons.forEach(lesson => {
+                const p = Math.round(parseFloat(lesson.completion_percentage || 0));
+                nextProgress.set(lesson.id, Number.isFinite(p) ? p : 0);
+            });
+            lessonProgress = nextProgress;
             
 
         } catch (err) { 
@@ -548,7 +517,7 @@
                     {#each lessons as lesson, i (lesson.id)}
                         <LessonCard 
                             {lesson} 
-                            progress={lessonProgress.get(lesson.id) || 0}
+                            progress={lessonProgress.get(lesson.id) ?? Math.round(parseFloat(lesson.completion_percentage || 0))}
                             animationDelay={`${i * 50}ms`}
                             {isAdminView}
                             on:action={() => navigateToLesson(lesson.id)}

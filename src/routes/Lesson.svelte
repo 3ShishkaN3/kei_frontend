@@ -8,6 +8,7 @@
 	import { user } from '../stores/user.js';
 	import { API_BASE_URL } from '../config.js';
 	import * as lessonApi from '../api/lessonApi.js';
+    import * as progressApi from '../api/progressApi.js';
     import { addNotification } from '../stores/notifications.js';
 
 	import EyeOutline from 'svelte-material-icons/EyeOutline.svelte';
@@ -54,6 +55,7 @@
     let currentSectionData = null;
 
     let studentSubmissionsMap = {}; 
+    // Берём статус завершения секции напрямую из backend JSON (SectionSerializer.is_completed)
     // Показывать подсказки/подсветку только для тех тестов,
     // которые студент СЕЙЧАС отправил в текущей сессии
     let revealAnswersMap = {};
@@ -78,6 +80,11 @@
     const LAST_SECTION_STORAGE_KEY_PREFIX = 'lastActiveSection_lesson_';
 
 	const dispatch = createEventDispatcher();
+
+    // Локальное состояние: какие нетестовые элементы уже отмечены как просмотренные
+    let viewedItemIds = new Set();
+    let markingInFlight = new Set();
+    let itemObserver = null;
 
 	const unsubscribeUser = user.subscribe((value) => {
 		currentUserRole = value?.role;
@@ -109,6 +116,7 @@
 
     onDestroy(() => { 
         unsubscribeUser(); 
+        if (itemObserver) { itemObserver.disconnect(); itemObserver = null; }
     });
 
 	async function loadLessonData(setActiveSectionId = null, preserveSubmissions = false) {
@@ -209,6 +217,10 @@
             if(isSectionLoading && !preserveSubmissions) { 
                 isSectionLoading = false;
             }
+
+            // Настраиваем отслеживание видимости материалов текущего раздела
+            await tick();
+            setupItemObserver();
 		}
 	}
 
@@ -223,6 +235,8 @@
                  if (typeof localStorage !== 'undefined' && lessonId && currentSectionId) {
                     localStorage.setItem(`${LAST_SECTION_STORAGE_KEY_PREFIX}${lessonId}`, currentSectionId.toString());
                  }
+                 // Переинициализируем observer при смене секции
+                 tick().then(setupItemObserver);
             } else {
                  currentSectionData = null; 
                  if (sections.length > 0 && !sections.some(s => s.id === currentSectionId)) { 
@@ -239,6 +253,10 @@
         }
     }
 
+    function isSectionCompleted(section) {
+        return Boolean(section?.is_completed);
+    }
+
     function switchSection(sectionId) {
         if (currentSectionId !== sectionId) {
             currentSectionId = sectionId; // Это вызовет реактивный блок $: {} для сохранения в localStorage
@@ -247,6 +265,70 @@
             if (mainContentEl) {
                  mainContentEl.scrollTo({ top: 0, behavior: 'auto' });
             }
+            // Сброс наблюдателя при смене секции
+            setupItemObserver();
+        }
+    }
+
+    function setupItemObserver() {
+        // Очистка предыдущего наблюдателя
+        if (itemObserver) {
+            itemObserver.disconnect();
+            itemObserver = null;
+        }
+        const container = document.querySelector('.section-items-list');
+        if (!container) return;
+        itemObserver = new IntersectionObserver(async (entries) => {
+            for (const entry of entries) {
+                if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+                    const el = entry.target;
+                    const itemId = parseInt(el.getAttribute('data-item-id'));
+                    const sectionId = parseInt(el.getAttribute('data-section-id'));
+                    const itemType = el.getAttribute('data-item-type');
+                    if (!itemId || !sectionId || !itemType || itemType === 'test') continue;
+                    if (viewedItemIds.has(itemId) || markingInFlight.has(itemId)) continue;
+                    markingInFlight.add(itemId);
+                    try {
+                        await lessonApi.markItemViewed(courseId, lessonId, sectionId, itemId);
+                        viewedItemIds = new Set([...viewedItemIds, itemId]);
+                        // Обновляем прогресс секций реактивно
+                        await refreshSectionProgress();
+                    } catch (e) {
+                        console.warn('Не удалось отметить просмотр материала', itemId, e);
+                    } finally {
+                        markingInFlight.delete(itemId);
+                    }
+                }
+            }
+        }, { threshold: [0, 0.25, 0.5, 0.6, 0.75, 1] });
+
+        // Подписываемся на все элементы текущей секции
+        const items = container.querySelectorAll('[data-item-id]');
+        items.forEach(el => itemObserver && itemObserver.observe(el));
+    }
+
+    async function refreshSectionProgress() {
+        try {
+            const list = await progressApi.getSectionProgress(lessonId);
+            const byId = new Map();
+            (Array.isArray(list) ? list : []).forEach(p => byId.set(p.section_id, p));
+            sections = sections.map(s => {
+                const p = byId.get(s.id);
+                if (!p) return s;
+                const completion = parseFloat(p.completion_percentage || 0);
+                const totalTests = p.total_tests || 0;
+                const isVisited = !!p.is_visited;
+                const completedAt = p.completed_at;
+                const isCompleted = completion >= 99.5 || !!completedAt || (totalTests === 0 && isVisited);
+                return { ...s, is_completed: isCompleted };
+            });
+            // Обновим флаг урока, если все секции завершены
+            if (lessonData) {
+                const allDone = sections.length > 0 && sections.every(s => s.is_completed);
+                lessonData = { ...lessonData, is_completed: allDone };
+            }
+        } catch (e) {
+            console.warn('Не удалось обновить прогресс секций:', e);
         }
     }
 
@@ -528,6 +610,13 @@
         }
     }
 
+    function handleOverlayKeydown(event) {
+        if (!isMobileSidebarOpen) return;
+        if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+            isMobileSidebarOpen = false;
+        }
+    }
+
     function handleNotifyEvent(event) {
         const { type, message } = event.detail;
         if (typeof addNotification === 'function') {
@@ -543,6 +632,9 @@
     class:sidebar-mobile-active={isMobileSidebarOpen}
     in:fade="{{duration: 250}}"
     on:click={handleOverlayClick}
+    on:keydown={handleOverlayKeydown}
+    role="button"
+    tabindex="0"
 >
 	{#if isLoading && !lessonData } <LoadingIndicator message="Загрузка урока..." />
 	{:else if error && !lessonData}
@@ -583,11 +675,14 @@
 
                 {#if currentSectionData}
                     <div class="section-content-area" key={currentSectionId} in:fade="{{duration: 350, delay:50}}" out:fade="{{duration: 150}}">
-                        <h2 class="current-section-title">{currentSectionData.title}</h2>
+                        <h2 class="current-section-title" class:completed={isSectionCompleted(currentSectionData)}>{currentSectionData.title}</h2>
                         {#if currentSectionData.items && currentSectionData.items.length > 0}
                             <div class="section-items-list">
                                 {#each currentSectionData.items as item, itemIndex (item.id)}
-                                    <div class="section-item-wrapper" in:fly="{{ y: 10, duration: 300, delay: itemIndex * 60 }}">
+                                    <div class="section-item-wrapper" data-item-id={item.id} data-section-id={currentSectionData.id} data-item-type={item.item_type} in:fly="{{ y: 10, duration: 300, delay: itemIndex * 60 }}">
+                                        {#if (item.item_type === 'test' ? Boolean(studentSubmissionsMap[item.id]?.status === 'passed') : viewedItemIds.has(item.id) || item.is_completed)}
+                                            <span class="material-complete-badge" title="Материал завершён" aria-label="Материал завершён">✓</span>
+                                        {/if}
                                          {#if isAdminOrStaff && viewMode === 'admin'}
                                             <div class="item-admin-controls">
                                                 <button title="Редактировать" on:click={() => openEditItemModal(item)} class="item-admin-btn edit-btn" disabled={isSectionLoading}><PencilOutline size="16px" /></button>
@@ -645,7 +740,7 @@
 					{#if sections.length > 0}
                         <ul>
                             {#each sections as section, index (section.id)}
-                                <li class="section-list-item" class:active={currentSectionId === section.id} transition:fade|local="{{duration:200}}">
+                                <li class="section-list-item" class:active={currentSectionId === section.id} class:completed={isSectionCompleted(section)} transition:fade|local="{{duration:200}}">
                                     <div class="section-link-content">
                                         <button
                                             class="section-link"
@@ -839,6 +934,17 @@
 
     .sidebar-nav ul { list-style: none; padding: 0; margin: 0; }
     .section-list-item { position: relative; }
+    .section-list-item.completed > .section-link-content {
+        background: linear-gradient(90deg, var(--color-success-bg, rgba(46, 204, 113, 0.12)) 0%, rgba(46, 204, 113, 0.06) 60%, transparent 100%);
+    }
+    .section-list-item.completed .section-link {
+        color: var(--color-success, #2ecc71);
+    }
+    .section-list-item.completed .section-icon-wrapper {
+        background-color: rgba(46, 204, 113, 0.2);
+        color: var(--color-success, #2ecc71);
+    }
+
     .section-link-content {
         display: flex;
         align-items: center;
@@ -922,12 +1028,34 @@
         border-bottom: 2px solid var(--color-primary-light);
     }
 
+    .current-section-title.completed {
+        border-bottom-color: var(--color-success, #2ecc71);
+    }
+
     .section-items-list {
         display: flex; flex-direction: column;
         gap: clamp(20px, 3vw, 30px);
     }
     .section-item-wrapper { position: relative; animation: itemFadeIn 0.4s ease-out; }
     @keyframes itemFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); }}
+
+    .material-complete-badge {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--color-success, #2ecc71);
+        color: #fff;
+        font-size: 0.8rem;
+        font-weight: var(--font-weight-bold);
+        box-shadow: 0 2px 6px rgba(46, 204, 113, 0.35);
+        z-index: 4;
+    }
 
     .no-content-message {
         text-align: center; font-size: 1rem; color: var(--color-text-muted);

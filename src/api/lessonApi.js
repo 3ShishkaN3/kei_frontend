@@ -315,6 +315,20 @@ export async function deleteSectionItem(courseId, lessonId, sectionId, itemId) {
 	}
 }
 
+/**
+ * Отметить элемент раздела как просмотренный (нетестовый).
+ * Идемпотентно: серверная часть сама позаботится не дублировать прогресс.
+ */
+export async function markItemViewed(courseId, lessonId, sectionId, itemId) {
+    const url = `${coursesBaseUrl}/${courseId}/lessons/${lessonId}/sections/${sectionId}/items/${itemId}/viewed/`;
+    const response = await apiFetch(url, { method: 'POST' });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Ошибка отметки просмотра материала: ${response.status}`);
+    }
+    return response.json();
+}
+
 
 /**
  * =======================================================================
