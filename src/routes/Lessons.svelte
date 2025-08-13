@@ -11,6 +11,7 @@
     import { user } from '../stores/user.js';
     import { API_BASE_URL } from '../config.js';
     import { apiFetch } from '../api/api.js';
+    import { getLessonProgress } from '../api/progressApi.js';
     import { courseLessonsPagination } from '../stores/pagination.js'; // Import our pagination store
 
     // Import Child Components
@@ -223,21 +224,43 @@
                 return; // Exit this fetch
             }
             
-            // Assign (or update) dummy progress for new/existing lessons
-            // If progress wasn't cleared, existing lesson IDs will keep their value in the map
-            lessons.forEach(lesson => {
-                // Only set if the lesson ID is NOT already in the map (meaning it's a new lesson or initial load)
-                if (!lessonProgress.has(lesson.id)) {
-                    // Assign a random progress value
-                    const randomProgress = Math.random() < 0.1 ? 0 : (Math.random() < 0.2 ? 100 : Math.floor(Math.random() * 91));
-                    lessonProgress.set(lesson.id, randomProgress); 
-                } 
-            });
-            
-            // Trigger reactivity for the map if needed (e.g., if new items were added)
-            // Using lessonProgress = new Map(lessonProgress) can force update if just values change
-            // but Svelte's {#each} with keys handles item changes well. Updating map directly is usually enough.
-            lessonProgress = lessonProgress; // Svelte needs assignment to trigger reactivity for Maps/Sets
+            // Загружаем реальные данные о прогрессе уроков
+            try {
+                console.log('Начинаем загрузку прогресса для курса:', courseId);
+                const progressData = await getLessonProgress(courseId);
+                console.log('Полученные данные прогресса:', progressData);
+                
+                // Создаем Map с прогрессом для быстрого доступа
+                const progressMap = new Map();
+                progressData.forEach(progress => {
+                    console.log('Обрабатываем прогресс:', progress);
+                    // Используем id как lesson_id, так как в данных нет отдельного поля lesson_id
+                    // Округляем процент до целых чисел
+                    const roundedProgress = Math.round(parseFloat(progress.completion_percentage));
+                    progressMap.set(progress.id, roundedProgress);
+                });
+                console.log('Созданная карта прогресса:', progressMap);
+                
+                // Обновляем прогресс для всех уроков
+                lessons.forEach(lesson => {
+                    const progress = progressMap.get(lesson.id) || 0;
+                    console.log(`Устанавливаем прогресс для урока ${lesson.id}: ${progress}%`);
+                    lessonProgress.set(lesson.id, progress);
+                });
+                
+                // Обновляем Map для реактивности
+                lessonProgress = new Map(lessonProgress);
+                console.log('Финальная карта прогресса:', lessonProgress);
+            } catch (error) {
+                console.error('Ошибка загрузки прогресса уроков:', error);
+                // В случае ошибки устанавливаем прогресс 0 для всех уроков
+                lessons.forEach(lesson => {
+                    if (!lessonProgress.has(lesson.id)) {
+                        lessonProgress.set(lesson.id, 0);
+                    }
+                });
+                lessonProgress = new Map(lessonProgress);
+            }
             
 
         } catch (err) { 
