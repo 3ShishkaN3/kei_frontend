@@ -36,12 +36,20 @@
 
     // Add functions to flip paginator range
     function shiftPaginatorLeft() {
-        pageRangeStart = Math.max(1, pageRangeStart - maxVisibleButtons);
+        // Переключаемся на предыдущий блок, если это возможно
+        const newStart = Math.max(1, pageRangeStart - maxVisibleButtons);
+        if (newStart !== pageRangeStart) {
+            pageRangeStart = newStart;
+        }
     }
 
     function shiftPaginatorRight() {
+        // Переключаемся на следующий блок, если это возможно
         const maxStart = Math.max(totalPages - maxVisibleButtons + 1, 1);
-        pageRangeStart = Math.min(maxStart, pageRangeStart + maxVisibleButtons);
+        const newStart = Math.min(maxStart, pageRangeStart + maxVisibleButtons);
+        if (newStart !== pageRangeStart) {
+            pageRangeStart = newStart;
+        }
     }
 
     $: pageJumpInput = currentPage; // Update input when currentPage changes
