@@ -2,6 +2,7 @@
     import { createEventDispatcher, onMount, tick } from 'svelte';
     import ImageItemDisplay from './ImageItemDisplay.svelte';
 	import AudioItemDisplay from './AudioItemDisplay.svelte';
+    import Refresh from 'svelte-material-icons/Refresh.svelte';
     import McqTestDisplay from './tests/McqTestDisplay.svelte';
     import DragDropTestDisplay from './tests/DragDropTestDisplay.svelte';
     import WordOrderTestDisplay from './tests/WordOrderTestDisplay.svelte';
@@ -22,6 +23,7 @@
     let isSubmitting = false;
     let dndBasePoolForCurrentTest = []; // Базовый пул для word-order
     let localStudentAnswerText = ''; // Для free-text тестов
+    let isRefreshing = false;
     
     // --- Вычисляемые состояния на основе пропсов ---
     let isTestSubmittedByStudent = false;
@@ -71,6 +73,20 @@
 
     function updateLocalStudentAnswerText(event) {
         localStudentAnswerText = event.detail;
+    }
+
+    async function refreshSubmissionStatus() {
+        if (!studentSubmission?.id) return;
+
+        isRefreshing = true;
+        dispatch('refreshSubmission', { submissionId: studentSubmission.id });
+
+        // Reset refreshing state after a timeout to prevent it from getting stuck
+        setTimeout(() => {
+            if (isRefreshing) {
+                isRefreshing = false;
+            }
+        }, 10000); // 10 seconds timeout
     }
 
     function handleTestReset() {
@@ -284,6 +300,9 @@
         const sigSub = JSON.stringify(studentSubmission?.id + (studentSubmission?.status || '') + JSON.stringify(studentSubmission?.answers));
         if (sigTest !== prevTestDataString || sigSub !== prevSubmissionString || viewMode !== prevViewModeString || isSubmitting !== prevIsSubmittingForEffect) 
         {
+            if (isRefreshing && sigSub !== prevSubmissionString) {
+                isRefreshing = false;
+            }
             syncStateWithProps(testData, studentSubmission, viewMode, isSubmitting);
             prevTestDataString = sigTest;
             prevSubmissionString = sigSub;
@@ -423,7 +442,17 @@
 
         {#if viewMode === 'student' && studentSubmission}
             <div class="submission-result-display status-{studentSubmission.status.toLowerCase()}">
-                <h4>Результаты:</h4>
+                <div class="result-header">
+                    <h4>Результаты:</h4>
+                    <button 
+                        class="btn-refresh-status" 
+                        on:click={refreshSubmissionStatus} 
+                        disabled={isRefreshing}
+                        title="Обновить статус проверки"
+                    >
+                        <Refresh class={isRefreshing ? 'rotating' : ''} size="20px" />
+                    </button>
+                </div>
                 <p>Статус: 
                     <strong >
                         { studentSubmission.status === 'graded' ? 'Оценено' : 
@@ -481,4 +510,46 @@
 .submission-result-display .feedback-text strong { color: #343a40; font-weight: normal; display: block; margin-top: 4px; padding: 8px; background-color: #fff; border-radius: 4px;}
 .submission-result-display.admin-view { background-color: #e9ecef; border-color: #ced4da; }
 .submission-result-display.admin-view h4 { color: #495057; }
+
+.result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.result-header h4 {
+    margin-bottom: 0;
+}
+
+.btn-refresh-status {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-primary, #AFA4FF);
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.btn-refresh-status:hover:not(:disabled) {
+    background-color: rgba(var(--color-primary-rgb, 175, 164, 255), 0.1);
+}
+
+.btn-refresh-status:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.rotating {
+    animation: spin 1s linear infinite;
+}
 </style>

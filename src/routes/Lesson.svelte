@@ -625,6 +625,43 @@
             console.warn("addNotification function is not available to handle notify event:", event.detail);
         }
     }
+
+    async function handleRefreshSubmission(event) {
+        const { submissionId } = event.detail;
+        if (!submissionId) return;
+
+        try {
+            const refreshedSubmission = await lessonApi.fetchTestSubmissionDetails(submissionId);
+            
+            // Find which sectionItem this submission belongs to
+            let targetSectionItemId = null;
+            for (const section of sections) {
+                for (const item of section.items) {
+                    const existingSubmission = studentSubmissionsMap[item.id];
+                    if (existingSubmission && existingSubmission.id === submissionId) {
+                        targetSectionItemId = item.id;
+                        break;
+                    }
+                }
+                if (targetSectionItemId) break;
+            }
+
+            if (targetSectionItemId) {
+                studentSubmissionsMap = {
+                    ...studentSubmissionsMap,
+                    [targetSectionItemId]: refreshedSubmission
+                };
+                addNotification('Статус проверки обновлен.', 'success');
+            } else {
+                // Fallback if not found in current map - maybe reload all submissions?
+                // For now, just log it.
+                console.warn(`Could not find section item for submission ID ${submissionId} to refresh.`);
+            }
+
+        } catch (err) {
+            addNotification(`Не удалось обновить статус: ${err.message || 'Неизвестная ошибка'}`, 'error');
+        }
+    }
 </script>
 <!-- Добавляем on:click={handleOverlayClick} -->
 <div 
@@ -701,10 +738,10 @@
                                                 testData={item.content_details} 
                                                 sectionItemId={item.id} 
                                                 on:submitTest={handleTestSubmitEvent} 
-                                                {viewMode}
+                                                on:refreshSubmission={handleRefreshSubmission}
+                                                on:notify={handleNotifyEvent}
                                                 studentSubmission={studentSubmissionsMap[item.id] || null}
                                                 shouldRevealAnswers={revealAnswersMap[item.id] || false}
-                                                on:notify={handleNotifyEvent}
                                             />
 										{:else} <p class="error-message">Неизвестный тип элемента: {item.item_type}</p> {/if}
                                     </div>
