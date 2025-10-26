@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { getCourseProgress } from '../../api/progressApi.js';
   import { user } from '../../stores/user.js';
-  import DonutChart from './DonutChart.svelte';
+  import DoughnutChart from './DoughnutChart.svelte';
   import CourseSelectionModal from './CourseSelectionModal.svelte';
 
   let currentUser;
@@ -65,7 +65,7 @@
     }
     const completed = (progress.completed_lessons / progress.total_lessons) * 100;
     const inProgress = (progress.in_progress_lessons / progress.total_lessons) * 100;
-    const notStarted = 100 - completed - inProgress;
+    const notStarted = Math.max(0, 100 - completed - inProgress);
     return { completed, inProgress, notStarted };
   }
 
@@ -83,15 +83,6 @@
 
 <div class="progress-wrapper">
   <div class="header">
-    {#if aggregatedProgress}
-      <h3 class="title">
-        {#if currentUser.role === 'admin' || currentUser.role === 'teacher'}
-          Общий прогресс учеников по {aggregatedProgress.course_title}:
-        {:else}
-          Прогресс прохождения по {aggregatedProgress.course_title}:
-        {/if}
-      </h3>
-    {/if}
     <button class="course-select-btn" on:click={() => showModal = true}>Выбрать курс</button>
   </div>
   <div class="content">
@@ -99,30 +90,43 @@
       {#if isLoading}
         <p>Загрузка...</p>
       {:else if aggregatedProgress}
-        <DonutChart completed={percentages.completed} inProgress={percentages.inProgress} />
+        <DoughnutChart 
+          data={[percentages.completed, percentages.inProgress, percentages.notStarted]}
+          labels={['Завершено', 'Начато', 'Не начато']}
+          colors={['#a8c5e5', '#6c6f93', '#e6e9f0']}
+        />
       {:else}
         <p>Нет данных о прогрессе.</p>
       {/if}
     </div>
     <div class="legend-container">
       {#if aggregatedProgress}
-        <ul class="legend-list">
-          <li>
-            <span class="dot completed"></span>
-            Завершено уроков:
-            <span class="percentage">{percentages.completed.toFixed(1)}%</span>
-          </li>
-          <li>
-            <span class="dot in-progress"></span>
-            Начато уроков:
-            <span class="percentage">{percentages.inProgress.toFixed(1)}%</span>
-          </li>
-          <li>
-            <span class="dot not-started"></span>
-            Не начато уроков:
-            <span class="percentage">{percentages.notStarted.toFixed(1)}%</span>
-          </li>
-        </ul>
+        <h3 class="title">
+          {#if currentUser.role === 'admin' || currentUser.role === 'teacher'}
+            Общий прогресс учеников по {aggregatedProgress.course_title}:
+          {:else}
+            Прогресс прохождения по {aggregatedProgress.course_title}:
+          {/if}
+        </h3>
+        <div class="legend-wrapper">
+          <ul class="legend-list">
+            <li>
+              <span class="dot completed"></span>
+              Завершено уроков:
+              <span class="percentage">{percentages.completed.toFixed(1)}%</span>
+            </li>
+            <li>
+              <span class="dot in-progress"></span>
+              Начато уроков:
+              <span class="percentage">{percentages.inProgress.toFixed(1)}%</span>
+            </li>
+            <li>
+              <span class="dot not-started"></span>
+              Не начато уроков:
+              <span class="percentage">{percentages.notStarted.toFixed(1)}%</span>
+            </li>
+          </ul>
+        </div>
       {/if}
     </div>
   </div>
@@ -133,15 +137,14 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    font-family: 'Play', sans-serif;
   }
 
   .header {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: var(--spacing-margin-bottom-medium);
-    flex-wrap: wrap;
-    gap: 1rem;
+    justify-content: flex-start;
+    margin-top: 0;
+    margin-bottom: 0;
   }
 
   .course-select-btn {
@@ -162,56 +165,107 @@
   .content {
     display: flex;
     flex-grow: 1;
-    gap: 2rem;
-    align-items: center;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 0;
+  }
+
+  @media (max-width: 768px) {
+    .content {
+      flex-direction: column;
+      gap: 2rem;
+    }
+    
+    .chart-container {
+      min-height: 300px;
+      max-height: 300px;
+      justify-content: center;
+    }
+    
+    .legend-container {
+      min-height: auto;
+    }
+    
+    .legend-wrapper {
+      margin-top: 1rem;
+      margin-bottom: 1rem;
+    }
   }
 
   @media (max-width: 576px) {
     .content {
-      flex-direction: column;
+      gap: 1.5rem;
+    }
+    
+    .chart-container {
+      min-height: 250px;
+      max-height: 250px;
+    }
+    
+    .title {
+      font-size: 1.5rem;
+    }
+    
+    .legend-list li {
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
     }
   }
 
   .chart-container {
     flex: 1;
-    display: grid;
-    place-items: center;
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+    min-height: 400px;
+    max-height: 400px;
+    padding: 0;
   }
 
   .legend-container {
     flex: 1;
+    margin-bottom: 0;
+    padding-top: 0;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: space-between;
+    min-height: 400px;
+  }
+
+  .legend-wrapper {
+    margin-top: 4rem;
+    margin-bottom: 4rem;
   }
 
   .title {
-    font-family: 'Play', sans-serif;
-    font-size: 1.8rem;
-    font-weight: 700;
+    font-size: 2rem;
+    font-weight: 400;
     color: var(--color-text-dark);
-    margin-bottom: var(--spacing-margin-bottom-large);
-    line-height: 1.2;
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+    line-height: 1.3;
   }
 
   .legend-list {
     list-style: none;
     padding: 0;
     margin: 0;
+    margin-bottom: 2rem;
   }
 
   .legend-list li {
     display: flex;
     align-items: center;
-    margin-bottom: var(--spacing-margin-bottom-small);
-    font-size: var(--font-size-p);
+    margin-bottom: 3rem;
+    font-size: 1.2rem;
+    color: var(--color-text-main);
   }
 
   .dot {
-    width: 12px;
-    height: 12px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
-    margin-right: 10px;
+    margin-right: 12px;
   }
 
   .dot.completed {
@@ -226,8 +280,11 @@
     background-color: #e6e9f0; /* Light grey for not-started */
   }
 
-  .percentage {
-    font-weight: var(--font-weight-bold);
+  .legend-list li > span:not(.dot) {
     margin-left: auto;
+  }
+
+  .percentage {
+    font-weight: 400;
   }
 </style>
