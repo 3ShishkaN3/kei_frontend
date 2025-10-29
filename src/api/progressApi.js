@@ -121,3 +121,67 @@ export async function getLearningStats() {
         throw error;
     }
 }
+
+/**
+ * Получить статистику по дням (для недели и месяца)
+ * @param {string} period - Период: 'week' или 'month'
+ * @returns {Promise<Array>} - Массив с данными по дням
+ */
+export async function getDailyStats(period = 'week') {
+    try {
+        // Используем существующий эндпоинт для прогресса по урокам
+        const response = await apiFetch(`${progressBaseUrl}/lessons/`);
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `Ошибка получения прогресса уроков: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const lessonProgress = data.results || data;
+        
+        // Группируем данные по дням
+        return groupLessonsByDays(lessonProgress, period);
+    } catch (error) {
+        console.error('Ошибка при получении ежедневной статистики:', error);
+        throw error;
+    }
+}
+
+/**
+ * Группирует прогресс уроков по дням
+ * @param {Array} lessonProgress - Массив прогресса по урокам
+ * @param {string} period - Период: 'week' или 'month'
+ * @returns {Array} - Массив с данными по дням
+ */
+function groupLessonsByDays(lessonProgress, period) {
+    const days = period === 'week' ? 7 : 33;
+    const dailyStats = [];
+    
+    // Создаем массив дат для нужного периода
+    for (let i = days - 1; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        date.setHours(0, 0, 0, 0); // Устанавливаем начало дня
+        
+        const dateStr = date.toISOString().split('T')[0];
+        
+        // Считаем завершенные уроки за этот день
+        const completedLessons = lessonProgress.filter(lesson => {
+            if (!lesson.completed_at) return false;
+            
+            const completedDate = new Date(lesson.completed_at);
+            completedDate.setHours(0, 0, 0, 0);
+            
+            return completedDate.getTime() === date.getTime();
+        }).length;
+        
+        dailyStats.push({
+            date: dateStr,
+            completed_lessons: completedLessons,
+            day_of_week: date.getDay()
+        });
+    }
+    
+    return dailyStats;
+}

@@ -41,6 +41,15 @@
   --color-shadow-hover: rgba(0, 0, 0, 0.15);
   --color-border-light: rgba(0, 0, 0, 0.1);
 
+  /* Пастельные игровые цвета (по тону от красного к фиолетовому) */
+  --color-pastel-red: #ffb3ba;
+  --color-pastel-orange: #ffdfba;
+  --color-pastel-yellow: #ffffba;
+  --color-pastel-green: #baffc9;
+  --color-pastel-cyan: #bae1ff;
+  --color-pastel-blue: #babbff;
+  --color-pastel-purple: #d4baff;
+
   --color-primary-rgb: 175, 164, 255;
 
   /* Основные размеры и интервалы */
