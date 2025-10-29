@@ -40,6 +40,13 @@
 
 </script>
 
+<svelte:head>
+  <title>Вход — Kei</title>
+  <meta name="og:title" content="Вход — Kei" />
+  <meta name="twitter:title" content="Вход — Kei" />
+  <meta name="description" content="Войдите в свой аккаунт Kei для продолжения обучения." />
+</svelte:head>
+
 <style>
 .login-container {
     display: flex;

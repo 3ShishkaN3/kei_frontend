@@ -499,6 +499,13 @@
   });
 </script>
 
+<svelte:head>
+  <title>Настройки — Kei</title>
+  <meta name="og:title" content="Настройки — Kei" />
+  <meta name="twitter:title" content="Настройки — Kei" />
+  <meta name="description" content="Личные данные, безопасность и предпочтения отображения." />
+</svelte:head>
+
 <style>
 main {
   max-width: var(--spacing-main-max-width);

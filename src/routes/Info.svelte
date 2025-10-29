@@ -346,6 +346,13 @@
   }
 </script>
 
+<svelte:head>
+  <title>Информация — Kei</title>
+  <meta name="og:title" content="Информация — Kei" />
+  <meta name="twitter:title" content="Информация — Kei" />
+  <meta name="description" content="О проекте и как связаться с преподавателем на платформе Kei." />
+</svelte:head>
+
 <style>
 /* Основные стили */
 * {

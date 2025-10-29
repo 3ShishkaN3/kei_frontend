@@ -301,6 +301,13 @@
     };
 </script>
 
+<svelte:head>
+    <title>Курсы — Kei</title>
+    <meta name="og:title" content="Курсы — Kei" />
+    <meta name="twitter:title" content="Курсы — Kei" />
+    <meta name="description" content="Выберите курс и начните обучение на платформе Kei." />
+  </svelte:head>
+
 <div class="courses-page {pageVisible ? 'visible' : ''}" key={viewMode}>
     <h1 class="page-title entrance-animation">Курсы</h1>
     

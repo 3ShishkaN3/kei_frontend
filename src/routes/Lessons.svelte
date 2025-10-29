@@ -471,6 +471,13 @@
     }
 </script>
 
+<svelte:head>
+    <title>Список уроков — Kei</title>
+    <meta name="og:title" content="Список уроков — Kei" />
+    <meta name="twitter:title" content="Список уроков — Kei" />
+    <meta name="description" content="Просматривайте уроки и разделы практики выбранного курса на Kei." />
+  </svelte:head>
+
 <div class="course-lessons-page">
     <h1 class="page-title">Список уроков</h1>
 

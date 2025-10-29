@@ -72,8 +72,8 @@
     };
 
     function handleProfile() {
-        console.log("Переход в профиль пользователя");
-        navigate("/profile");
+        console.log("Переход в личный кабинет пользователя");
+        navigate("/statistics");
     }
 
     function handleInfo() {
@@ -84,9 +84,9 @@
         console.log("Нажата кнопка Бонусы");
         navigate("/bonuses");
     }
-    function handleStatistics() {
-        console.log("Нажата кнопка Статистика");
-        navigate("/statistics");
+    function handleSettings() {
+        console.log("Нажата кнопка Настройки");
+        navigate("/profile");
     }
     function handleLessons() {
         console.log("Нажата кнопка Уроки");
@@ -486,7 +486,7 @@
         {#if isAuthenticated}
             <div class="navigation-buttons">
                 <button class="simple-button" on:click={handleBonuses}>Бонусы</button>
-                <button class="simple-button" on:click={handleStatistics}>Статистика</button>
+                <button class="simple-button" on:click={handleSettings}>Настройки</button>
                 <button class="simple-button" on:click={handleLessons}>Уроки</button>
                 <button class="simple-button" on:click={handleCalendar}>Календарь</button>
             </div>
@@ -500,7 +500,7 @@
                             src={$avatar || '/avatar.png'} 
                             alt="Аватар" 
                             class="avatar" 
-                            title="Перейти в профиль"
+                            title="Перейти в личный кабинет"
                     />
                 </div>
                 <button class="logout-button" on:click={handleLogout}>Выход</button>
@@ -529,7 +529,7 @@
                 <div class="mobile-menu-title">Навигация</div>
                 <div class="mobile-nav-buttons">
                     <button class="simple-button" on:click={() => { handleBonuses(); closeMobileMenu(); }}>Бонусы</button>
-                    <button class="simple-button" on:click={() => { handleStatistics(); closeMobileMenu(); }}>Статистика</button>
+                    <button class="simple-button" on:click={() => { handleSettings(); closeMobileMenu(); }}>Настройки</button>
                     <button class="simple-button" on:click={() => { handleLessons(); closeMobileMenu(); }}>Уроки</button>
                     <button class="simple-button" on:click={() => { handleCalendar(); closeMobileMenu(); }}>Календарь</button>
                 </div>
@@ -543,7 +543,7 @@
                             src={$avatar || '/avatar.png'} 
                             alt="Аватар" 
                             class="avatar" 
-                            title="Перейти в профиль"
+                            title="Перейти в личный кабинет"
                         />
                     </div>
                     <button class="simple-button" on:click={() => { handleInfo(); closeMobileMenu(); }}>Информация</button>

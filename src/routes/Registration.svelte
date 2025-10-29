@@ -245,6 +245,13 @@
   }
 </script>
 
+<svelte:head>
+  <title>Регистрация — Kei</title>
+  <meta name="og:title" content="Регистрация — Kei" />
+  <meta name="twitter:title" content="Регистрация — Kei" />
+  <meta name="description" content="Создайте аккаунт на платформе Kei для доступа к курсам." />
+</svelte:head>
+
 
 <style>
     .consultation-container {

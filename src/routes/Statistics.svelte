@@ -4,6 +4,13 @@
   import WeeklyStatistics from '../components/statistics/WeeklyStatistics.svelte';
 </script>
 
+<svelte:head>
+  <title>Личный кабинет — Kei</title>
+  <meta name="og:title" content="Личный кабинет — Kei" />
+  <meta name="twitter:title" content="Личный кабинет — Kei" />
+  <meta name="description" content="Ваш прогресс, достижения и активность на платформе Kei." />
+</svelte:head>
+
 <div class="statistics-page">
   <section class="main-section">
     <div class="progress-container">

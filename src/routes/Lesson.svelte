@@ -663,6 +663,12 @@
         }
     }
 </script>
+
+<svelte:head>
+    <title>{lessonData ? `${lessonData.title} — Kei` : 'Урок — Kei'}</title>
+    <meta name="og:title" content={lessonData ? `${lessonData.title} — Kei` : 'Урок — Kei'} />
+    <meta name="twitter:title" content={lessonData ? `${lessonData.title} — Kei` : 'Урок — Kei'} />
+  </svelte:head>
 <!-- Добавляем on:click={handleOverlayClick} -->
 <div 
     class="lesson-page-container {isAdminOrStaff && viewMode === 'admin' ? 'admin-view' : 'student-view'}"
