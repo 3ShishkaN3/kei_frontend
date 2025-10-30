@@ -2,6 +2,12 @@
   import Achievements from '../components/statistics/Achievements.svelte';
   import CourseProgress from '../components/statistics/CourseProgress.svelte';
   import WeeklyStatistics from '../components/statistics/WeeklyStatistics.svelte';
+  import Calendar from '../components/statistics/Calendar.svelte';
+  import { user as userStore } from '../stores/user.js';
+  let currentUser = null;
+  userStore.subscribe((u) => {
+    currentUser = u && u.isAuthenticated ? { role: u.role } : null;
+  });
 </script>
 
 <svelte:head>
@@ -24,6 +30,13 @@
   <!-- Новый блок статистики -->
   <section class="weekly-stats-section">
     <WeeklyStatistics />
+  </section>
+
+  <section class="calendar-section">
+    <div class="calendar-card">
+      <h2 class="calendar-title">Календарь</h2>
+      <Calendar {currentUser} />
+    </div>
   </section>
 </div>
 
@@ -67,5 +80,30 @@
     margin-top: 2rem;
     display: flex;
     justify-content: center;
+  }
+
+  .calendar-section {
+    width: var(--spacing-main-width);
+    max-width: var(--spacing-main-max-width);
+    margin: 24px auto 0;
+    box-sizing: border-box;
+    padding: 0 0 24px 0;
+  }
+  .calendar-card {
+    background: var(--color-block-bg);
+    border: 1px solid var(--color-block-border);
+    border-radius: var(--spacing-border-radius-card);
+    padding: var(--spacing-block-padding);
+    box-shadow: 0 4px 20px var(--color-block-shadow);
+  }
+  .calendar-title {
+    margin: 0 0 12px 0;
+    color: var(--color-text-dark);
+    font-weight: 400;
+    font-family: 'Play', sans-serif;
+    font-size: 1.5rem;
+  }
+  @media (max-width: 992px) {
+    .calendar-section { width: 100%; padding: 0 12px 24px; }
   }
 </style>

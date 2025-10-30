@@ -92,10 +92,7 @@
         console.log("Нажата кнопка Уроки");
         navigate("/courses");
     }
-    function handleCalendar() {
-        console.log("Нажата кнопка Календарь");
-        navigate("/calendar");
-    }
+    
 </script>
 
 <style>
@@ -488,7 +485,6 @@
                 <button class="simple-button" on:click={handleBonuses}>Бонусы</button>
                 <button class="simple-button" on:click={handleSettings}>Настройки</button>
                 <button class="simple-button" on:click={handleLessons}>Уроки</button>
-                <button class="simple-button" on:click={handleCalendar}>Календарь</button>
             </div>
             
             <div class="divider"></div>
@@ -531,7 +527,6 @@
                     <button class="simple-button" on:click={() => { handleBonuses(); closeMobileMenu(); }}>Бонусы</button>
                     <button class="simple-button" on:click={() => { handleSettings(); closeMobileMenu(); }}>Настройки</button>
                     <button class="simple-button" on:click={() => { handleLessons(); closeMobileMenu(); }}>Уроки</button>
-                    <button class="simple-button" on:click={() => { handleCalendar(); closeMobileMenu(); }}>Календарь</button>
                 </div>
             </div>
             

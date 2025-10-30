@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { getDailyStats } from '../../api/progressApi.js';
+  import { user as userStore } from '../../stores/user.js';
 
   let currentPeriod = 'week'; // 'week' или 'month'
   let dailyStats = [];
@@ -10,6 +11,11 @@
   let hoveredItem = null;
   let tooltipX = 0;
   let tooltipY = 0;
+  let currentUser = null;
+
+  userStore.subscribe((u) => {
+    currentUser = u && u.isAuthenticated ? { role: u.role } : null;
+  });
 
   $: periodLabel = currentPeriod === 'week' ? 'неделю' : 'месяц';
   $: buttonLabel = currentPeriod === 'week' ? 'Неделя' : 'Месяц';
@@ -166,7 +172,9 @@
       </div>
     </div>
   {/if}
-</div>
+  </div>
+
+  
 
 <style>
   .weekly-stats-container {
@@ -380,6 +388,10 @@
   .legend-label {
     font-size: 0.75rem;
   }
+
+  /* Ensure stats container stays responsive (existing rules kept) */
+  .weekly-stats-container { width: 100%; box-sizing: border-box; }
+
 
   /* Tooltip */
   .tooltip {

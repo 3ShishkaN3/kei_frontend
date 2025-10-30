@@ -397,3 +397,10 @@ button:not(:disabled):active {
 button:focus {
 	border-color: #666;
 }
+
+/* Calendar utility styles */
+.cal-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; font-size: 0.85rem; }
+.cal-chip--planned { background: var(--color-purple-light); color: #222; }
+.cal-chip--in-progress { background: var(--color-soft-blue); color: #222; }
+.cal-chip--completed { background: var(--color-pastel-green); color: #222; }
+.cal-chip--cancelled { background: var(--color-danger-red); color: #fff; }
