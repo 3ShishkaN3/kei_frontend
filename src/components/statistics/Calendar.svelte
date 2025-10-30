@@ -102,6 +102,7 @@ function resetEvent(date) {
   }
 
   $: gridDates = computeGridDates(year, month);
+  const todayKey = toLocalDateKey(new Date());
 
   function addDays(keyStr, delta) {
     const d = new Date(keyStr);
@@ -280,7 +281,7 @@ async function saveEvent() {
     <div class="cal-weekday">Вс</div>
 
     {#each gridDates as cellDate, i (cellDate.toISOString())}
-      <div class="cal-cell {cellDate.getMonth() !== month ? 'cal-cell--muted' : ''} {(cellDate.getDay()===0 ? 'cal-cell--sunday' : cellDate.getDay()===6 ? 'cal-cell--saturday' : cellDate.getDay()===1 ? 'cal-cell--monday' : cellDate.getDay()===2 ? 'cal-cell--tuesday' : cellDate.getDay()===3 ? 'cal-cell--wednesday' : cellDate.getDay()===4 ? 'cal-cell--thursday' : 'cal-cell--friday')} {eventsForDay(toLocalDateKey(cellDate)).length===0 && !noteForDay(toLocalDateKey(cellDate)) ? 'cal-cell--empty' : ''}">
+      <div class="cal-cell {cellDate.getMonth() !== month ? 'cal-cell--muted' : ''} {(cellDate.getDay()===0 ? 'cal-cell--sunday' : cellDate.getDay()===6 ? 'cal-cell--saturday' : cellDate.getDay()===1 ? 'cal-cell--monday' : cellDate.getDay()===2 ? 'cal-cell--tuesday' : cellDate.getDay()===3 ? 'cal-cell--wednesday' : cellDate.getDay()===4 ? 'cal-cell--thursday' : 'cal-cell--friday')} {eventsForDay(toLocalDateKey(cellDate)).length===0 && !noteForDay(toLocalDateKey(cellDate)) ? 'cal-cell--empty' : ''} {toLocalDateKey(cellDate)===todayKey ? 'cal-cell--today' : ''}">
         <div class="cal-cell-head">
           <span class="cal-day-number">{cellDate.getDate()}</span>
           <div class="cal-actions">
@@ -373,6 +374,8 @@ async function saveEvent() {
   /* Colorful cell backgrounds (subtle pastel colors by day of week) */
   .cal-cell { border: 1px solid var(--color-border-light); border-radius: 12px; padding: 6px; min-height: 110px; display: flex; flex-direction: column; gap: 6px; position: relative; }
   .cal-cell--muted { opacity: 0.5; }
+  .cal-cell--today { box-shadow: inset 0 0 0 2px var(--color-primary); }
+  .cal-cell--today .cal-day-number { color: var(--color-primary); font-weight: 600; }
   /* Pastel colors for each day of week */
   .cal-cell--monday { background: rgba(194, 182, 252, 0.12); }
   .cal-cell--tuesday { background: rgba(133, 171, 230, 0.12); }
