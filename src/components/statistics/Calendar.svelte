@@ -1,11 +1,13 @@
 <script>
   import { onMount } from 'svelte';
   import { fetchEvents, createEvent, updateEvent, deleteEvent, fetchNotes, upsertNote, deleteNote } from '../../api/calendarApi';
+  import { fetchStudents } from '../../api/authApi';
   import Button from '../ui/Button.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import Input from '../ui/Input.svelte';
   import Textarea from '../ui/Textarea.svelte';
   import Select from '../ui/Select.svelte';
+  import MultiSelect from '../ui/MultiSelect.svelte';
   import Modal from '../ui/Modal.svelte';
 
   export let currentUser = null; // { id, role }
@@ -21,6 +23,10 @@
   let error = '';
   let requestId = 0; // protects against stale async responses
 
+  // Students list for admin/teacher
+  let students = [];
+  let studentsLoading = false;
+
   // Filters for admin/teacher
   let filter = { participant_id: '', status: '', from: '', to: '' };
 
@@ -29,6 +35,9 @@
   let showNoteModal = false;
   let draftEvent = resetEvent();
   let draftNote = resetNote();
+  
+  // Convert students to options for Select components
+  $: studentOptions = Array.isArray(students) ? students.map(s => ({ label: s.username || s.email, value: String(s.id) })) : [];
 
 function toLocalInput(dt) {
   const d = new Date(dt);
@@ -137,6 +146,23 @@ function resetEvent(date) {
   $: eventsByDate = buildEventsByDate(events, year, month);
   $: notesByDate = buildNotesByDate(notes);
 
+  async function loadStudents() {
+    if (!isStaff()) {
+      students = [];
+      return;
+    }
+    studentsLoading = true;
+    try {
+      const result = await fetchStudents();
+      students = Array.isArray(result) ? result : [];
+    } catch (e) {
+      console.error('Failed to load students:', e);
+      students = [];
+    } finally {
+      studentsLoading = false;
+    }
+  }
+
   async function load() {
     loading = true; error = '';
     const rid = ++requestId;
@@ -194,12 +220,28 @@ function resetEvent(date) {
     showEventModal = true;
   }
 function openEditEvent(ev) {
-  draftEvent = { ...ev, start_at: toLocalInput(ev.start_at), end_at: toLocalInput(ev.end_at), participants: [] };
+  // Extract participant IDs from event (API returns participant_ids as array of numbers)
+  const participantIds = ev.participant_ids ? ev.participant_ids.map(id => String(id)) : [];
+  draftEvent = { 
+    ...ev, 
+    start_at: toLocalInput(ev.start_at), 
+    end_at: toLocalInput(ev.end_at), 
+    participants: participantIds 
+  };
   showEventModal = true;
 }
 async function saveEvent() {
   try {
-    const payload = { ...draftEvent, start_at: fromLocalInputToISO(draftEvent.start_at), end_at: fromLocalInputToISO(draftEvent.end_at) };
+    // Convert participant IDs from strings to numbers
+    const participantIds = Array.isArray(draftEvent.participants) 
+      ? draftEvent.participants.map(id => parseInt(id, 10)).filter(id => !isNaN(id))
+      : [];
+    const payload = { 
+      ...draftEvent, 
+      start_at: fromLocalInputToISO(draftEvent.start_at), 
+      end_at: fromLocalInputToISO(draftEvent.end_at),
+      participants: participantIds
+    };
     if (draftEvent.id) await updateEvent(draftEvent.id, payload);
     else await createEvent(payload);
     showEventModal = false;
@@ -242,7 +284,10 @@ async function saveEvent() {
     load();
   }
 
-  onMount(load);
+  onMount(async () => {
+    await loadStudents();
+    await load();
+  });
 </script>
 
 <div class="cal-wrapper">
@@ -254,7 +299,16 @@ async function saveEvent() {
     </div>
     {#if isStaff()}
       <div class="cal-filters">
-        <Input placeholder="ID участника" type="number" bind:value={filter.participant_id} on:change={load} />
+        <Select 
+          label="Участник" 
+          bind:value={filter.participant_id} 
+          on:change={load} 
+          options={[
+            {label: 'Все участники', value: ''},
+            ...studentOptions
+          ]}
+          disabled={studentsLoading}
+        />
         <Select bind:value={filter.status} on:change={load} options={[
           {label:'Статус: все', value:''},
           {label:'запланировано', value:'planned'},
@@ -325,7 +379,12 @@ async function saveEvent() {
       {label:'отменено', value:'cancelled'}
     ]} />
     {#if isStaff()}
-      <Input label="ID участников (через запятую)" placeholder="1,2,3" on:change={(e)=> draftEvent.participants = e.target.value.split(',').map(x=>parseInt(x.trim())).filter(Boolean)} />
+      <MultiSelect 
+        label="Участники" 
+        bind:value={draftEvent.participants} 
+        options={studentOptions}
+        disabled={studentsLoading}
+      />
     {/if}
     <div class="row">
       <Select label="Повторение" bind:value={draftEvent.recurrence_frequency} options={[{label:'нет', value:'none'},{label:'каждый день', value:'daily'},{label:'каждую неделю', value:'weekly'},{label:'каждый месяц', value:'monthly'}]} />
@@ -357,13 +416,18 @@ async function saveEvent() {
 
 <style>
   /* Integrate calendar into parent card (no nested card look) */
-  .cal-wrapper { background: transparent; border: none; box-shadow: none; padding: 0; font-family: 'Play', sans-serif; }
+  .cal-wrapper { background: transparent; border: none; box-shadow: none; padding: 0; font-family: var(--font-family-primary); }
   .cal-wrapper:hover { box-shadow: none; }
+  
+  /* Use main site font in modals */
+  :global(.modal), :global(.modal *), :global(.modal-title), :global(.modal-body), :global(.modal-actions) {
+    font-family: var(--font-family-primary) !important;
+  }
   .cal-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
   .cal-nav { display: flex; align-items: center; gap: 12px; width: 100%; }
   .cal-nav :global(.icon-btn) { flex-shrink: 0; }
   .cal-title { flex: 1; text-align: center; font-family: 'Play', sans-serif; font-weight: 600; color: var(--color-primary); text-transform: capitalize; font-size: 1.5rem; }
-  .cal-filters { display: flex; gap: 10px; }
+  .cal-filters { display: flex; gap: 10px; align-items: flex-end;}
   .input { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--color-input-border); background: var(--color-input-bg); }
   /* removed old simple button styles in favor of IconButton */
 

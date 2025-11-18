@@ -25,18 +25,18 @@
         return Array.from({ length: end - start + 1 }, (_, i) => start + i);
     })();
 
-    // Ensure currentPage always stays within visible range
+    // Keep `pageRangeStart` clamped to valid bounds, but do NOT auto-move
+    // the visible block to include `currentPage`. This lets arrows flip
+    // visible blocks independently of which page is active.
     $: {
-        if (currentPage < pageRangeStart) {
-            pageRangeStart = currentPage;
-        } else if (currentPage > pageRangeStart + maxVisibleButtons - 1) {
-            pageRangeStart = Math.max(1, currentPage - maxVisibleButtons + 1);
-        }
+        const maxStart = Math.max(totalPages - maxVisibleButtons + 1, 1);
+        if (pageRangeStart < 1) pageRangeStart = 1;
+        else if (pageRangeStart > maxStart) pageRangeStart = maxStart;
     }
 
     // Add functions to flip paginator range
     function shiftPaginatorLeft() {
-        // Переключаемся на предыдущий блок, если это возможно
+        // Переключаемся на предыдущий блок страниц (сдвиг на maxVisibleButtons)
         const newStart = Math.max(1, pageRangeStart - maxVisibleButtons);
         if (newStart !== pageRangeStart) {
             pageRangeStart = newStart;
@@ -44,7 +44,7 @@
     }
 
     function shiftPaginatorRight() {
-        // Переключаемся на следующий блок, если это возможно
+        // Переключаемся на следующий блок страниц (сдвиг на maxVisibleButtons)
         const maxStart = Math.max(totalPages - maxVisibleButtons + 1, 1);
         const newStart = Math.min(maxStart, pageRangeStart + maxVisibleButtons);
         if (newStart !== pageRangeStart) {

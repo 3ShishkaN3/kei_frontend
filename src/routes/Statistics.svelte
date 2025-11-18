@@ -3,11 +3,16 @@
   import CourseProgress from '../components/statistics/CourseProgress.svelte';
   import WeeklyStatistics from '../components/statistics/WeeklyStatistics.svelte';
   import Calendar from '../components/statistics/Calendar.svelte';
+  import StudentsAdminPanel from '../components/statistics/StudentsAdminPanel.svelte';
   import { user as userStore } from '../stores/user.js';
   let currentUser = null;
+  let userRole = null;
   userStore.subscribe((u) => {
     currentUser = u && u.isAuthenticated ? { role: u.role } : null;
+    userRole = u && u.isAuthenticated ? u.role : null;
   });
+  
+  $: isAdminOrTeacher = userRole === 'admin' || userRole === 'teacher';
 </script>
 
 <svelte:head>
@@ -38,6 +43,12 @@
       <Calendar {currentUser} />
     </div>
   </section>
+  
+  {#if isAdminOrTeacher}
+    <section class="admin-section">
+      <StudentsAdminPanel {userRole} />
+    </section>
+  {/if}
 </div>
 
 <style>
@@ -105,5 +116,9 @@
   }
   @media (max-width: 992px) {
     .calendar-section { width: 100%; padding: 0 12px 24px; }
+  }
+  
+  .admin-section {
+    margin-top: 2rem;
   }
 </style>
