@@ -7,6 +7,9 @@
         BackgroundVariant,
     } from "@xyflow/svelte";
     import "@xyflow/svelte/dist/style.css";
+    import Plus from "svelte-material-icons/Plus.svelte";
+    import ContentSave from "svelte-material-icons/ContentSave.svelte";
+    import Close from "svelte-material-icons/Close.svelte";
 
     import TriggerNode from "./nodes/TriggerNode.svelte";
     import ConditionNode from "./nodes/ConditionNode.svelte";
@@ -111,7 +114,7 @@
             }
 
             if (response.ok) {
-                alert("Достижение сохранено!");
+                // alert("Достижение сохранено!"); // Removed alert for better UX
                 dispatch("save");
             } else {
                 const err = await response.json();
@@ -129,58 +132,66 @@
 </script>
 
 <div class="achievement-editor">
-    <div class="editor-header">
-        <h2 class="editor-title">
-            {id ? "Редактировать" : "Создать"} достижение
-        </h2>
-        <div class="editor-controls">
-            <button class="btn btn--secondary" on:click={addCondition}
-                >+ Условие</button
-            >
+    <div class="editor-content">
+        <div class="editor-meta">
+            <div class="form-group">
+                <label for="title">Название</label>
+                <input
+                    id="title"
+                    type="text"
+                    bind:value={achievementTitle}
+                    placeholder="Например: Снайпер"
+                />
+            </div>
+            <div class="form-group">
+                <label for="xp">Опыт (XP)</label>
+                <input
+                    id="xp"
+                    type="number"
+                    bind:value={achievementXP}
+                    placeholder="100"
+                />
+            </div>
         </div>
-    </div>
+        <div class="form-group full-width">
+            <label for="desc">Описание</label>
+            <textarea
+                id="desc"
+                bind:value={achievementDescription}
+                placeholder="Описание достижения..."
+                rows="3"
+            ></textarea>
+        </div>
 
-    <div class="editor-meta">
-        <div class="form-group">
-            <label for="title">Название</label>
-            <input
-                id="title"
-                type="text"
-                bind:value={achievementTitle}
-                placeholder="Например: Снайпер"
-            />
+        <div class="flow-header">
+            <h3>Условия получения</h3>
+            <button class="btn-icon-text" on:click={addCondition}>
+                <Plus size="18px" />
+                <span>Добавить условие</span>
+            </button>
         </div>
-        <div class="form-group">
-            <label for="xp">Опыт (XP)</label>
-            <input
-                id="xp"
-                type="number"
-                bind:value={achievementXP}
-                placeholder="100"
-            />
-        </div>
-    </div>
-    <div class="form-group full-width">
-        <label for="desc">Описание</label>
-        <textarea
-            id="desc"
-            bind:value={achievementDescription}
-            placeholder="Описание достижения..."
-        ></textarea>
-    </div>
 
-    <div class="flow-container">
-        <SvelteFlow {nodes} {edges} {nodeTypes} fitView>
-            <Controls />
-            <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-        </SvelteFlow>
+        <div class="flow-container">
+            <SvelteFlow {nodes} {edges} {nodeTypes} fitView>
+                <Controls />
+                <Background
+                    variant={BackgroundVariant.Dots}
+                    gap={12}
+                    size={1}
+                />
+            </SvelteFlow>
+        </div>
     </div>
 
     <div class="editor-actions">
-        <button class="btn btn--secondary" on:click={cancel}>Отмена</button>
-        <button class="btn btn--primary" on:click={saveAchievement}
-            >Сохранить</button
-        >
+        <button class="btn btn--secondary" on:click={cancel}>
+            <Close size="18px" />
+            <span>Отмена</span>
+        </button>
+        <button class="btn btn--primary" on:click={saveAchievement}>
+            <ContentSave size="18px" />
+            <span>Сохранить</span>
+        </button>
     </div>
 </div>
 
@@ -190,32 +201,21 @@
         flex-direction: column;
         height: 80vh;
         box-sizing: border-box;
-        background: var(--color-bg-ultra-light);
+        background: var(--color-bg-light);
+        /* Removed padding as it might be handled by modal */
     }
 
-    .editor-header {
+    .editor-content {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 0 4px; /* Small padding for scrollbar space */
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: var(--spacing-margin-bottom-medium);
-    }
-
-    .editor-title {
-        font-family: var(--font-family-primary);
-        font-size: 1.5rem;
-        color: var(--color-text-dark);
-        font-weight: var(--font-weight-bold);
-        margin: 0;
-    }
-
-    .editor-controls {
-        display: flex;
-        gap: var(--spacing-gap-small);
+        flex-direction: column;
     }
 
     .editor-meta {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 2fr 1fr;
         gap: var(--spacing-gap-medium);
         margin-bottom: var(--spacing-margin-bottom-small);
     }
@@ -223,6 +223,7 @@
     .form-group {
         display: flex;
         flex-direction: column;
+        margin-bottom: 1rem;
     }
 
     .form-group.full-width {
@@ -231,38 +232,98 @@
     }
 
     label {
-        font-family: var(--font-family-secondary);
+        font-family: var(--font-family-primary);
         font-size: 0.9rem;
         color: var(--color-text-muted);
-        margin-bottom: 5px;
+        margin-bottom: 8px;
+        font-weight: 500;
     }
 
     input,
     textarea {
-        padding: var(--spacing-input-padding);
-        border: 1px solid var(--color-input-border);
-        border-radius: var(--spacing-input-border-radius);
-        background: var(--color-input-bg);
+        padding: 12px 16px;
+        border: 1px solid var(--color-border-light);
+        border-radius: var(--spacing-border-radius-input);
+        background: var(--color-bg-very-light);
         font-family: var(--font-family-secondary);
         font-size: 1rem;
-        transition: var(--input-transition);
+        color: var(--color-text-dark);
+        transition: all 0.2s ease;
     }
 
     input:focus,
     textarea:focus {
-        border-color: var(--color-input-focus-border);
-        box-shadow: 0 0 0 3px var(--color-input-focus-shadow);
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px var(--color-primary-transparent);
         outline: none;
+        background: #fff;
+    }
+
+    .flow-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .flow-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: var(--color-text-dark);
+        font-weight: 600;
+    }
+
+    .btn-icon-text {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: transparent;
+        border: 1px solid var(--color-primary);
+        color: var(--color-primary);
+        padding: 6px 12px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .btn-icon-text:hover {
+        background: var(--color-primary-light);
+    }
+
+    .flow-container {
+        flex-grow: 1;
+        background: #fff;
+        border-radius: var(--spacing-border-radius-block);
+        border: 1px solid var(--color-border-light);
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+        min-height: 300px;
+        margin-bottom: 1rem;
+    }
+
+    .editor-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding-top: 1rem;
+        border-top: 1px solid var(--color-border-light);
+        margin-top: auto;
     }
 
     .btn {
-        padding: var(--spacing-padding-button-medium);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
         border: none;
         border-radius: var(--spacing-border-radius-button);
         font-family: var(--font-family-primary);
         font-weight: var(--font-weight-medium);
         cursor: pointer;
         transition: all 0.3s ease;
+        font-size: 0.95rem;
     }
 
     .btn--primary {
@@ -272,6 +333,7 @@
             var(--color-auth-button-gradient-end)
         );
         color: var(--color-auth-button-text);
+        box-shadow: 0 4px 10px rgba(var(--color-primary-rgb), 0.3);
     }
 
     .btn--primary:hover {
@@ -281,32 +343,18 @@
             var(--color-auth-button-gradient-hover-end)
         );
         transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 6px 15px rgba(var(--color-primary-rgb), 0.4);
     }
 
     .btn--secondary {
         background: var(--color-bg-light);
-        color: var(--color-text-dark);
+        color: var(--color-text-muted);
         border: 1px solid var(--color-border-light);
     }
 
     .btn--secondary:hover {
-        background: var(--color-simple-button-hover-bg);
-    }
-
-    .flow-container {
-        flex-grow: 1;
-        background: #fff;
-        border-radius: var(--spacing-border-radius-block);
-        box-shadow: 0 4px 12px var(--color-shadow);
-        overflow: hidden;
-        min-height: 300px;
-        margin-bottom: 1rem;
-    }
-
-    .editor-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
+        background: var(--color-bg-very-light);
+        color: var(--color-text-dark);
+        border-color: var(--color-border-dark);
     }
 </style>
