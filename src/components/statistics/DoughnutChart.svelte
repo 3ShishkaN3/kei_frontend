@@ -1,6 +1,9 @@
 <script>
-  import { onMount, afterUpdate } from 'svelte';
-  import Chart from 'chart.js/auto';
+  import { onMount, afterUpdate } from "svelte";
+  import Chart from "chart.js/auto";
+
+  // Fallback if Chart is undefined (sometimes happens with Rollup/CJS interop)
+  const ChartConstructor = Chart?.default || Chart;
 
   export let data = [];
   export let labels = [];
@@ -10,32 +13,34 @@
   let chart;
 
   onMount(() => {
-    const ctx = canvas.getContext('2d');
-    chart = new Chart(ctx, {
-      type: 'doughnut',
+    const ctx = canvas.getContext("2d");
+    chart = new ChartConstructor(ctx, {
+      type: "doughnut",
       data: {
         labels: labels,
-        datasets: [{
-          data: data,
-          backgroundColor: colors,
-          borderWidth: 0,
-          hoverOffset: 4
-        }]
+        datasets: [
+          {
+            data: data,
+            backgroundColor: colors,
+            borderWidth: 0,
+            hoverOffset: 4,
+          },
+        ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: true,
         aspectRatio: 1,
-        cutout: '65%',
+        cutout: "65%",
         plugins: {
           legend: {
-            display: false
+            display: false,
           },
           tooltip: {
-            enabled: false
-          }
-        }
-      }
+            enabled: false,
+          },
+        },
+      },
     });
   });
 
@@ -58,19 +63,19 @@
     height: 400px;
     margin: auto;
   }
-  
+
   canvas {
     max-width: 100%;
     max-height: 100%;
   }
-  
+
   @media (max-width: 768px) {
     .chart-container {
       width: 300px;
       height: 300px;
     }
   }
-  
+
   @media (max-width: 576px) {
     .chart-container {
       width: 250px;

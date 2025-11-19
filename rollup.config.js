@@ -74,6 +74,15 @@ export default {
 
 	},
 
+	onwarn(warning, warn) {
+		// Ignore circular dependency warnings from d3-selection
+		if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message.includes('d3-selection')) return;
+
+		// Ignore eval warning from pdfjs-dist
+		if (warning.code === 'EVAL' && warning.id && warning.id.includes('pdfjs-dist')) return;
+
+		warn(warning);
+	},
 	plugins: [
 
 		replace({
@@ -120,8 +129,8 @@ export default {
 
 			dedupe: ['svelte'],
 
-			exportConditions: ['svelte']
-
+			exportConditions: ['svelte', 'import', 'module', 'browser', 'default'],
+			extensions: ['.mjs', '.js', '.json', '.node', '.svelte']
 		}),
 
 
