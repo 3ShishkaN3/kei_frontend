@@ -124,17 +124,16 @@ export default {
 		// https://github.com/rollup/plugins/tree/master/packages/commonjs
 
 		resolve({
-
 			browser: true,
-
 			dedupe: ['svelte'],
-
 			exportConditions: ['svelte', 'import', 'module', 'browser', 'default'],
-			extensions: ['.mjs', '.js', '.json', '.node', '.svelte']
+			extensions: ['.mjs', '.js', '.json', '.node', '.svelte'],
+			preferBuiltins: false
 		}),
 
-
-		commonjs(),
+		commonjs({
+			requireReturnsDefault: 'auto'
+		}),
 
 
 		// If we're building for production (npm run build

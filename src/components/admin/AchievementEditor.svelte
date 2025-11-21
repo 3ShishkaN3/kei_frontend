@@ -10,6 +10,9 @@
     import Plus from "svelte-material-icons/Plus.svelte";
     import ContentSave from "svelte-material-icons/ContentSave.svelte";
     import Close from "svelte-material-icons/Close.svelte";
+    import ImagePlus from "svelte-material-icons/ImagePlus.svelte";
+    import Cropper from "svelte-easy-crop";
+    import { addNotification } from "../../stores/notifications.js";
 
     import TriggerNode from "./nodes/TriggerNode.svelte";
     import ConditionNode from "./nodes/ConditionNode.svelte";
@@ -37,7 +40,17 @@
 
     let achievementTitle = "";
     let achievementDescription = "";
+
     let achievementXP = 0;
+
+    // Image handling
+    let image_file = null;
+    let image_preview = null;
+    let showCropper = false;
+    let crop = { x: 0, y: 0 };
+    let zoom = 1;
+    let croppedAreaPixels = null;
+    let image_for_cropper = null;
 
     import { onMount, createEventDispatcher } from "svelte";
     import { api } from "../../api/api";
@@ -71,6 +84,11 @@
                     achievementTitle = data.title;
                     achievementDescription = data.description;
                     achievementXP = data.xp_reward;
+                    if (data.icon) {
+                        image_preview = data.icon.startsWith("http")
+                            ? data.icon
+                            : `${API_BASE_URL}${data.icon}`;
+                    }
                     if (data.rule_graph) {
                         nodes.set(data.rule_graph.nodes || initialNodes);
                         edges.set(data.rule_graph.edges || initialEdges);
@@ -85,19 +103,78 @@
         }
     });
 
+    async function getCroppedImg(imageSrc, pixelCrop) {
+        const image = new Image();
+        image.src = imageSrc;
+        await new Promise((resolve) => {
+            image.onload = resolve;
+        });
+        const canvas = document.createElement("canvas");
+        canvas.width = pixelCrop.width;
+        canvas.height = pixelCrop.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(
+            image,
+            pixelCrop.x,
+            pixelCrop.y,
+            pixelCrop.width,
+            pixelCrop.height,
+            0,
+            0,
+            pixelCrop.width,
+            pixelCrop.height,
+        );
+        return new Promise((resolve) => {
+            canvas.toBlob((blob) => {
+                resolve(blob);
+            }, "image/png");
+        });
+    }
+
+    function handleFileChange(e) {
+        const file = e.target.files[0];
+        if (file) {
+            image_file = file;
+            image_for_cropper = URL.createObjectURL(file);
+            showCropper = true;
+            crop = { x: 0, y: 0 };
+            zoom = 1;
+        }
+    }
+
+    function onCropComplete(e) {
+        croppedAreaPixels = e.detail.pixels;
+    }
+
+    function removeImage() {
+        image_file = null;
+        image_preview = null;
+        showCropper = false;
+        image_for_cropper = null;
+    }
+
     async function saveAchievement() {
         const graph = {
             nodes: $nodes,
             edges: $edges,
         };
 
-        const payload = {
-            title: achievementTitle,
-            description: achievementDescription,
-            xp_reward: achievementXP,
-            rule_graph: graph,
-            is_active: true,
-        };
+        const payload = new FormData();
+        payload.append("title", achievementTitle);
+        payload.append("description", achievementDescription);
+        payload.append("xp_reward", achievementXP);
+        payload.append("rule_graph", JSON.stringify(graph));
+        payload.append("is_active", "true");
+
+        if (image_file && showCropper && croppedAreaPixels) {
+            const blob = await getCroppedImg(
+                image_for_cropper,
+                croppedAreaPixels,
+            );
+            payload.append("icon", blob, "icon.png");
+        } else if (image_file) {
+            payload.append("icon", image_file);
+        }
 
         try {
             let response;
@@ -114,15 +191,18 @@
             }
 
             if (response.ok) {
-                // alert("Достижение сохранено!"); // Removed alert for better UX
+                addNotification("Достижение сохранено!", "success");
                 dispatch("save");
             } else {
                 const err = await response.json();
-                alert(`Ошибка сохранения: ${JSON.stringify(err)}`);
+                addNotification(
+                    `Ошибка сохранения: ${JSON.stringify(err)}`,
+                    "error",
+                );
             }
         } catch (e) {
             console.error(e);
-            alert("Ошибка соединения при сохранении");
+            addNotification("Ошибка соединения при сохранении", "error");
         }
     }
 
@@ -153,6 +233,50 @@
                 />
             </div>
         </div>
+
+        <div class="form-group full-width">
+            <label>Иконка</label>
+            <div class="image-upload-container">
+                {#if showCropper && image_for_cropper}
+                    <div class="cropper-wrapper">
+                        <Cropper
+                            image={image_for_cropper}
+                            bind:crop
+                            bind:zoom
+                            aspect={1}
+                            on:cropcomplete={onCropComplete}
+                        />
+                    </div>
+                    <div class="cropper-controls">
+                        <button
+                            class="btn btn--secondary btn-sm"
+                            on:click={removeImage}
+                        >
+                            <Close size="16px" /> Удалить
+                        </button>
+                    </div>
+                {:else if image_preview}
+                    <div class="image-preview">
+                        <img src={image_preview} alt="Icon preview" />
+                        <button class="btn-icon-remove" on:click={removeImage}>
+                            <Close size="16px" />
+                        </button>
+                    </div>
+                {:else}
+                    <label class="upload-placeholder">
+                        <ImagePlus size="32px" />
+                        <span>Загрузить иконку</span>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            on:change={handleFileChange}
+                            hidden
+                        />
+                    </label>
+                {/if}
+            </div>
+        </div>
+
         <div class="form-group full-width">
             <label for="desc">Описание</label>
             <textarea
@@ -356,5 +480,74 @@
         background: var(--color-bg-very-light);
         color: var(--color-text-dark);
         border-color: var(--color-border-dark);
+    }
+
+    .image-upload-container {
+        border: 2px dashed var(--color-border-light);
+        border-radius: var(--spacing-border-radius-block);
+        padding: 1rem;
+        display: flex;
+        justify-content: center;
+        background: var(--color-bg-very-light);
+    }
+
+    .upload-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        color: var(--color-text-muted);
+    }
+
+    .upload-placeholder:hover {
+        color: var(--color-primary);
+    }
+
+    .cropper-wrapper {
+        position: relative;
+        width: 100%;
+        height: 300px;
+        background: #333;
+    }
+
+    .cropper-controls {
+        margin-top: 10px;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .image-preview {
+        position: relative;
+        width: 100px;
+        height: 100px;
+    }
+
+    .image-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+
+    .btn-icon-remove {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background: var(--color-danger-red, #ff4d4f);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 0.85rem;
     }
 </style>
