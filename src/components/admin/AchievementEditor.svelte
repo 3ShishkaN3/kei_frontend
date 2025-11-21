@@ -16,11 +16,19 @@
 
     import TriggerNode from "./nodes/TriggerNode.svelte";
     import ConditionNode from "./nodes/ConditionNode.svelte";
+    import LogicNode from "./nodes/LogicNode.svelte";
+    import TimeNode from "./nodes/TimeNode.svelte";
+    import RangeNode from "./nodes/RangeNode.svelte";
+    import AchievementCheckNode from "./nodes/AchievementCheckNode.svelte";
 
     // Node Types Mapping
     const nodeTypes = {
         trigger: TriggerNode,
         condition: ConditionNode,
+        logic: LogicNode,
+        time: TimeNode,
+        range: RangeNode,
+        achievement_check: AchievementCheckNode,
     };
 
     // Initial Nodes
@@ -59,16 +67,29 @@
     export let id = null; // Prop from parent if editing
     const dispatch = createEventDispatcher();
 
-    // Helper to add new condition node
-    function addCondition() {
+    // Helper to add new nodes
+    function addNode(type, label) {
         const id = `node-${Math.random().toString(36).substr(2, 9)}`;
+        const yOffset = 200 + $nodes.length * 50;
+
+        let initialData = {};
+        if (type === "condition")
+            initialData = { variable: "", operator: "==", value: "" };
+        if (type === "trigger") initialData = { trigger: "ON_LESSON_COMPLETE" };
+        if (type === "logic") initialData = { logic_type: "AND" };
+        if (type === "time")
+            initialData = { start_time: "00:00", end_time: "23:59" };
+        if (type === "range")
+            initialData = { variable: "", min: "0", max: "100" };
+        if (type === "achievement_check") initialData = { achievement_id: "" };
+
         nodes.update((n) => [
             ...n,
             {
                 id,
-                type: "condition",
-                position: { x: 250, y: 200 + n.length * 50 },
-                data: { fact: "", operator: "==", value: "" },
+                type,
+                position: { x: 250, y: yOffset },
+                data: initialData,
             },
         ]);
     }
@@ -288,11 +309,45 @@
         </div>
 
         <div class="flow-header">
-            <h3>Условия получения</h3>
-            <button class="btn-icon-text" on:click={addCondition}>
-                <Plus size="18px" />
-                <span>Добавить условие</span>
-            </button>
+            <h3>Конструктор правил</h3>
+            <div class="node-toolbar">
+                <button
+                    class="btn-icon-text"
+                    on:click={() => addNode("trigger", "Триггер")}
+                >
+                    <Plus size="16px" /> Триггер
+                </button>
+                <button
+                    class="btn-icon-text"
+                    on:click={() => addNode("condition", "Условие")}
+                >
+                    <Plus size="16px" /> Условие
+                </button>
+                <button
+                    class="btn-icon-text"
+                    on:click={() => addNode("logic", "Логика")}
+                >
+                    <Plus size="16px" /> Логика
+                </button>
+                <button
+                    class="btn-icon-text"
+                    on:click={() => addNode("time", "Время")}
+                >
+                    <Plus size="16px" /> Время
+                </button>
+                <button
+                    class="btn-icon-text"
+                    on:click={() => addNode("range", "Диапазон")}
+                >
+                    <Plus size="16px" /> Диапазон
+                </button>
+                <button
+                    class="btn-icon-text"
+                    on:click={() => addNode("achievement_check", "Достижение")}
+                >
+                    <Plus size="16px" /> Достижение
+                </button>
+            </div>
         </div>
 
         <div class="flow-container">
