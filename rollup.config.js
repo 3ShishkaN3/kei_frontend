@@ -70,7 +70,14 @@ export default {
 
 		name: 'app',
 
-		file: 'public/build/bundle.js'
+		file: 'public/build/bundle.js',
+
+		// Map certain imports to browser global variable names so Rollup
+		// doesn't warn about missing globals when building an IIFE bundle.
+		globals: {
+			'@sentry/svelte': 'Sentry',
+			'html2canvas': 'html2canvas'
+		}
 
 	},
 
@@ -89,7 +96,8 @@ export default {
 
 			preventAssignment: true,
 
-			'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1')
+			'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'),
+			'process.env.SENTRY_DSN': JSON.stringify(process.env.SENTRY_DSN || '')
 
 		}),
 
