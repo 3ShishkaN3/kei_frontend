@@ -46,3 +46,77 @@ export async function buyBonus(bonusId) {
         throw error;
     }
 }
+
+/**
+ * Create a new bonus (Teacher only)
+ * @param {FormData} bonusData - Bonus data
+ * @returns {Promise<Object>} - Created bonus
+ */
+export async function createBonus(bonusData) {
+    try {
+        const response = await apiFetch(`${bonusBaseUrl}/`, {
+            method: 'POST',
+            body: bonusData, // FormData for file upload
+            // Content-Type header is not set manually for FormData, browser does it with boundary
+        }, true); // true for isFileUpload if apiFetch supports it, or we need to handle headers manually
+
+        // Note: apiFetch in this project might set Content-Type: application/json by default.
+        // If we pass FormData, we usually need to prevent that.
+        // Let's check api.js to see how it handles FormData.
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `Error creating bonus: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error creating bonus:', error);
+        throw error;
+    }
+}
+
+/**
+ * Update a bonus (Teacher only)
+ * @param {number} id - Bonus ID
+ * @param {FormData} bonusData - Bonus data
+ * @returns {Promise<Object>} - Updated bonus
+ */
+export async function updateBonus(id, bonusData) {
+    try {
+        const response = await apiFetch(`${bonusBaseUrl}/${id}/`, {
+            method: 'PATCH',
+            body: bonusData
+        }, true);
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `Error updating bonus: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error updating bonus:', error);
+        throw error;
+    }
+}
+
+/**
+ * Delete a bonus (Teacher only)
+ * @param {number} id - Bonus ID
+ * @returns {Promise<void>}
+ */
+export async function deleteBonus(id) {
+    try {
+        const response = await apiFetch(`${bonusBaseUrl}/${id}/`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error deleting bonus: ${response.status}`);
+        }
+    } catch (error) {
+        console.error('Error deleting bonus:', error);
+        throw error;
+    }
+}

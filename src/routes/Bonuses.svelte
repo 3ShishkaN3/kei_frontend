@@ -1,16 +1,31 @@
 <script>
     import { onMount } from "svelte";
-    import { getBonuses, buyBonus } from "../api/bonusApi.js";
+    import {
+        getBonuses,
+        buyBonus,
+        createBonus,
+        updateBonus,
+        deleteBonus,
+    } from "../api/bonusApi.js";
     import { getLearningStats } from "../api/progressApi.js";
     import { addNotification } from "../stores/notifications.js";
+    import { user } from "../stores/user.js";
     import { fade } from "svelte/transition";
+    import BonusFormModal from "../components/admin/BonusFormModal.svelte";
 
     let bonuses = [];
     let userCoins = 0;
     let activeTab = "video"; // video, copybook, avatar_frame
     let isLoading = true;
+    let isTeacher = false;
+    let showModal = false;
+    let selectedBonus = null;
 
-    onMount(async () => {
+    user.subscribe((value) => {
+        isTeacher = value.role === "teacher" || value.role === "admin";
+    });
+
+    async function loadData() {
         try {
             const [bonusesData, statsData] = await Promise.all([
                 getBonuses(),
@@ -24,7 +39,9 @@
         } finally {
             isLoading = false;
         }
-    });
+    }
+
+    onMount(loadData);
 
     async function handleBuy(bonus) {
         if (userCoins < bonus.price) {
@@ -34,13 +51,7 @@
 
         try {
             const result = await buyBonus(bonus.id);
-            userCoins = result.coins; // Update coins from response
-
-            // Update bonus state to purchased
-            // We need to re-fetch or manually update. The result might not contain the full bonus object with video_url if the API structure is different.
-            // But wait, the buy endpoint returns {'detail': ..., 'coins': ...}. It does NOT return the video_url.
-            // So I need to fetch the bonuses again to get the video_url, OR I can just reload the list.
-            // Reloading is safer to get the video_url.
+            userCoins = result.coins;
 
             const updatedBonuses = await getBonuses();
             bonuses = Array.isArray(updatedBonuses) ? updatedBonuses : [];
@@ -51,15 +62,62 @@
             addNotification(error.message || "Ошибка покупки", "error");
         }
     }
+
+    function openCreateModal() {
+        selectedBonus = null;
+        showModal = true;
+    }
+
+    function openEditModal(bonus) {
+        selectedBonus = bonus;
+        showModal = true;
+    }
+
+    async function handleSave(event) {
+        const formData = event.detail;
+        try {
+            if (selectedBonus) {
+                await updateBonus(selectedBonus.id, formData);
+                addNotification("Бонус обновлен", "success");
+            } else {
+                await createBonus(formData);
+                addNotification("Бонус создан", "success");
+            }
+            showModal = false;
+            await loadData();
+        } catch (error) {
+            addNotification(error.message || "Ошибка сохранения", "error");
+        }
+    }
+
+    async function handleDelete(bonus) {
+        if (!confirm(`Вы уверены, что хотите удалить бонус "${bonus.title}"?`))
+            return;
+
+        try {
+            await deleteBonus(bonus.id);
+            addNotification("Бонус удален", "success");
+            await loadData();
+        } catch (error) {
+            addNotification(error.message || "Ошибка удаления", "error");
+        }
+    }
 </script>
 
 <div class="page-container">
     <!-- Header with Coins -->
     <div class="header-section">
         <h1>Магазин бонусов</h1>
-        <div class="coin-balance">
-            <span class="coin-icon">🪙</span>
-            <span class="coin-amount">{userCoins}</span>
+        <div class="header-controls">
+            <div class="coin-balance">
+                <span class="coin-icon">🪙</span>
+                <span class="coin-amount">{userCoins}</span>
+            </div>
+            {#if isTeacher}
+                <button class="create-btn" on:click={openCreateModal}
+                    >+ Добавить бонус</button
+                >
+            {/if}
         </div>
     </div>
 
@@ -86,17 +144,35 @@
         <div class="bonus-grid" in:fade>
             {#each bonuses.filter((b) => b.bonus_type === "video") as bonus (bonus.id)}
                 <div class="bonus-card">
+                    {#if isTeacher}
+                        <div class="admin-controls">
+                            <button
+                                class="edit-btn"
+                                on:click={() => openEditModal(bonus)}>✎</button
+                            >
+                            <button
+                                class="delete-btn"
+                                on:click={() => handleDelete(bonus)}>🗑</button
+                            >
+                        </div>
+                    {/if}
                     <div class="card-content">
                         <h3>{bonus.title}</h3>
                         <p>{bonus.description || ""}</p>
-                        {#if bonus.is_purchased}
-                            <div class="purchased-badge">Куплено</div>
+                        {#if bonus.is_purchased || isTeacher}
+                            {#if bonus.is_purchased}<div
+                                    class="purchased-badge"
+                                >
+                                    Куплено
+                                </div>{/if}
                             {#if bonus.video_url}
                                 <video
                                     controls
                                     src={bonus.video_url}
                                     class="preview-video"
-                                ></video>
+                                >
+                                    <track kind="captions" />
+                                </video>
                             {:else}
                                 <div class="video-placeholder">
                                     Видео доступно (ссылка не найдена)
@@ -124,6 +200,13 @@
     {/if}
 </div>
 
+<BonusFormModal
+    isOpen={showModal}
+    bonus={selectedBonus}
+    on:close={() => (showModal = false)}
+    on:save={handleSave}
+/>
+
 <style>
     .page-container {
         max-width: var(--max-width-page);
@@ -140,6 +223,12 @@
         margin-bottom: var(--spacing-margin-bottom-large);
         flex-wrap: wrap;
         gap: 20px;
+    }
+
+    .header-controls {
+        display: flex;
+        gap: 15px;
+        align-items: center;
     }
 
     h1 {
@@ -164,6 +253,17 @@
 
     .coin-icon {
         font-size: 1.5rem;
+    }
+
+    .create-btn {
+        background: var(--color-primary);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: var(--spacing-border-radius-button);
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 4px 10px var(--color-shadow);
     }
 
     .tabs {
@@ -215,11 +315,39 @@
             box-shadow 0.3s ease;
         display: flex;
         flex-direction: column;
+        position: relative;
     }
 
     .bonus-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 15px 30px var(--color-shadow-hover);
+    }
+
+    .admin-controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: flex;
+        gap: 5px;
+        z-index: 10;
+    }
+
+    .edit-btn,
+    .delete-btn {
+        background: rgba(255, 255, 255, 0.9);
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .delete-btn {
+        color: var(--color-danger-red);
     }
 
     .card-content {
@@ -234,6 +362,7 @@
         font-family: var(--font-family-primary);
         font-size: 1.3rem;
         color: var(--color-text-dark);
+        padding-right: 60px; /* Space for admin controls */
     }
 
     .bonus-card p {
