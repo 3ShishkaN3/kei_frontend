@@ -11,6 +11,7 @@
   import Practice from "./routes/Practice.svelte";
   import NotFound from "./routes/NotFound.svelte";
   import Statistics from "./routes/Statistics.svelte";
+  import Bonuses from "./routes/Bonuses.svelte";
   import AchievementEditor from "./components/admin/AchievementEditor.svelte";
   import Header from "./components/Header.svelte";
   import Footer from "./components/Footer.svelte";
@@ -57,7 +58,7 @@
         path="/courses/:courseId/practice/:practiceId"
         component={Practice}
       />
-      <Route path="/bonuses" component={NotFound} />
+      <Route path="/bonuses" component={Bonuses} />
       <Route path="/statistics" component={Statistics} />
       <Route path="/calendar" component={NotFound} />
       <Route path="/admin/achievements/new" component={AchievementEditor} />
