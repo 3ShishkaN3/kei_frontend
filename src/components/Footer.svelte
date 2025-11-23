@@ -26,6 +26,32 @@
   }
   .copyright { color: var(--color-text-muted, #6b6b6b); }
   .footer-bug-btn { /* небольшой отступ и выравнивание */ }
+
+  /* Адаптивность: при узких экранах размещаем элементы в колонку */
+  @media (max-width: 640px) {
+    .footer-inner {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 6px 0;
+      text-align: center;
+    }
+    .copyright { font-size: 0.92rem; }
+    /* кнопка во весь контейнер с ограничением по ширине */
+    .footer-bug-btn {
+      display: block;
+      width: 100%;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+  }
+
+  @media (max-width: 400px) {
+    footer { padding: 10px 12px; }
+    .footer-inner { gap: 8px; }
+    .copyright { font-size: 0.9rem; }
+  }
 </style>
 
 <footer>

@@ -291,7 +291,7 @@
     flex-direction: column;
     gap: 1rem;
     overflow-y: auto;
-    max-height: 600px; /* Prevent infinite growth */
+    max-height: 100%;
     padding-right: 4px; /* Space for scrollbar */
   }
 
