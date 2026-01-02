@@ -39,7 +39,6 @@
   async function togglePeriod() {
     isTransitioning = true;
     
-    // Небольшая задержка для анимации
     setTimeout(async () => {
       currentPeriod = currentPeriod === 'week' ? 'month' : 'week';
       await loadStats();
@@ -55,13 +54,12 @@
   function getSquareColor(lessons) {
     if (lessons === 0) return 'var(--color-bg-ultra-light)';
     
-    // Создаем градацию цветов от пастельного оранжевого к пастельному красному
     const intensity = lessons / maxLessons;
     
     if (intensity <= 0.2) return 'var(--color-pastel-yellow)';
     if (intensity <= 0.4) return 'var(--color-pastel-orange)';
-    if (intensity <= 0.6) return '#ffcc99'; // переходный цвет
-    if (intensity <= 0.8) return '#ff9999'; // переходный цвет  
+    if (intensity <= 0.6) return '#ffcc99';
+    if (intensity <= 0.8) return '#ff9999';
     return 'var(--color-pastel-red)';
   }
 
@@ -116,7 +114,6 @@
     {:else if isTransitioning}
       <div class="loading">Переключение...</div>
     {:else if currentPeriod === 'week'}
-      <!-- Недельный вид - столбцы -->
       <div class="week-view fade-in">
         {#each dailyStats as day, index}
           <div class="day-column" 
@@ -132,7 +129,6 @@
         {/each}
       </div>
     {:else}
-      <!-- Месячный вид - сетка -->
       <div class="month-view fade-in">
         <div class="activity-grid">
           {#each dailyStats as day, index}
@@ -146,7 +142,6 @@
           {/each}
         </div>
         
-        <!-- Легенда -->
         <div class="legend">
           <span class="legend-label">Меньше</span>
           <div class="legend-squares">
@@ -163,7 +158,6 @@
     {/if}
   </div>
 
-  <!-- Tooltip -->
   {#if hoveredItem}
     <div class="tooltip" style="left: {tooltipX + 10}px; top: {tooltipY - 30}px;">
       <div class="tooltip-date">{formatDate(hoveredItem.date)}</div>
@@ -225,7 +219,6 @@
     position: relative;
   }
 
-  /* Анимации переходов */
   .fade-in {
     animation: fadeIn 0.4s ease-in-out;
   }
@@ -247,7 +240,6 @@
     padding: 2rem;
   }
 
-  /* Недельный вид */
   .week-view {
     display: flex;
     justify-content: space-between;
@@ -297,7 +289,6 @@
     text-align: center;
   }
 
-  /* Месячный вид */
   .month-view {
     display: flex;
     flex-direction: column;
@@ -347,7 +338,6 @@
     position: relative;
   }
 
-  /* Увеличенный размер для больших экранов */
   @media (min-width: 1200px) {
     .activity-grid {
       max-width: 1800px;
@@ -356,7 +346,6 @@
     }
   }
 
-  /* Еще больше для очень широких экранов */
   @media (min-width: 1600px) {
     .activity-grid {
       max-width: 2200px;
@@ -389,11 +378,9 @@
     font-size: 0.75rem;
   }
 
-  /* Ensure stats container stays responsive (existing rules kept) */
   .weekly-stats-container { width: 100%; box-sizing: border-box; }
 
 
-  /* Tooltip */
   .tooltip {
     position: fixed;
     background-color: rgba(0, 0, 0, 0.8);
@@ -416,7 +403,6 @@
   }
 
 
-  /* Адаптивность */
   @media (max-width: 768px) {
     .weekly-stats-container {
       padding: 1rem;

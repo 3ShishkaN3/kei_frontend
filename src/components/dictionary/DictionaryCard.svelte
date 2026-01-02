@@ -18,7 +18,6 @@
 
     const dispatch = createEventDispatcher();
 
-    // Reset flip state when entry changes (for carousel navigation)
     $: if (entry) {
         flipped = false;
     }
@@ -68,7 +67,6 @@
     }
 
     onMount(() => {
-        // Add keyboard navigation
         const handleKeydown = (event) => {
             if (event.key === 'Space' && cardElement && cardElement.contains(event.target)) {
                 event.preventDefault();
@@ -87,7 +85,6 @@
 <div class="card-scene" bind:this={cardElement}>
     <div class="card-container" on:click={handleFlip} role="button" tabindex="0" aria-label="Карточка: {entry.term}. Нажмите для переворота.">
         <div class="card-inner" class:flipped>
-            <!-- Передняя сторона -->
             <div class="card-face card-front">
                 {#if isAdminView}
                     <div class="admin-actions">
@@ -124,7 +121,6 @@
                 {/if}
             </div>
 
-            <!-- Задняя сторона -->
             <div class="card-face card-back">
                 {#if isAdminView}
                     <div class="admin-actions">
@@ -202,7 +198,6 @@
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        /* padding: 2rem; */
         border-radius: var(--spacing-border-radius-card, 20px);
         transition: all 0.3s ease;
         transform-origin: center center;
@@ -468,7 +463,6 @@
         border-color: #ff6b6b;
     }
 
-    /* Animations */
     @keyframes bounceIn {
         0% {
             transform: scale(0.3);
@@ -525,7 +519,6 @@
         }
     }
 
-    /* Focus styles for accessibility */
     .card-container:focus {
         outline: none;
     }
@@ -535,14 +528,12 @@
         outline-offset: 2px;
     }
 
-    /* Responsive Design */
     @media (max-width: 768px) {
         .card-container {
             height: 320px;
         }
 
         .card-face {
-            /* padding: 1.5rem; */
         }
 
         .term {
@@ -601,7 +592,6 @@
         }
 
         .card-face {
-            /* padding: 1.2rem; */
             min-width: 0;
         }
 

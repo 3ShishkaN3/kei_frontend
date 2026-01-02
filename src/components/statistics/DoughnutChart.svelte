@@ -2,7 +2,6 @@
   import { onMount, afterUpdate } from "svelte";
   import Chart from "chart.js/auto";
 
-  // Fallback if Chart is undefined (sometimes happens with Rollup/CJS interop)
   const ChartConstructor = Chart?.default || Chart;
 
   export let data = [];

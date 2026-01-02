@@ -22,7 +22,6 @@
   let error = "";
   let currentUser = null;
 
-  // Modal state
   let showEditor = false;
   let editingId = null;
 
@@ -35,7 +34,6 @@
   async function loadAchievements() {
     loading = true;
     try {
-      // Admins use admin endpoint to see all, users use public endpoint
       const endpoint = isAdmin
         ? `${API_BASE_URL}/achievements/admin/achievements/`
         : `${API_BASE_URL}/achievements/achievements/`;
@@ -44,7 +42,6 @@
       if (response.ok) {
         try {
           const data = await response.json();
-          // Admin endpoint returns paginated result (results array), public might return list or paginated
           achievements = Array.isArray(data) ? data : data.results || [];
         } catch (jsonError) {
           console.error("Failed to parse JSON:", jsonError);
@@ -292,7 +289,7 @@
     gap: 1rem;
     overflow-y: auto;
     max-height: 100%;
-    padding-right: 4px; /* Space for scrollbar */
+    padding-right: 4px;
   }
 
   .achievements-list::-webkit-scrollbar {

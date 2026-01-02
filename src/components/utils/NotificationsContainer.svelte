@@ -29,9 +29,8 @@
             top: 15px; 
             left: 15px;
             right: 15px;
-            align-items: center; /* Center on small screens */
+            align-items: center;
         }
-        /* Ensure items don't get too wide on small screens */
         :global(.notifications-container .notification-item) {
             width: 100%;
             max-width: none;

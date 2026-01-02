@@ -14,14 +14,12 @@
     export let filledSlotsForDisplay;
     export let selectedDraggableOptionForSlot;
     export let isTestSubmittedByStudent;
-    export let studentSubmission = null; // Добавляем проп для получения результатов
+    export let studentSubmission = null;
 
     const dispatch = createEventDispatcher();
 
-    // Настройки для svelte-dnd-action
     const flipDurationMs = 200;
 
-    // Определяем мобильное устройство
     let isMobile = false;
     if (typeof window !== "undefined") {
         isMobile =
@@ -30,7 +28,6 @@
             );
     }
 
-    // Создаем Map для быстрого доступа к результатам ответов
     $: dragDropAnswersMap = new Map();
     $: if (studentSubmission && studentSubmission.drag_drop_answers) {
         dragDropAnswersMap.clear();
@@ -39,7 +36,6 @@
         });
     }
 
-    // Создаем реактивный объект для статусов слотов
     $: slotStatuses = {};
     $: if (testData && testData.drag_drop_slots) {
         testData.drag_drop_slots.forEach((slot) => {
@@ -47,18 +43,15 @@
         });
     }
 
-    // Принудительно обновляем статусы при изменении studentSubmission
     $: if (studentSubmission && testData && testData.drag_drop_slots) {
         testData.drag_drop_slots.forEach((slot) => {
             slotStatuses[slot.id] = getSlotDisplayStatus(slot);
         });
-        slotStatuses = { ...slotStatuses }; // Принудительное обновление реактивности
+        slotStatuses = { ...slotStatuses };
     }
 
-    // Обработчики для svelte-dnd-action
     function handlePoolDndConsider(e) {
         if (!canStudentInteract) return;
-        // ВСЕГДА обновляем список элементов в consider
         draggableItemsPoolForDisplay = e.detail.items;
         dispatch(
             "update:draggableItemsPoolForDisplay",
@@ -68,7 +61,6 @@
 
     function handlePoolDndFinalize(e) {
         if (!canStudentInteract) return;
-        // ВСЕГДА обновляем список элементов в finalize
         draggableItemsPoolForDisplay = e.detail.items;
         dispatch(
             "update:draggableItemsPoolForDisplay",
@@ -78,10 +70,8 @@
 
     function handleSlotDndConsider(e, slotId) {
         if (!canStudentInteract) return;
-        // ВСЕГДА обновляем список элементов в consider
         const slotItems = e.detail.items;
 
-        // Обновляем слот на основе элементов в списке
         if (slotItems.length > 0) {
             filledSlotsForDisplay[slotId] = slotItems[0];
         } else {
@@ -94,10 +84,8 @@
 
     function handleSlotDndFinalize(e, slotId) {
         if (!canStudentInteract) return;
-        // ВСЕГДА обновляем список элементов в finalize
         const slotItems = e.detail.items;
 
-        // Обновляем слот на основе элементов в списке
         if (slotItems.length > 0) {
             filledSlotsForDisplay[slotId] = slotItems[0];
         } else {
@@ -127,23 +115,19 @@
     function placeSelectedOptionInSlot(slotId) {
         if (!canStudentInteract || !selectedDraggableOptionForSlot) return;
 
-        // Добавляем слово в слот
         filledSlotsForDisplay[slotId] = { ...selectedDraggableOptionForSlot };
         filledSlotsForDisplay = { ...filledSlotsForDisplay };
 
-        // Удаляем слово из пула
         const itemIndex = draggableItemsPoolForDisplay.findIndex(
             (item) => item.id === selectedDraggableOptionForSlot.id,
         );
         if (itemIndex !== -1) {
             draggableItemsPoolForDisplay.splice(itemIndex, 1);
-            draggableItemsPoolForDisplay = [...draggableItemsPoolForDisplay]; // Обновляем реактивность
+            draggableItemsPoolForDisplay = [...draggableItemsPoolForDisplay];
         }
 
-        // Сбрасываем выбранное слово
         selectedDraggableOptionForSlot = null;
 
-        // Отправляем обновления
         dispatch("update:filledSlotsForDisplay", filledSlotsForDisplay);
         dispatch(
             "update:draggableItemsPoolForDisplay",
@@ -160,18 +144,15 @@
 
         const removedItem = filledSlotsForDisplay[slotId];
         if (removedItem) {
-            // Возвращаем слово в пул
             draggableItemsPoolForDisplay = [
                 ...draggableItemsPoolForDisplay,
                 removedItem,
             ];
         }
 
-        // Удаляем из слота
         delete filledSlotsForDisplay[slotId];
         filledSlotsForDisplay = { ...filledSlotsForDisplay };
 
-        // Отправляем обновления
         dispatch("update:filledSlotsForDisplay", filledSlotsForDisplay);
         dispatch(
             "update:draggableItemsPoolForDisplay",
@@ -184,21 +165,17 @@
             const studentAnswerObjectInSlot = filledSlotsForDisplay[slot.id];
             const studentAnswerTextInSlot = studentAnswerObjectInSlot?.text;
 
-            // Если тест отправлен, используем данные из submission для точной подсветки
             if (isTestSubmittedByStudent && studentSubmission) {
                 const submissionAnswer = dragDropAnswersMap.get(slot.id);
                 if (submissionAnswer) {
-                    // Если есть ответ в submission, используем его результат
                     return submissionAnswer.is_correct
                         ? "student_correct"
                         : "student_incorrect";
                 } else {
-                    // Если нет ответа в submission, значит слот был пустым
                     return "slot_empty_after_submit";
                 }
             }
 
-            // Для админского режима или если нет submission данных
             if (
                 studentAnswerTextInSlot === undefined &&
                 isTestSubmittedByStudent
@@ -212,28 +189,22 @@
         return "pending";
     }
 
-    // Функция сброса теста к дефолтному состоянию
     function resetTestToDefault(event) {
         if (!canStudentInteract) return;
 
-        // Предотвращаем всплытие события, чтобы избежать отправки формы
         event.preventDefault();
         event.stopPropagation();
 
-        // Возвращаем все слова из слотов обратно в пул
         const allItemsFromSlots = Object.values(filledSlotsForDisplay);
         draggableItemsPoolForDisplay = [
             ...draggableItemsPoolForDisplay,
             ...allItemsFromSlots,
         ];
 
-        // Очищаем все слоты
         filledSlotsForDisplay = {};
 
-        // Сбрасываем выбранное слово
         selectedDraggableOptionForSlot = null;
 
-        // Отправляем обновления
         dispatch(
             "update:draggableItemsPoolForDisplay",
             draggableItemsPoolForDisplay,
@@ -244,33 +215,25 @@
             selectedDraggableOptionForSlot,
         );
 
-        // Отправляем событие о сбросе теста
         dispatch("testReset");
     }
 
-    // Очистка при размонтировании компонента
     onDestroy(() => {
         try {
-            // Удаляем обработчики, которые мы добавили
             document.removeEventListener("wheel", ensureScroll);
         } catch (e) {
-            // Игнорируем ошибки при удалении обработчиков
         }
     });
 
-    // Добавляем обработчик wheel при монтировании компонента
     onMount(() => {
         document.addEventListener("wheel", ensureScroll, { passive: true });
     });
 
-    // Обработчик для обеспечения прокрутки
     function ensureScroll(e) {
-        // Ничего не делаем, просто позволяем событию пройти
     }
 </script>
 
 <div class="drag-drop-test-area">
-    <!-- Иконка перезагрузки -->
     {#if canStudentInteract}
         <button
             class="reset-test-button"
@@ -472,7 +435,6 @@
 </div>
 
 <style>
-    /* Кнопка сброса теста */
     .reset-test-button {
         position: absolute;
         top: -15px;
@@ -506,7 +468,7 @@
         margin-top: 25px;
         padding-top: 20px;
         border-top: 1px solid #f0f0f0;
-        position: relative; /* Для позиционирования кнопки сброса */
+        position: relative;
     }
     .instruction-text {
         font-size: 0.95em;
@@ -534,14 +496,12 @@
         transition: all 0.2s ease;
     }
 
-    /* Стили для пула при перетаскивании */
     .draggable-options-pool-display:has(.draggable-option-dnd:active) {
         background-color: #f0f4ff;
         border-color: var(--color-primary, #5845d8);
     }
     .draggable-item,
     .draggable-option-dnd {
-        /* Унифицировал имя класса */
         padding: 6px 12px;
         background-color: #fff;
         border: 1px solid var(--color-primary-light, #d1c9ff);
@@ -558,7 +518,6 @@
         position: relative;
     }
 
-    /* Стили для перетаскиваемого элемента */
     .draggable-option-dnd:active {
         cursor: grabbing;
         transform: scale(1.05);
@@ -566,7 +525,6 @@
         z-index: 1000;
     }
 
-    /* Стили для элементов в слотах */
     .draggable-option-dnd.in-slot {
         cursor: pointer;
         background-color: var(--color-primary-light, #e0d8ff);
@@ -593,7 +551,6 @@
         box-shadow: none;
     }
     .draggable-item.selected-for-slot {
-        /* Для клик-механики D&D */
         outline: 3px solid var(--color-secondary);
         box-shadow: 0 0 10px rgba(var(--color-secondary-rgb), 0.4);
     }
@@ -606,14 +563,12 @@
         padding: 10px 0;
     }
 
-    /* Адаптивная сетка для слотов */
     .drag-drop-slots-container {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 12px;
     }
 
-    /* Мобильная адаптация */
     @media (max-width: 768px) {
         .drag-drop-slots-container {
             grid-template-columns: repeat(3, 1fr);

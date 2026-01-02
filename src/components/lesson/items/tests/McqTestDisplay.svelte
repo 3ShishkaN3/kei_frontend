@@ -19,16 +19,13 @@
 
     const dispatch = createEventDispatcher();
     
-    // Переменная для принудительного обновления компонента при сбросе
     let resetCounter = 0;
     let forceRerender = 0;
-    let isTestReset = false; // Флаг для отслеживания сброса теста
+    let isTestReset = false;
 
-    // Функция сброса теста к дефолтному состоянию
     async function resetTestToDefault(event) {
         if (!canStudentInteract) return;
         
-        // Предотвращаем всплытие события, чтобы избежать отправки формы
         event.preventDefault();
         event.stopPropagation();
         
@@ -36,7 +33,6 @@
         
         if (testData.test_type === 'mcq-multi') {
             localSelectedOptionsMap = {};
-            // Принудительно обновляем реактивность
             localSelectedOptionsMap = {...localSelectedOptionsMap};
             dispatch('update:localSelectedOptionsMap', localSelectedOptionsMap);
         } else if (testData.test_type === 'mcq-single') {
@@ -44,20 +40,15 @@
             dispatch('update:localSelectedRadioOption', localSelectedRadioOption);
         }
         
-        // Отправляем событие о сбросе теста
         dispatch('testReset');
         
-        // Устанавливаем флаг сброса
         isTestReset = true;
         
-        // Увеличиваем счетчик для принудительного обновления компонента
         resetCounter++;
         forceRerender++;
         
-        // Ждем обновления DOM и затем сбрасываем input элементы
         await tick();
         
-        // Принудительно сбрасываем все input элементы
         setTimeout(() => {
             const inputs = document.querySelectorAll(`input[name="mcq_option_group_${sectionItemId}_${testData.id || 'new'}"]`);
             inputs.forEach(input => {
@@ -81,19 +72,15 @@
     }
 
     function getOptionDisplayStatusForMcq(option) {
-        // Если тест был сброшен, показываем состояние pending
         if (isTestReset) {
             return 'pending';
         }
         
         if (viewMode === 'admin' || isTestSubmittedByStudent) {
-            // Определяем выбран ли вариант на основе локальных данных или серверных
             let isSelected = false;
             if (studentActualChoicesIds.length > 0) {
-                // Используем данные с сервера если они есть
                 isSelected = studentActualChoicesIds.includes(option.id);
             } else {
-                // Используем локальные данные если нет данных с сервера
                 if (testData.test_type === 'mcq-single') {
                     isSelected = localSelectedRadioOption === option.id;
                 } else if (testData.test_type === 'mcq-multi') {
@@ -101,10 +88,8 @@
                 }
             }
             
-            // use built-in flag for correctness for both admin and student
             const isCorrect = option.is_correct;
             if (isCorrect) {
-                // Все правильные ответы должны быть подсвечены зеленым
                 return 'correct';
             } else {
                 return isSelected ? 'student_incorrect' : 'neutral_incorrect';
@@ -117,7 +102,6 @@
 </script>
 
 <div class="mcq-test-container" style="position: relative;">
-    <!-- Иконка перезагрузки -->
     {#if canStudentInteract}
         <button 
             class="reset-test-button" 
@@ -175,10 +159,8 @@
     {/each}
     </fieldset>
 </div>
-<!-- Removed redundant summary block -->
 
 <style>
-    /* Кнопка сброса теста */
     .reset-test-button {
         position: absolute;
         top: -15px;
@@ -220,7 +202,6 @@
     .mcq-option-input:checked + .mcq-option-checkbox-visual { color: var(--color-primary, #AFA4FF); }
     .mcq-option-input:disabled + .mcq-option-checkbox-visual { color: #ced4da; }
     .mcq-option-text-content { flex-grow: 1; line-height: 1.55; font-size: 0.95em; word-break: break-word; color: #343a40; }
-    /* Подсветка для правильных ответов (все правильные ответы зеленые) */
     .mcq-option-display-item.status-correct { 
         background-color: var(--color-mcq-correct, #d4f4dd); 
         border-left: 4px solid var(--color-mcq-correct-border, #7eb88a); 
@@ -229,7 +210,6 @@
         color: var(--color-mcq-correct-text, #1f5f2b);
     }
     
-    /* Подсветка для неправильных выбранных ответов */
     .mcq-option-display-item.status-student_incorrect { 
         background-color: var(--color-mcq-incorrect, #fce4e6); 
         border-left: 4px solid var(--color-mcq-incorrect-border, #e57373); 
@@ -253,13 +233,11 @@
     }
     .mcq-option-explanation.visible { display: block; }
     
-    /* Пояснения для правильных ответов */
     .mcq-option-display-item.status-correct .mcq-option-explanation.visible {
         background-color: var(--color-mcq-correct, #d4f4dd);
         color: var(--color-mcq-correct-text, #1f5f2b);
     }
     
-    /* Пояснения для неправильных выбранных ответов */
     .mcq-option-display-item.status-student_incorrect .mcq-option-explanation.visible {
         background-color: var(--color-mcq-incorrect, #fce4e6);
         color: var(--color-mcq-incorrect-text, #8b2635);

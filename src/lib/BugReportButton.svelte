@@ -15,7 +15,6 @@
       const logs = getKeiLogs();
       const html = document.documentElement ? document.documentElement.outerHTML : '';
 
-      // Collect same-origin CSS text where possible.
       let cssText = '';
       for (const sheet of Array.from(document.styleSheets || [])) {
         try {
@@ -23,7 +22,6 @@
           if (!rules) continue;
           for (const r of Array.from(rules)) cssText += r.cssText + '\n';
         } catch (e) {
-          // ignore cross-origin stylesheet access errors
         }
       }
 
@@ -32,22 +30,17 @@
         const canvas = await html2canvas(document.documentElement, { scale: 1, logging: false });
         screenshot = canvas.toDataURL('image/png');
       } catch (e) {
-        // screenshot optional
       }
 
-      // Push collected fingerprints to Sentry extras
       Sentry.setExtra('page_html', html);
       Sentry.setExtra('page_css', cssText);
       Sentry.setExtra('console_logs', logs);
       if (screenshot) Sentry.setExtra('screenshot_base64', screenshot);
 
-      // Send a simple event to Sentry. Sentry's own dialog can still be shown
-      // so the user may add email/description there if desired.
       const eventId = Sentry.captureMessage('User bug report');
       try {
         Sentry.showReportDialog({ eventId });
       } catch (e) {
-        // If Sentry dialog isn't available, ignore — report already sent as event
       }
 
       success = true;
@@ -61,7 +54,6 @@
 </script>
 
 <style>
-  /* Button adapted to global site design */
   .bug-btn {
     background: var(--color-primary, #6D7FC9);
     color: var(--color-primary-contrast, #ffffff);

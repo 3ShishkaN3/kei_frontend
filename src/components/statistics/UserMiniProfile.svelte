@@ -17,7 +17,6 @@
     let lastLesson = null;
     let loading = true;
 
-    // XP Calculation
     $: nextLevelXp = Math.floor(100 * Math.pow(stats.level + 1, 1.5));
     $: currentLevelBaseXp = Math.floor(100 * Math.pow(stats.level, 1.5));
     $: xpProgress =
@@ -33,21 +32,15 @@
 
     onMount(async () => {
         try {
-            // Subscribe to stores
             avatar.subscribe((val) => (currentAvatar = val));
             user.subscribe((u) => {
                 if (u && u.isAuthenticated) {
-                    // We might need to fetch username if not in store, but let's assume we fetch profile
                 }
             });
 
-            // Fetch Profile for name
             const profileRes = await apiFetch(`${API_BASE_URL}/profile/`);
             if (profileRes.ok) {
                 const profile = await profileRes.json();
-                // If username is in profile, use it. Otherwise use from user store or auth/user endpoint
-                // The profile endpoint usually returns extended info. Let's check auth/user for username if needed.
-                // But let's try to get it from profile if available or fetch auth/user
             }
 
             const userRes = await apiFetch(`${API_BASE_URL}/auth/user/`);
@@ -56,13 +49,11 @@
                 username = userData.username;
             }
 
-            // Fetch Stats
             const statsData = await getLearningStats();
             if (statsData) {
                 stats = statsData;
             }
 
-            // Fetch Last Lesson
             const lessonsRes = await apiFetch(
                 `${API_BASE_URL}/progress/lessons/`,
             );
@@ -70,7 +61,6 @@
                 const data = await lessonsRes.json();
                 const lessons = data.results || data;
 
-                // Filter for unfinished lessons (completion < 100)
                 const unfinished = lessons.filter(
                     (l) =>
                         l.completion_percentage < 100 &&
@@ -78,7 +68,6 @@
                 );
 
                 if (unfinished.length > 0) {
-                    // Sort by last_activity desc
                     unfinished.sort(
                         (a, b) =>
                             new Date(b.last_activity) -
@@ -86,18 +75,12 @@
                     );
                     lastLesson = unfinished[0];
                 } else {
-                    // If no in-progress lessons, maybe find the next one in a course?
-                    // For now, let's just show the most recently completed one if no unfinished?
-                    // Or maybe the user hasn't started anything.
-                    // Let's try to find the most recent activity overall.
                     if (lessons.length > 0) {
                         lessons.sort(
                             (a, b) =>
                                 new Date(b.last_activity) -
                                 new Date(a.last_activity),
                         );
-                        // If completed, maybe we can't easily find the "next" one without course structure.
-                        // Just show the last active one.
                         lastLesson = lessons[0];
                     }
                 }

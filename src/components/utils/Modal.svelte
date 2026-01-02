@@ -30,9 +30,8 @@
 
     let modalContentElement;
 
-    // Для предотвращения скролла фона, когда модалка открыта
     $: {
-        if (typeof document !== 'undefined') { // Проверка на SSR
+        if (typeof document !== 'undefined') {
             if (isOpen) {
                 document.body.style.overflow = 'hidden';
             } else {
@@ -43,7 +42,7 @@
 
     onDestroy(() => {
         if (typeof document !== 'undefined') {
-             document.body.style.overflow = ''; // Убедимся, что скролл восстанавливается
+             document.body.style.overflow = '';
         }
     });
 
@@ -105,9 +104,9 @@
 		display: flex;
 		justify-content: center;
 		align-items: center;
-		z-index: var(--z-index-modal, 1050); /* Убедитесь, что это значение есть в global.css */
+		z-index: var(--z-index-modal, 1050);
 		padding: 20px;
-        overflow-y: auto; /* Позволяет скроллить оверлей, если контент модалки очень высокий */
+        overflow-y: auto;
 	}
 
 	.modal-content {
@@ -116,10 +115,10 @@
 		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 		position: relative;
 		width: 100%;
-        max-height: calc(100vh - 40px); /* 20px padding сверху и снизу */
+        max-height: calc(100vh - 40px);
 		display: flex;
         flex-direction: column;
-        overflow: hidden; /* Чтобы внутренний скролл работал корректно */
+        overflow: hidden;
 	}
 
 	.modal-content.size-small { max-width: 400px; }
@@ -134,7 +133,7 @@
 		align-items: center;
 		padding: 15px 20px;
 		border-bottom: 1px solid var(--color-border-light, #eee);
-        flex-shrink: 0; /* Заголовок не должен сжиматься */
+        flex-shrink: 0;
 	}
 
 	.modal-title-text {
@@ -153,7 +152,7 @@
 		padding: 5px;
 		border-radius: 50%;
 		transition: background-color 0.2s, color 0.2s;
-        display: flex; /* Для центрирования иконки */
+        display: flex;
         align-items: center;
         justify-content: center;
 	}
@@ -164,8 +163,8 @@
 
 	.modal-body {
 		padding: 20px;
-		overflow-y: auto; /* Основной скролл для контента */
-        flex-grow: 1; /* Тело модалки растягивается */
+		overflow-y: auto;
+        flex-grow: 1;
 	}
 
 	.modal-footer {
@@ -175,9 +174,8 @@
 		justify-content: flex-end;
 		gap: 10px;
         background-color: var(--color-bg-ultra-light, #f9f9f9);
-        flex-shrink: 0; /* Футер не должен сжиматься */
+        flex-shrink: 0;
 	}
-    /* Стили для кнопок в футере, если они будут передаваться через слот */
     .modal-footer :global(button) {
         padding: var(--spacing-padding-button-medium, 8px 15px);
         border-radius: var(--spacing-border-radius-button, 20px);
@@ -186,9 +184,4 @@
         transition: all 0.2s ease;
         font-size: 0.9rem;
     }
-    /* Пример стилей для типовых кнопок, если нужно */
-    /*
-    .modal-footer :global(button.primary) { ... }
-    .modal-footer :global(button.secondary) { ... }
-    */
 </style>

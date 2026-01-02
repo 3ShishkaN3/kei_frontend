@@ -6,7 +6,6 @@
   export let width = 680; // px
   export let onClose = () => {};
   
-  // Prevent body scroll when modal is open
   $: if (open) {
     if (typeof document !== 'undefined') {
       document.body.style.overflow = 'hidden';

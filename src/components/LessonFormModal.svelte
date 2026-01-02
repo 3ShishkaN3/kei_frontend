@@ -2,7 +2,6 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import Close from 'svelte-material-icons/Close.svelte';
   import ImagePlus from 'svelte-material-icons/ImagePlus.svelte';
-  // Установить: npm install svelte-easy-crop
   import Cropper from 'svelte-easy-crop';
 
   export let editingLesson = null;
@@ -15,7 +14,6 @@
   let coverImageUrlPreview = null;
   let coverImageFile = null;
 
-  // Параметры кроппера
   let crop = { x: 0, y: 0 };
   let zoom = 1;
   let croppedAreaPixels = null;
@@ -36,16 +34,13 @@
     const file = event.target.files[0];
     if (!file) return;
 
-    // создаём preview
     coverImageUrlPreview = URL.createObjectURL(file);
     coverImageFile = file;
 
-    // сброс параметров кропа
     crop = { x: 0, y: 0 };
     zoom = 1;
     croppedAreaPixels = null;
 
-    // We don't need to read natural size here, cropper will handle it
   }
 
   function onCropComplete(event) {
@@ -57,10 +52,8 @@
   async function getCroppedImg(imageSrc, pixelCrop) {
     const image = new Image();
     image.src = imageSrc;
-    // Use crossorigin anonymous to handle potential CORS issues even with blob URLs in some browsers
     image.crossOrigin = 'Anonymous'; 
     
-    // Waiting for image to load to prevent tainted canvas issues.
     await new Promise((resolve, reject) => {
         image.onload = resolve;
         image.onerror = reject;
@@ -78,7 +71,6 @@
 
     return new Promise(resolve => {
       canvas.toBlob(blob => {
-        // Resolve with a File object
         resolve(new File([blob], coverImageFile?.name || 'cover.png', { type: blob.type }));
       }, 'image/png');
     });
@@ -97,46 +89,36 @@
     const formData = new FormData();
     let changed = false;
 
-    // 1. Title change detection
     if (!editingLesson) {
-        // For new lessons, always include the title.
         formData.append('title', title.trim());
         changed = true;
     } else {
-        // For existing lessons, only include title if it has changed.
         if (title.trim() !== initialTitle) {
             formData.append('title', title.trim());
             changed = true;
         }
     }
 
-    // 2. Image change detection
-    // 2a. A new image was uploaded. We know this if coverImageFile is not null.
     if (coverImageFile) {
         if (coverImageUrlPreview && croppedAreaPixels && croppedAreaPixels.width > 0) {
             const croppedImage = await getCroppedImg(coverImageUrlPreview, croppedAreaPixels);
             formData.append('cover_image', croppedImage, croppedImage.name);
             changed = true;
         } else {
-            // As a fallback, if cropping fails for some reason, upload the original file.
             formData.append('cover_image', coverImageFile, coverImageFile.name);
             changed = true;
         }
     }
-    // 2b. An existing image was removed. We know this if there was an initial image, but now the preview is gone.
     else if (initialCoverImageUrl && !coverImageUrlPreview) {
-        formData.append('cover_image', ''); // Send empty string to signal removal
+        formData.append('cover_image', '');
         changed = true;
     }
 
-    // If we are editing and nothing changed, just close the modal.
     if (editingLesson && !changed) {
         closeModal();
         return;
     }
     
-    // For new lessons, if there's no title, it's an error (already checked),
-    // but if there's a title but no image, that's fine. We must have some change to proceed.
     if (!changed) {
         closeModal();
         return;
@@ -230,7 +212,7 @@
         box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
         position: relative;
         width: 100%;
-        max-width: 550px; /* Limit modal width */
+        max-width: 550px;
         max-height: 90vh;
         overflow-y: auto;
         animation: slide-down 0.3s ease-out;
@@ -339,8 +321,8 @@
      .image-preview-container {
          position: relative;
          max-width: 100%;
-         max-height: 250px; /* Limit preview height */
-         display: inline-block; /* Fit content */
+         max-height: 250px;
+         display: inline-block;
      }
 
      .image-preview {
@@ -412,7 +394,7 @@
         background: linear-gradient(120deg, var(--color-save-btn-gradient-start, #EBC7F2), var(--color-save-btn-gradient-end, #C2B6FC));
         color: var(--color-save-btn-text, white);
         border: none;
-        box-shadow: 0 3px 8px rgba(194, 182, 252, 0.4); /* Adjusted shadow */
+        box-shadow: 0 3px 8px rgba(194, 182, 252, 0.4);
     }
     .save-button:hover:not(:disabled) {
          filter: brightness(1.1);

@@ -107,8 +107,6 @@ export async function bulkLeaveStudents(courseId, studentIds) {
 export async function fetchCourses(params = {}) {
   const queryParams = new URLSearchParams();
   if (params.status) {
-    // Если status - массив, берем первый элемент для простоты
-    // Или можно обработать каждый статус отдельно
     const statusValue = Array.isArray(params.status) ? params.status[0] : params.status;
     queryParams.append('status', statusValue);
   }
@@ -141,7 +139,6 @@ export async function fetchEnrollments(params = {}) {
   const res = await apiFetch(url);
   if (!res.ok) throw new Error('Failed to fetch enrollments');
   const data = await res.json();
-  // Поддержка как пагинации, так и обычного массива
   return Array.isArray(data) ? data : (data.results || []);
 }
 

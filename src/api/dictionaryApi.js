@@ -57,7 +57,6 @@ export async function unmarkEntryAsLearned(sectionId, entryId) {
     return response.json();
 }
 
-// Admin functions
 export async function createDictionaryEntry(sectionId, entryData) {
     const url = `${dictsBaseUrl}/${sectionId}/entries/`;
     const response = await apiFetch(url, {

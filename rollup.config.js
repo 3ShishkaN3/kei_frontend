@@ -72,8 +72,6 @@ export default {
 
 		file: 'public/build/bundle.js',
 
-		// Map certain imports to browser global variable names so Rollup
-		// doesn't warn about missing globals when building an IIFE bundle.
 		globals: {
 			'@sentry/svelte': 'Sentry',
 			'html2canvas': 'html2canvas'
@@ -82,31 +80,25 @@ export default {
 	},
 
 	onwarn(warning, warn) {
-		// Ignore circular dependency warnings from d3-selection
 		if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message.includes('d3-selection')) return;
 
-		// Ignore eval warning from pdfjs-dist
 		if (warning.code === 'EVAL' && warning.id && warning.id.includes('pdfjs-dist')) return;
 
 		warn(warning);
 	},
 	plugins: [
 
-		replace({
-
-			preventAssignment: true,
-
-			'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'),
-			'process.env.SENTRY_DSN': JSON.stringify(process.env.SENTRY_DSN || '')
-
-		}),
-
+	replace({
+		preventAssignment: true,
+		
+		'import.meta.env.VITE_API_BASE_URL': JSON.stringify('/api/v1'),
+		'process.env.VITE_API_BASE_URL': JSON.stringify('/api/v1'),
+		'process.env.SENTRY_DSN': JSON.stringify('https://0b5f39fd7c79eed36e50fdfb148be5c2@o4510416287236096.ingest.de.sentry.io/4510416321642576')
+	}),
 
 		svelte({
 
 			compilerOptions: {
-
-				// enable run-time checks when not in production
 
 				dev: !production
 
@@ -114,22 +106,8 @@ export default {
 
 		}),
 
-		// we'll extract any component CSS out into
-
-		// a separate file - better for performance
 
 		css({ output: 'bundle.css' }),
-
-
-		// If you have external dependencies installed from
-
-		// npm, you'll most likely need these plugins. In
-
-		// some cases you'll need additional configuration -
-
-		// consult the documentation for details:
-
-		// https://github.com/rollup/plugins/tree/master/packages/commonjs
 
 		resolve({
 			browser: true,
@@ -142,11 +120,6 @@ export default {
 		commonjs({
 			requireReturnsDefault: 'auto'
 		}),
-
-
-		// If we're building for production (npm run build
-
-		// instead of npm run dev), minify
 
 		production && terser()
 

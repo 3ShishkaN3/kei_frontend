@@ -1,11 +1,8 @@
 <script>
-    // src/routes/CourseLessons.svelte
     import { onMount, onDestroy, tick } from 'svelte';
     import { navigate, useLocation } from 'svelte-routing';
-    // Import fly for item transitions
     import { fade, fly } from 'svelte/transition'; 
     import { flip } from 'svelte/animate';
-    // Import nicer easing functions
     import { cubicOut } from 'svelte/easing'; 
 
     import { user } from '../stores/user.js';
@@ -13,14 +10,12 @@
     import { apiFetch } from '../api/api.js';
     import { courseLessonsPagination } from '../stores/pagination.js'; // Import our pagination store
 
-    // Import Child Components
     import LessonCard from '../components/LessonCard.svelte';
     import DictionarySectionCard from '../components/dictionary/DictionarySectionCard.svelte';
     import EnhancedPagination from '../components/EnhancedPagination.svelte';
     import LessonFormModal from '../components/LessonFormModal.svelte';
     import DictionarySectionFormModal from '../components/DictionarySectionFormModal.svelte';
 
-    // Import Icons
     import ArrowUpBold from 'svelte-material-icons/ArrowUpBold.svelte';
     import ArrowDownBold from 'svelte-material-icons/ArrowDownBold.svelte';
     import PencilOutline from 'svelte-material-icons/PencilOutline.svelte';
@@ -31,10 +26,8 @@
     import { createEventDispatcher } from 'svelte';
 
     const dispatch = createEventDispatcher();
-    // --- Props ---
     export let courseId;
 
-    // A simple cookie utility
     const Cookies = {
         get: (name) => {
             const value = `; ${document.cookie}`;
@@ -50,7 +43,6 @@
         }
     };
 
-    // --- State Variables ---
     let lessons = [];
     let dictionarySections = [];
     let lessonProgress = new Map();
@@ -60,37 +52,31 @@
     let errorSections = null;
     let currentUserRole = null;
     let isPrivilegedUser = false;
-    let viewMode = 'student'; // Default, will be updated from cookie
-    let currentPage = 1; // Default to 1, will be updated from store/URL
+    let viewMode = 'student'; 
+    let currentPage = 1;
     let pageSize = $courseLessonsPagination.size;
     let totalLessons = 0;
     let sortField = 'created_at';
     let searchTerm = '';
-    let isLessonModalOpen = false; // Explicitly for Lesson Modal
+    let isLessonModalOpen = false; 
     let editingLesson = null;
-    let isSectionModalOpen = false; // Explicitly for Section Modal
+    let isSectionModalOpen = false;
     let editingSection = null;
     let lessonsSectionContainer;
     
     const location = useLocation();
 
-    // Animation state for page transitions
-    // Determines the fly direction when paginating
-    let pageTransitionDirection = 1; // 1 for forward, -1 for backward
+    let pageTransitionDirection = 1;
 
-    // Subscribe to pagination store
     const unsubscribePagination = courseLessonsPagination.subscribe(state => {
         const searchParams = new URLSearchParams($location.search);
         const pageFromUrl = parseInt(searchParams.get('page'), 10) || 1;
 
         if (state.page !== pageFromUrl) {
-             // Sync URL with the store state
              searchParams.set('page', state.page);
-             // Use replace: true to avoid polluting browser history on simple page changes
              navigate(`${$location.pathname}?${searchParams.toString()}`, { replace: true });
         }
         
-        // Fetch data only if the page has actually changed
         if (currentPage !== state.page) {
             pageTransitionDirection = state.page > currentPage ? 1 : -1;
             currentPage = state.page;
@@ -103,7 +89,6 @@
         }
     });
 
-    // --- Computed Properties ---
     $: isAdminView = isPrivilegedUser && viewMode === 'admin';
     $: displayRangeStart = totalLessons === 0 ? 0 : (currentPage - 1) * pageSize + 1;
     $: displayRangeEnd = Math.min(currentPage * pageSize, totalLessons);
@@ -113,19 +98,16 @@
         title: sortField.includes('title') ? (sortField.startsWith('-') ? 'desc' : 'asc') : null,
         updated_at: sortField.includes('updated_at') ? (sortField.startsWith('-') ? 'desc' : 'asc') : null,
     };
-    // Key for lesson grid transition
     $: lessonGridKey = `${currentPage}-${sortField}-${lessons.length}`; 
-    // Key for dictionary section grid transition
-    $: dictionaryGridKey = `${dictionarySections.map(s => s.id).join('-')}`; // Changes if sections are added/removed
+    $: dictionaryGridKey = `${dictionarySections.map(s => s.id).join('-')}`;
 
-    // --- Lifecycle & User Subscription ---
     const unsubscribeUser = user.subscribe(value => {
         currentUserRole = value?.role;
         const privileged = ['admin', 'teacher', 'assistant'].includes(currentUserRole);
         
-        if (privileged && !isPrivilegedUser) { // If user just became privileged
+        if (privileged && !isPrivilegedUser) {
             const storedViewMode = Cookies.get('viewMode');
-            viewMode = storedViewMode || 'admin'; // Default to admin for privileged users
+            viewMode = storedViewMode || 'admin';
         } else if (!privileged) {
             viewMode = 'student';
         }
@@ -137,9 +119,8 @@
             history.scrollRestoration = 'manual';
         }
 
-        if (!courseId) { /* Error Handling */ return; }
+        if (!courseId) { return; }
         
-        // Set initial viewMode after mount based on role and cookie
         if (isPrivilegedUser) {
             const storedViewMode = Cookies.get('viewMode');
             viewMode = storedViewMode || 'admin';
@@ -150,16 +131,11 @@
         const searchParams = new URLSearchParams($location.search);
         const pageFromUrl = parseInt(searchParams.get('page'), 10) || 1;
         
-        // Set the component's current page from URL first
         currentPage = pageFromUrl;
-        // Then, sync the store. This won't cause a re-fetch from the subscription
-        // because the currentPage is already aligned with the store's state.
         courseLessonsPagination.setPage(pageFromUrl);
-        // Set initial sort from URL if present
         const orderingFromUrl = searchParams.get('ordering');
         sortField = orderingFromUrl || sortField;
 
-        // Explicitly fetch all necessary data on initial component load.
         await fetchData();
     });
 
@@ -171,14 +147,12 @@
         unsubscribePagination();
     });
 
-    // --- Data Fetching ---
     async function fetchData() {
         isLoadingLessons = true;
         isLoadingSections = true;
         errorLessons = null;
         errorSections = null;
         
-        // Fetch lessons clears progress only on initial full load (clearProgress = true)
         await Promise.allSettled([
             fetchLessonsInternal(true), 
             fetchDictionarySectionsInternal()
@@ -186,14 +160,12 @@
 
         isLoadingLessons = false;
         isLoadingSections = false;
-        // Ensure DOM updates before potential transitions
         await tick(); 
     }
 
     async function fetchLessonsInternal(clearProgress = false) {
-        // If clearing progress (initial load/refresh), reset the map
         if (clearProgress) {
-            lessonProgress = new Map(); // Create a new Map to trigger reactivity
+            lessonProgress = new Map();
         }
         const url = new URL(`${API_BASE_URL}/courses/${courseId}/lessons/`);
         url.searchParams.append('page', currentPage); 
@@ -208,22 +180,17 @@
             lessons = data.results || []; 
             totalLessons = data.count || 0;
             
-            // Update pagination store with total items info if needed
             courseLessonsPagination.setPageSize(pageSize);
             
-            // Handle case where current page is now beyond total pages (e.g., deleted last item on a page)
             const totalPages = Math.ceil(totalLessons / pageSize);
             if (currentPage > totalPages && totalPages > 0) {
-                courseLessonsPagination.setPage(totalPages); // This will trigger another fetch via the store subscription
-                // Exit this fetch to avoid state inconsistency, the subscription will handle the next one
+                courseLessonsPagination.setPage(totalPages);
                 return; 
             } else if (currentPage > 1 && totalPages === 0) {
-                // If we were on page > 1 but now there are no items
-                courseLessonsPagination.setPage(1); // Go back to page 1
-                return; // Exit this fetch
+                courseLessonsPagination.setPage(1);
+                return;
             }
             
-            // Заполняем прогресс из ответа бекенда по каждому уроку
             const nextProgress = new Map();
             lessons.forEach(lesson => {
                 const p = Math.round(parseFloat(lesson.completion_percentage || 0));
@@ -254,11 +221,8 @@
         }
     }
 
-    // --- Event Handlers ---
     function handlePageChange(event) {
         const newPage = event.detail.page;
-        // The store is the single source of truth for page changes.
-        // The subscription will handle fetching and URL updates.
         courseLessonsPagination.setPage(newPage);
     }
 
@@ -270,12 +234,10 @@
 
         if (newSortField !== sortField) {
             sortField = newSortField;
-            // Update URL params for ordering without resetting page
             const searchParams = new URLSearchParams($location.search);
             searchParams.set('ordering', sortField);
             searchParams.set('page', currentPage);
             navigate(`${$location.pathname}?${searchParams.toString()}`, { replace: true });
-            // Fetch lessons with new sort order
             isLoadingLessons = true;
             fetchLessonsInternal(false).finally(() => {
                 isLoadingLessons = false;
@@ -288,7 +250,6 @@
         Cookies.set('viewMode', viewMode);
     }
 
-    // --- Navigation ---
     function navigateToLesson(lessonId) {
         console.log(lessonId);
         if (!lessonId) { console.warn("Attempted to navigate with invalid lessonId"); return; }
@@ -302,17 +263,16 @@
         navigate(`/courses/${courseId}/practice/${sectionId}`);
     }
     
-    // Helper functions for forms (kept as is)
        function preparePatchData(formData, originalData = {}) {
         const cleanedData = {};
 
         for (const [key, value] of Object.entries(formData)) {
             if (value === "" || value === null || value === undefined) {
-                continue; // не добавляем пустые поля в запрос
+                continue;
             }
 
             if (originalData[key] !== undefined && value === originalData[key]) {
-                continue; // если значение не изменилось — не отправляем
+                continue;
             }
 
             cleanedData[key] = value;
@@ -327,10 +287,10 @@
         for (const [key, value] of originalFormData.entries()) {
             if (value instanceof File) {
                 if (value.size > 0) {
-                    cleaned.append(key, value); // если выбран файл
+                    cleaned.append(key, value);
                 }
             } else if (value !== "" && value !== null && value !== undefined) {
-                cleaned.append(key, value);  // текстовые поля только непустые
+                cleaned.append(key, value);
             }
         }
 
@@ -342,12 +302,11 @@
         const blob = await (await fetch(croppedDataUrl)).blob();
         const file = new File([blob], filename, { type: blob.type });
 
-        formData.delete(fieldName); // удалить старый файл
-        formData.set(fieldName, file); // установить новый
+        formData.delete(fieldName);
+        formData.set(fieldName, file);
     }
 
 
-    // --- Lesson Admin Actions ---
     function handleCreateLesson() { editingLesson = null; isSectionModalOpen = false; isLessonModalOpen = true; } 
     function handleEditLesson(event) { editingLesson = event.detail.lesson; isSectionModalOpen = false; isLessonModalOpen = true; } 
     function handleCloseLessonModal() { isLessonModalOpen = false; editingLesson = null; }
@@ -375,7 +334,6 @@
 
             handleCloseLessonModal();
             isLoadingLessons = true;
-            // Clear progress on save/create as the list state might change significantly
             fetchLessonsInternal(true).finally(() => isLoadingLessons = false); 
         } catch (err) {
             console.error("Ошибка сохранения урока:", err);
@@ -397,7 +355,6 @@
                 throw new Error(errorData.detail || `Ошибка ${response.status}`); 
             }
             isLoadingLessons = true; 
-            // Clear progress on delete as the list state changes
             fetchLessonsInternal(true).finally(() => isLoadingLessons = false ); 
         } catch (err) { 
             console.error("Ошибка удаления урока:", err); 
@@ -405,7 +362,6 @@
         }
     }
 
-    // --- Dictionary Section Admin Actions ---
     function handleCreateDictionarySection() { editingSection = null; isLessonModalOpen = false; isSectionModalOpen = true; } 
     function handleEditDictionarySection(event) { editingSection = event.detail.section; isLessonModalOpen = false; isSectionModalOpen = true; } 
     function handleCloseSectionModal() { isSectionModalOpen = false; editingSection = null; }
@@ -442,7 +398,6 @@
 
             handleCloseSectionModal();
             isLoadingSections = true;
-            // Fetch sections after save/create/delete
             fetchDictionarySectionsInternal().finally(() => isLoadingSections = false);
         } catch (err) {
             console.error("Ошибка сохранения раздела:", err);
@@ -560,7 +515,6 @@
              </div>
         {/if}
 
-        <!-- DICTIONARY SECTIONS -->
         <div class="dictionary-section-container">
             {#if isLoadingSections}
                 <p>Загрузка разделов...</p>
@@ -595,13 +549,8 @@
 
 
 <style>
-    /* Remove the keyframes anim as we're using Svelte transitions */
-    /* @keyframes fade-in-anim { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } */
-    
-    /* Remove base opacity/transition from containers, items will handle entry */
     .lessons-grid-container, .dictionary-grid-container { /* opacity: 1; */ }
 
-    /* --- General Layout --- */
     .course-lessons-page { padding: 30px var(--spacing-padding-page, 20px); max-width: var(--max-width-page, 1200px); margin: 0 auto; min-height: var(--min-height-page, calc(100vh - 150px)); display: flex; flex-direction: column; gap: var(--spacing-gap-large, 30px); }
     .page-title { text-align: center; font-size: var(--font-size-h1, 2.5rem); color: var(--color-text-dark, #333); margin-bottom: 0; font-weight: var(--font-weight-bold, 700); }
     .view-mode-controls { display: flex; justify-content: flex-end; align-items: center; gap: var(--spacing-gap-medium, 15px); margin-bottom: var(--spacing-margin-bottom-medium, 20px); flex-wrap: wrap; padding-top: 15px; }
@@ -614,7 +563,6 @@
     .loading-message, .error-message, .no-items-message { text-align: center; font-size: 1.1rem; color: var(--color-text-muted, #666); padding: 40px 20px; }
     .error-message { color: var(--color-danger-red, #dc3545); }
 
-    /* --- Lessons Section --- */
     .lessons-section .controls-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-margin-bottom-medium, 20px); gap: 15px; border-bottom: 1px solid var(--color-border-light, #eee); padding-bottom: 15px; }
     .lesson-count { font-size: 0.95rem; color: var(--color-text-muted, #555); flex-shrink: 0; font-weight: var(--font-weight-medium); }
     .sort-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -640,7 +588,6 @@
     .pagination-container { display: flex; justify-content: flex-end; margin-top: var(--spacing-margin-top-medium, 20px); padding-right: 10px; }
     .grid-item-wrapper { transition: transform 0.2s ease-out;}
 
-    /* --- Practice Section --- */
     .practice-section { margin-top: var(--spacing-margin-top-medium, 30px); }
     .practice-section .section-title { font-size: var(--font-size-h2, 1.8rem); color: var(--color-text-dark, #333); margin-bottom: 0; font-weight: var(--font-weight-semi-bold, 600); border-bottom: 1px solid var(--color-border-light, #eee); padding-bottom: 10px; text-align: center; }
     .section-admin-actions { display: flex; justify-content: flex-end; margin-top: 15px; margin-bottom: var(--spacing-margin-bottom-medium, 20px); }
@@ -667,9 +614,7 @@
         font-size: 1.1rem;
     }
     
-    /* --- Grid Item Wrapper Styles for Hover, Active, Shadow, and Transition --- */
     .lessons-grid .grid-item-wrapper {
-        /* Base styles for cards */
         background-color: var(--color-bg-card, #ffffff);
         border-radius: var(--spacing-border-radius-block, 12px);
         box-shadow: var(--color-card-shadow, 0 2px 10px rgba(0, 0, 0, 0.08));
@@ -679,17 +624,16 @@
     }
 
     .lessons-grid .grid-item-wrapper:hover {
-        transform: translateY(-5px); /* Lift effect on hover */
-        box-shadow: var(--color-card-shadow-hover, 0 8px 20px rgba(0, 0, 0, 0.15)); /* Stronger shadow on hover */
+        transform: translateY(-5px);
+        box-shadow: var(--color-card-shadow-hover, 0 8px 20px rgba(0, 0, 0, 0.15));
     }
 
     .lessons-grid .grid-item-wrapper:active {
-        transform: translateY(-2px); /* Subtle press effect */
-        box-shadow: var(--color-card-shadow-active, 0 4px 12px rgba(0, 0, 0, 0.12)); /* Slightly less shadow than hover */
-        filter: brightness(0.98); /* Subtle darken */
+        transform: translateY(-2px);
+        box-shadow: var(--color-card-shadow-active, 0 4px 12px rgba(0, 0, 0, 0.12));
+        filter: brightness(0.98);
     }
 
-    /* --- Responsiveness --- */
     @media (max-width: 900px) { .lessons-grid, .dictionary-grid { gap: 20px; } }
     @media (max-width: 768px) {
         .course-lessons-page { padding: 20px var(--spacing-padding-page-mobile, 15px); }

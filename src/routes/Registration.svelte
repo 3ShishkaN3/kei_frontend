@@ -168,7 +168,6 @@
         confirmationSuccess = data.message;
         localStorage.removeItem("registrationEmail");
 
-        // Автоматический вход и редирект
         await fetchCsrfToken();
         user.set({ isAuthenticated: true });
         navigate("/");
@@ -290,7 +289,6 @@
     <h1 class="parallax-element">Добро пожаловать!</h1>
 
     {#if !isRegistered}
-      <!-- Форма регистрации -->
       <form on:submit={handleRegistrationSubmit}>
         <input
           type="text"
@@ -327,7 +325,6 @@
         <div class="success">{registrationSuccess}</div>
       {/if}
     {:else}
-      <!-- Форма подтверждения email -->
       <div class="confirmation-container">
         <p>
           Введите код подтверждения, отправленный на {localStorage.getItem(

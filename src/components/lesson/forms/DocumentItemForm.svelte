@@ -31,7 +31,7 @@
             document_file_original = file;
             fileNamePreview = file.name;
         } else {
-            document_file_original = null; // Явно сбрасываем
+            document_file_original = null;
             if (current_document_url) {
                 fileNamePreview = current_document_url.split('/').pop();
             } else {
@@ -55,7 +55,7 @@
         payload.append('content_data', JSON.stringify(contentDataForJson));
 
         if (document_file_original) {
-            payload.append('document_file', document_file_original); // Имя поля 'document_file' для DocumentMaterial
+            payload.append('document_file', document_file_original);
         }
 
         dispatch('save', payload);
@@ -87,7 +87,6 @@
 </form>
 
 <style>
-    /* Стили аналогичны ImageItemForm.svelte */
     .item-form { display: flex; flex-direction: column; gap: 15px; }
     .form-group { display: flex; flex-direction: column; }
     .form-group label { margin-bottom: 5px; font-weight: 500; color: var(--color-text-muted); }

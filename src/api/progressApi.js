@@ -129,7 +129,6 @@ export async function getLearningStats() {
  */
 export async function getDailyStats(period = 'week') {
     try {
-        // Используем существующий эндпоинт для прогресса по урокам
         const response = await apiFetch(`${progressBaseUrl}/lessons/`);
         
         if (!response.ok) {
@@ -140,7 +139,6 @@ export async function getDailyStats(period = 'week') {
         const data = await response.json();
         const lessonProgress = data.results || data;
         
-        // Группируем данные по дням
         return groupLessonsByDays(lessonProgress, period);
     } catch (error) {
         console.error('Ошибка при получении ежедневной статистики:', error);
@@ -149,7 +147,6 @@ export async function getDailyStats(period = 'week') {
 }
 
 /**
- * Группирует прогресс уроков по дням
  * @param {Array} lessonProgress - Массив прогресса по урокам
  * @param {string} period - Период: 'week' или 'month'
  * @returns {Array} - Массив с данными по дням
@@ -158,15 +155,13 @@ function groupLessonsByDays(lessonProgress, period) {
     const days = period === 'week' ? 7 : 33;
     const dailyStats = [];
     
-    // Создаем массив дат для нужного периода
     for (let i = days - 1; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
-        date.setHours(0, 0, 0, 0); // Устанавливаем начало дня
+        date.setHours(0, 0, 0, 0);
         
         const dateStr = date.toISOString().split('T')[0];
         
-        // Считаем завершенные уроки за этот день
         const completedLessons = lessonProgress.filter(lesson => {
             if (!lesson.completed_at) return false;
             

@@ -2,7 +2,7 @@
     import { createEventDispatcher } from "svelte";
     import { fade, scale } from "svelte/transition";
 
-    export let bonus = null; // If provided, we are editing
+    export let bonus = null;
     export let isOpen = false;
 
     const dispatch = createEventDispatcher();
@@ -20,9 +20,7 @@
         description = bonus.description;
         price = bonus.price;
         bonusType = bonus.bonus_type;
-        // We can't set videoFile from existing URL, user has to re-upload if they want to change it
     } else if (isOpen && !bonus) {
-        // Reset form
         title = "";
         description = "";
         price = 100;
@@ -54,24 +52,6 @@
             formData.append("bonus_type", bonusType);
 
             if (videoFile) {
-                // The backend expects 'video_material' to be a VideoMaterial object ID if we send JSON,
-                // OR we need to handle file upload.
-                // Wait, the Bonus model has 'video_material' FK.
-                // If I want to upload a video directly when creating a bonus, the backend needs to handle it.
-                // The current BonusSerializer does not seem to handle nested VideoMaterial creation.
-                // It expects 'video_material' ID.
-
-                // However, for simplicity, let's assume the backend serializer might need adjustment OR we upload video separately.
-                // But the user requirement implies "upload bonus videos".
-                // If I look at the BonusViewSet, it uses standard ModelViewSet.
-
-                // Let's check if I can modify the backend to accept a file and create VideoMaterial on the fly.
-                // OR I should use the existing Material upload flow?
-                // The user said "Ensure that teachers can upload these bonus videos".
-
-                // I'll assume for now I need to send the file.
-                // If the backend doesn't support it, I'll need to fix the backend.
-                // Let's send it as 'video_file' and handle it in the backend.
                 formData.append("video_file", videoFile);
             }
 

@@ -1,4 +1,4 @@
-<!-- ContextMenu.svelte -->
+
 <script>
     import { createEventDispatcher } from 'svelte';
   
@@ -11,9 +11,9 @@
   
     function handleClick(option) {
       if (option.action) {
-        dispatch('select', { action: option.action }); // Передаем объект
+        dispatch('select', { action: option.action });
       }
-      if (option.type !== 'color-trigger' && option.action !== 'eyedropper') { // Не закрывать для пипетки и "Другой цвет"
+      if (option.type !== 'color-trigger' && option.action !== 'eyedropper') {
           dispatch('close');
       }
     }
@@ -61,7 +61,6 @@
               </div>
             {:else if option.type === 'eyedropper-trigger'}
                <button on:click={() => handleClick(option)}>
-                  <!-- Простая SVG иконка пипетки -->
                   <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="menu-icon">
                       <path d="m18 3 3 3-8 8h-3v-3Z"></path><path d="m15 6-3.4 3.4"></path><path d="M9 12H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1"></path>
                   </svg>
@@ -85,21 +84,19 @@
       border: 1px solid #ccc;
       box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.15);
       z-index: 1000;
-      min-width: 180px; /* Немного увеличим для палитры */
+      min-width: 180px;
       max-width: 280px;
-      border-radius: var(--spacing-border-radius-small, 6px); /* Немного увеличим */
-      /* Ограничение высоты и прокрутка */
-      max-height: min(350px, 80vh); /* Максимум 350px или 80% высоты экрана */
-      display: flex; /* Для правильного overflow на ul */
+      border-radius: var(--spacing-border-radius-small, 6px);
+      max-height: min(350px, 80vh);
+      display: flex;
       flex-direction: column;
     }
     .custom-context-menu ul {
       list-style: none;
       padding: 5px 0;
       margin: 0;
-      overflow-y: auto; /* Включаем прокрутку для списка */
-      flex-grow: 1; /* Чтобы занимал доступное место */
-      /* Стилизация скроллбара (опционально, для Webkit) */
+      overflow-y: auto;
+      flex-grow: 1;
       &::-webkit-scrollbar {
         width: 6px;
       }
@@ -112,16 +109,16 @@
       }
     }
     .custom-context-menu li button {
-      display: flex; /* Для выравнивания иконки и текста */
+      display: flex;
       align-items: center;
       width: 100%;
-      padding: 9px 15px; /* Немного увеличим паддинг */
+      padding: 9px 15px;
       text-align: left;
       background: none;
       border: none;
       cursor: pointer;
       font-size: 0.9rem;
-      gap: 8px; /* Пространство между иконкой и текстом */
+      gap: 8px;
     }
     .custom-context-menu li button:hover {
       background-color: #f0f0f0;
@@ -149,7 +146,7 @@
     .palette-colors {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px; /* Пространство между кнопками-цветами */
+      gap: 6px;
     }
     .palette-color-button {
       width: 22px;
@@ -159,7 +156,7 @@
       cursor: pointer;
       border-radius: 4px;
       transition: transform 0.1s ease-out;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.3); /* Легкий внутренний блик */
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.3);
     }
     .palette-color-button:hover {
       border-color: #333;

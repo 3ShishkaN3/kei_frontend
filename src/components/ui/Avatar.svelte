@@ -4,7 +4,6 @@
   export let size = 40; // px
   export let username = '';
   
-  // Генерируем инициалы из username
   function getInitials(name) {
     if (!name) return '?';
     const parts = name.trim().split(/\s+/);

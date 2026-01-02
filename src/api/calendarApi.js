@@ -45,7 +45,6 @@ export async function fetchNotes(params = {}) {
 }
 
 export async function upsertNote(body) {
-  // naive create; edit flows will pass id
   if (body.id) {
     const res = await apiFetch(`${BASE}/notes/${body.id}/`, {
       method: 'PATCH',

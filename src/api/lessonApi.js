@@ -6,7 +6,6 @@ import { apiFetch } from './api'; // Предполагаем, что apiFetch �
 const coursesBaseUrl = `${API_BASE_URL}/courses`;
 const materialsBaseUrl = `${API_BASE_URL}/materials`;
 const testsBaseUrl = `${API_BASE_URL}/materials/tests`;
-// Submissions живут под тем же префиксом, что и tests
 const submissionsBaseUrl = `${API_BASE_URL}/materials/submissions`;
 
 /**
@@ -29,7 +28,7 @@ const submissionsBaseUrl = `${API_BASE_URL}/materials/submissions`;
  * @response {
  * id: number,
  * course_id: number,
- * course_title: string, // Должен быть добавлен в LessonDetailSerializer на бэкенде
+ * course_title: string,
  * title: string,
  * subtitle: string | null,
  * description: string | null,
@@ -70,8 +69,6 @@ export async function fetchLessonDetails(courseId, lessonId) {
 	return response.json();
 }
 
-// PUT/PATCH для урока (если нужно будет редактировать детали самого урока, например, название)
-// Обычно это делается через /api/lessons/{id}/, но если вложено:
 /**
  * Обновить детали урока (только для админа/персонала).
  *
@@ -88,10 +85,9 @@ export async function fetchLessonDetails(courseId, lessonId) {
  */
 export async function updateLesson(courseId, lessonId, lessonData) {
     const url = `${coursesBaseUrl}/${courseId}/lessons/${lessonId}/`;
-    // apiFetch должен сам определять Content-Type (JSON или FormData)
     const response = await apiFetch(url, {
-        method: 'PATCH', // или PUT
-        body: lessonData // lessonData может быть объектом или FormData
+        method: 'PATCH',
+        body: lessonData
     });
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -148,7 +144,7 @@ export async function createSection(courseId, lessonId, sectionData) {
 export async function updateSection(courseId, lessonId, sectionId, sectionData) {
 	const url = `${coursesBaseUrl}/${courseId}/lessons/${lessonId}/sections/${sectionId}/`;
 	const response = await apiFetch(url, {
-		method: 'PATCH', // или PUT
+		method: 'PATCH',
 		body: sectionData
 	});
 	if (!response.ok) {
@@ -170,11 +166,10 @@ export async function updateSection(courseId, lessonId, sectionId, sectionData) 
 export async function deleteSection(courseId, lessonId, sectionId) {
 	const url = `${coursesBaseUrl}/${courseId}/lessons/${lessonId}/sections/${sectionId}/`;
 	const response = await apiFetch(url, { method: 'DELETE' });
-	if (!response.ok) { // Успешное удаление часто возвращает 204 No Content
+	if (!response.ok) {
 		const errorData = await response.json().catch(() => ({}));
 		throw new Error(errorData.detail || `Ошибка удаления раздела: ${response.status}`);
 	}
-	// Для 204 response.json() вызовет ошибку, поэтому не парсим
 }
 
 
@@ -229,7 +224,6 @@ export async function deleteSection(courseId, lessonId, sectionId) {
  * @param {boolean} option.is_correct - Правильный ли вариант.
  * @param {string} [option.explanation] - Пояснение.
  * @param {number} [option.order] - Порядок.
- * // ... другие поля для других типов тестов ...
  *
  * @param {string} [itemPayload.existing_content_type] - Если привязывается СУЩЕСТВУЮЩИЙ контент. Должен совпадать с `item_type`.
  * @param {number} [itemPayload.existing_content_id] - ID существующего контента (например, ID TextMaterial или Test).
@@ -238,7 +232,6 @@ export async function deleteSection(courseId, lessonId, sectionId) {
  * @response Объект SectionItem (см. структуру в fetchLessonDetails.sections[0].items[0])
  *
  * @note Если `item_type` требует файла (image, audio, video, document), `itemPayload` должен быть объектом `FormData`.
- * `apiFetch` должен корректно обрабатывать это.
  * При отправке `FormData` для создания контента, поля `content_data` сериализуются как отдельные поля FormData,
  * например, `content_data_title`, `content_data_image` (для файла), `content_data_is_markdown` и т.д.
  * Если `content_data` - это JSON для теста, то он отправляется как `itemPayload.content_data`.
@@ -247,7 +240,7 @@ export async function createSectionItem(courseId, lessonId, sectionId, itemPaylo
 	const url = `${coursesBaseUrl}/${courseId}/lessons/${lessonId}/sections/${sectionId}/items/`;
 	const response = await apiFetch(url, {
 		method: 'POST',
-		body: itemPayload // Может быть JSON или FormData
+		body: itemPayload
 	});
 	if (!response.ok) {
 		const errorData = await response.json().catch(() => ({}));
@@ -269,24 +262,16 @@ export async function createSectionItem(courseId, lessonId, sectionId, itemPaylo
  * @param {number} [itemPayload.order] - Новый порядок.
  * @param {'text'|...} [itemPayload.item_type] - Тип элемента (обычно не меняется, но API может позволять).
  * @param {Object} [itemPayload.content_data] - Если обновляется существующий связанный контент.
- * Структура как при создании, но без ID самого контента.
- * Бэкенд должен обновить связанный объект.
- * Для файлов (image, etc.) передаются как `content_data_image` и т.д. в FormData.
  * @param {string} [itemPayload.existing_content_type] - Если меняется ссылка на другой существующий контент.
  * @param {number} [itemPayload.existing_content_id] - ID другого существующего контента.
  * @returns {Promise<Object>} Обновленный объект SectionItem.
  *
- * @note При обновлении `content_data` для существующего SectionItem, бэкенд должен обновить
- * связанный объект материала/теста. Если нужно сменить тип контента или привязать
- * совершенно другой объект, это более сложный сценарий, который может требовать
- * удаления старого SectionItem и создания нового, или специальной логики на бэкенде.
- * Передача `existing_content_type` и `existing_content_id` должна менять связь.
  */
 export async function updateSectionItem(courseId, lessonId, sectionId, itemId, itemPayload) {
 	const url = `${coursesBaseUrl}/${courseId}/lessons/${lessonId}/sections/${sectionId}/items/${itemId}/`;
 	const response = await apiFetch(url, {
-		method: 'PATCH', // или PUT
-		body: itemPayload // Может быть JSON или FormData
+		method: 'PATCH',
+		body: itemPayload
 	});
 	if (!response.ok) {
 		const errorData = await response.json().catch(() => ({}));
@@ -297,7 +282,6 @@ export async function updateSectionItem(courseId, lessonId, sectionId, itemId, i
 
 /**
  * Удалить элемент из раздела.
- * Связанный контент (текст, тест) обычно НЕ удаляется с бэкенда, только связь.
  *
  * @async
  * @param {string|number} courseId - ID курса.
@@ -317,7 +301,6 @@ export async function deleteSectionItem(courseId, lessonId, sectionId, itemId) {
 
 /**
  * Отметить элемент раздела как просмотренный (нетестовый).
- * Идемпотентно: серверная часть сама позаботится не дублировать прогресс.
  */
 export async function markItemViewed(courseId, lessonId, sectionId, itemId) {
     const url = `${coursesBaseUrl}/${courseId}/lessons/${lessonId}/sections/${sectionId}/items/${itemId}/viewed/`;
@@ -332,21 +315,16 @@ export async function markItemViewed(courseId, lessonId, sectionId, itemId) {
 
 /**
  * =======================================================================
- * TEST API (Тесты - независимое управление, если нужно)
  * /api/tests/
- * Хотя обычно тесты создаются через SectionItem.
  * =======================================================================
  */
 
 /**
  * Получить детальную информацию о тесте.
- * Включает все его компоненты (вопросы, варианты и т.д.).
  *
  * @async
  * @param {string|number} testId - ID теста.
  * @returns {Promise<Object>} Объект теста.
- * @response Структура соответствует TestSerializer на бэкенде.
- * См. JS модели тестов и описание itemPayload.content_data для 'test' в createSectionItem.
  */
 export async function fetchTestDetails(testId) {
     const url = `${testsBaseUrl}/${testId}/`;
@@ -390,7 +368,7 @@ export async function createTest(testData) {
 export async function updateTest(testId, testData) {
     const url = `${testsBaseUrl}/${testId}/`;
     const response = await apiFetch(url, {
-        method: 'PUT', // или PATCH
+        method: 'PUT',
         body: testData
     });
     if (!response.ok) {
@@ -403,7 +381,6 @@ export async function updateTest(testId, testData) {
 
 /**
  * =======================================================================
- * TEST SUBMISSION API (Отправка ответов на тесты)
  * /api/tests/{testId}/submit/
  * /api/submissions/
  * =======================================================================
@@ -450,9 +427,9 @@ export async function submitTestAnswers(testId, submissionPayload) {
 	const url = `${testsBaseUrl}/${testId}/submit/`;
 	const response = await apiFetch(url, {
 		method: 'POST',
-		body: submissionPayload // Может быть JSON или FormData
+		body: submissionPayload
 	});
-	if (!response.ok) { // Успешная отправка обычно 201
+	if (!response.ok) {
 		const errorData = await response.json().catch(() => ({}));
 		throw new Error(errorData.detail || `Ошибка отправки ответов: ${response.status}`);
 	}
@@ -521,16 +498,14 @@ export async function reorderSections(courseId, lessonId, sectionsOrderPayload) 
 	const url = `${coursesBaseUrl}/${courseId}/lessons/${lessonId}/sections/reorder/`;
 	const response = await apiFetch(url, {
 		method: 'POST',
-		body: sectionsOrderPayload // Отправляем массив как JSON
+		body: sectionsOrderPayload
 	});
 	if (!response.ok) {
 		const errorData = await response.json().catch(() => ({}));
-		// Попытаемся извлечь более детальную ошибку, если бэкенд ее предоставляет
 		let errorMessage = `Ошибка изменения порядка разделов: ${response.status}`;
 		if (errorData.detail) {
 			errorMessage = errorData.detail;
 		} else if (errorData.error) {
-            // Если бэкенд возвращает { "error": "сообщение", "conflicts": ... }
             errorMessage = errorData.error;
             if (errorData.conflicts_with_other_sections) {
                  errorMessage += ` Конфликты: ${JSON.stringify(errorData.conflicts_with_other_sections)}`;
@@ -541,7 +516,7 @@ export async function reorderSections(courseId, lessonId, sectionsOrderPayload) 
         }
 		throw new Error(errorMessage);
 	}
-	return response.json(); // Бэкенд возвращает обновленный список секций
+	return response.json();
 }
 
 /**

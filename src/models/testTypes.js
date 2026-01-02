@@ -1,4 +1,4 @@
-// src/models/testTypes.js
+
 
 /**
  * Базовый класс для всех типов тестов.
@@ -6,12 +6,12 @@
 export class BaseTestModel {
     constructor({
         id = null,
-        title = "", // Добавил значения по умолчанию
+        title = "",
         description = "",
-        test_type, // Обязательный
+        test_type,
         attached_image_id = null,
         attached_audio_id = null
-        // aspect_ratio_for_test_image = null, // Если нужно передавать на бэк
+        // aspect_ratio_for_test_image = null
     }) {
         this.id = id;
         this.title = title;
@@ -27,12 +27,10 @@ export class BaseTestModel {
             title: this.title,
             description: this.description,
             test_type: this.test_type,
-            // На бэкенде ForeignKey поля называются attached_image и attached_audio
             attached_image: this.attached_image_id, 
             attached_audio: this.attached_audio_id,
             // aspect_ratio_for_test_image: this.aspect_ratio_for_test_image,
         };
-        // ID не включаем в payload для создания, он используется в URL для обновления
         return payload;
     }
 }
@@ -57,7 +55,6 @@ export class MCQOptionModel {
             order: this.order,
         };
         if (this.id && typeof this.id !== 'string' || (typeof this.id === 'string' && !this.id.startsWith('temp_'))) {
-            // Включаем ID только если он не временный (не Symbol и не temp_)
             payload.id = this.id; 
         }
         return payload;
@@ -101,7 +98,6 @@ export class FreeTextTestModel extends BaseTestModel {
         ...baseData 
     }) {
         super({ ...baseData, test_type: 'free-text' });
-        // На бэкенде это поле называется free_text_question и является объектом
         this.free_text_question = { 
             reference_answer: reference_answer,
             explanation: explanation,
@@ -119,7 +115,7 @@ export class FreeTextTestModel extends BaseTestModel {
 }
 
 /**
- * Модель для слота/ячейки в Drag-and-Drop тесте (бывший MatchingPair).
+ * Модель для слота/ячейки в Drag-and-Drop тесте
  */
 export class DragDropSlotModel {
     constructor({ 
@@ -161,8 +157,8 @@ export class DragDropSlotModel {
  */
 export class DragDropTestModel extends BaseTestModel {
     constructor({ 
-        draggable_options_pool = [], // Массив строк (тексты облачков)
-        drag_drop_slots = [],      // Массив объектов DragDropSlotModel
+        draggable_options_pool = [],
+        drag_drop_slots = [],
         ...baseData 
     }) {
         super({ ...baseData, test_type: 'drag-and-drop' });
@@ -177,10 +173,9 @@ export class DragDropTestModel extends BaseTestModel {
     }
     removeOptionFromPool(optionText) {
         this.draggable_options_pool = this.draggable_options_pool.filter(opt => opt !== optionText);
-        // Также нужно обновить/удалить слоты, которые использовали эту опцию как правильный ответ
         this.drag_drop_slots.forEach(slot => {
             if (slot.correct_answer_text === optionText) {
-                slot.correct_answer_text = ""; // Или другое действие
+                slot.correct_answer_text = "";
             }
         });
     }
@@ -201,27 +196,22 @@ export class DragDropTestModel extends BaseTestModel {
 
 
 /**
- * Модель для теста на порядок слов (старый тип, если остается, или новый, если унифицируем).
- * Если унифицируем с drag-and-drop логикой пула:
+ * Модель для теста на порядок слов
  */
 export class WordOrderTestModel extends BaseTestModel {
     constructor({ 
-        correct_ordered_texts = [], // Массив строк из пула, в правильном порядке
+        correct_ordered_texts = [],
         display_prompt = "", 
         explanation = "",
-        // Пул опций будет браться из Test.draggable_options_pool
-        // draggable_options_pool нужен здесь для удобства формы, но в payload пойдет в Test
         draggable_options_pool = [],  
         ...baseData 
     }) {
         super({ ...baseData, test_type: 'word-order' });
-        // word_order_sentence - это объект на бэкенде
         this.word_order_sentence = {
             correct_ordered_texts: Array.isArray(correct_ordered_texts) ? [...correct_ordered_texts] : [],
             display_prompt: display_prompt,
             explanation: explanation,
         };
-        // Это поле для управления в форме, в итоговый payload оно пойдет на уровень Test
         this.draggable_options_pool = Array.isArray(draggable_options_pool) ? [...draggable_options_pool] : []; 
     }
 
@@ -238,9 +228,7 @@ export class WordOrderTestModel extends BaseTestModel {
 
     toPayload() {
         const payload = super.toPayload();
-        // Данные для WordOrderSentence (без distractor_words)
         payload.word_order_sentence = { ...this.word_order_sentence }; 
-        // draggable_options_pool пойдет на уровень Test
         payload.draggable_options_pool = [...this.draggable_options_pool];
         return payload;
     }

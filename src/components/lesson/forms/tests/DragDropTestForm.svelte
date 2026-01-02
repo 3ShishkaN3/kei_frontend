@@ -24,7 +24,6 @@
 
     let localTestModel = new DragDropTestModel({ title: '', description: '', test_type: 'drag-and-drop'});
 
-    // Для общих аттачментов теста (к самому тесту, не к слотам)
     let testAttachedImageFile = null;
     let testImagePreviewUrl = null;
     let testCurrentServerImageId = null;
@@ -43,16 +42,13 @@
     let testCurrentServerAudioId = null;
     let testCurrentServerAudioUrl = null;
 
-    // Для управления пулом опций
     let newOptionPoolText = "";
 
-    // Аспект для изображений слотов
     const slotImageAspectRatios = [
         { label: '16:9', value: 16/9 }, { label: '4:3', value: 4/3 },
         { label: '1:1', value: 1/1 }, { label: 'Своб.', value: null },
     ];
 
-    // Новые реактивные переменные для хранения файлов слотов отдельно от модели
     let attachedSlotFiles = new Map();
     let attachedSlotAudioFiles = new Map();
 
@@ -70,13 +66,12 @@
                     const slot = new DragDropSlotModel({
                         ...s,
                         id: slotId,
-                        prompt_image_file: s.prompt_image_details?.image || null, // Use existing URL if available
-                        prompt_audio_file: s.prompt_audio_details?.audio_file || null, // Use existing URL if available
+                        prompt_image_file: s.prompt_image_details?.image || null,
+                        prompt_audio_file: s.prompt_audio_details?.audio_file || null,
                     });
 
-                    // Инициализация для изображений слотов
                     slot._attachedImageFile = null;
-                    slot._currentServerImageId = s.prompt_image_details?.id || null; // Use details if available
+                    slot._currentServerImageId = s.prompt_image_details?.id || null;
                     slot._currentServerImageUrl = s.prompt_image_details?.image || null;
                     if (slot._currentServerImageUrl) {
                         slot._imagePreviewUrl = slot._currentServerImageUrl.startsWith('http') ? slot._currentServerImageUrl : API_BASE_URL + slot._currentServerImageUrl;
@@ -86,11 +81,10 @@
                     slot._imageCrop = { x: 0, y: 0 };
                     slot._imageZoom = 1;
                     slot._imageCroppedAreaPixels = null;
-                    slot._imageAspectRatio = s.aspect_ratio_for_prompt_image || 16/9; // Предполагаем, что аспект может приходить с бэка
+                    slot._imageAspectRatio = s.aspect_ratio_for_prompt_image || 16/9;
 
-                    // Инициализация для аудио слотов
                     slot._attachedAudioFile = null;
-                    slot._currentServerAudioId = s.prompt_audio_details?.id || null; // Use details if available
+                    slot._currentServerAudioId = s.prompt_audio_details?.id || null;
                     slot._currentServerAudioUrl = s.prompt_audio_details?.audio_file || null;
                     if (slot._currentServerAudioUrl) {
                         const name = slot._currentServerAudioUrl.substring(slot._currentServerAudioUrl.lastIndexOf('/') + 1);
@@ -112,7 +106,6 @@
         if (testCurrentServerImageUrl && !testAttachedImageFile) {
             testImagePreviewUrl = testCurrentServerImageUrl.startsWith('http') ? testCurrentServerImageUrl : API_BASE_URL + testCurrentServerImageUrl;
         } else if (!testAttachedImageFile) { testImagePreviewUrl = null; }
-        // testImageAspectRatio = currentTestData?.aspect_ratio_for_test_image || 16/9; // Если сохраняете на бэке
 
         testCurrentServerAudioId = currentTestData?.attached_audio_id || null;
         testCurrentServerAudioUrl = currentTestData?.attached_audio_details?.audio_file || null;
@@ -146,7 +139,6 @@
         }
     }
 
-    // --- Управление общими аттачментами теста ---
     function handleTestImageFileChange(event) {
         const file = event.target.files[0];
         if (file) {
@@ -196,7 +188,6 @@
         testAudioFileName = null;
         testCurrentServerAudioId = null;
     }
-    // --- Управление пулом облачков (draggable_options_pool) ---
     function addOptionToDraggablePool() {
         if (!newOptionPoolText.trim()) return;
         if (localTestModel.draggable_options_pool.includes(newOptionPoolText.trim())) {
@@ -207,7 +198,7 @@
         localTestModel = localTestModel;
     }
     function removeOptionFromDraggablePool(optionText) {
-        localTestModel.removeOptionFromPool(optionText); // Этот метод должен обновить и слоты
+        localTestModel.removeOptionFromPool(optionText);
         localTestModel = localTestModel;
     }
     function editOptionInPool(index, event) {
@@ -215,7 +206,6 @@
         if (newText && !localTestModel.draggable_options_pool.filter((o,i) => i !== index).includes(newText)) {
             const oldText = localTestModel.draggable_options_pool[index];
             localTestModel.draggable_options_pool[index] = newText;
-            // Обновить correct_answer_text в слотах, если они использовали старый текст
             localTestModel.drag_drop_slots.forEach(slot => {
                 if (slot.correct_answer_text === oldText) {
                     slot.correct_answer_text = newText;
@@ -223,8 +213,7 @@
             });
             localTestModel = localTestModel;
         } else if (!newText) {
-            // Можно удалить, если текст стал пустым, или запретить
-             event.target.value = localTestModel.draggable_options_pool[index]; // Вернуть старое значение
+             event.target.value = localTestModel.draggable_options_pool[index];
             /* addNotification("Текст опции не может быть пустым.", "warning"); */
         } else {
             event.target.value = localTestModel.draggable_options_pool[index]; // Вернуть старое значение
@@ -233,26 +222,25 @@
     }
 
 
-    // --- Управление слотами (drag_drop_slots) ---
     function handleAddSlot() {
         const newSlot = {
             id: generateTemporaryId(),
             correct_answer_text: localTestModel.draggable_options_pool[0] || "",
             prompt_text: "",
             explanation: "",
-            prompt_image_file: null, // Set to null for new slots in JSON
-            prompt_audio_file: null, // Set to null for new slots in JSON
+            prompt_image_file: null,
+            prompt_audio_file: null,
             _attachedImageFile: null,
             _imagePreviewUrl: null,
-            _currentServerImageId: null, // Keep for internal tracking
+            _currentServerImageId: null,
             _currentServerImageUrl: null,
             _imageCrop: { x: 0, y: 0 },
             _imageZoom: 1,
             _imageCroppedAreaPixels: null,
-            _imageAspectRatio: 16/9, // Дефолтный аспект для нового слота
+            _imageAspectRatio: 16/9,
             _attachedAudioFile: null,
             _audioFileName: null,
-            _currentServerAudioId: null, // Keep for internal tracking
+            _currentServerAudioId: null,
             _currentServerAudioUrl: null,
         };
         localTestModel.addSlot(newSlot);
@@ -262,49 +250,43 @@
     function handleSlotImageFileChange(slotToUpdate, event) {
         const file = event.target.files[0];
         if (file) {
-            // Store the file in the map
             attachedSlotFiles.set(slotToUpdate.id, file);
-            attachedSlotFiles = attachedSlotFiles; // Trigger reactivity for the Map
+            attachedSlotFiles = attachedSlotFiles;
 
             const index = localTestModel.drag_drop_slots.findIndex(s => s.id === slotToUpdate.id);
             if (index !== -1) {
                 const originalSlot = localTestModel.drag_drop_slots[index];
 
-                // Revoke old URL if it exists
                 if (originalSlot._imagePreviewUrl && originalSlot._imagePreviewUrl.startsWith('blob:')) {
                     URL.revokeObjectURL(originalSlot._imagePreviewUrl);
                 }
 
-                // Create a new DragDropSlotModel instance, copying its core properties
                 const updatedSlot = new DragDropSlotModel({
                     id: originalSlot.id,
                     prompt_text: originalSlot.prompt_text,
-                    prompt_image_file: null, // Set to null in JSON for new file upload
-                    prompt_audio_file: originalSlot.prompt_audio_file, // Keep existing URL or null
+                    prompt_image_file: null,
+                    prompt_audio_file: originalSlot.prompt_audio_file,
                     correct_answer_text: originalSlot.correct_answer_text,
                     explanation: originalSlot.explanation,
                     order: originalSlot.order,
                 });
 
-                // Manually set the temporary Svelte-specific properties on the new instance
-                // updatedSlot._attachedImageFile = file; // Removed: primary source is attachedSlotFiles map
-                updatedSlot._currentServerImageId = null; // Clear server ID as new file is attached
+                updatedSlot._currentServerImageId = null;
                 updatedSlot._imagePreviewUrl = URL.createObjectURL(file);
                 updatedSlot._imageCrop = { x: 0, y: 0 };
                 updatedSlot._imageZoom = 1;
                 updatedSlot._imageCroppedAreaPixels = null;
-                updatedSlot._imageAspectRatio = originalSlot._imageAspectRatio; // Preserve aspect ratio
+                updatedSlot._imageAspectRatio = originalSlot._imageAspectRatio;
 
-                updatedSlot._attachedAudioFile = originalSlot._attachedAudioFile; // Copy existing audio state
+                updatedSlot._attachedAudioFile = originalSlot._attachedAudioFile;
                 updatedSlot._audioFileName = originalSlot._audioFileName;
-                updatedSlot._currentServerAudioId = originalSlot._currentServerAudioId; // Copy existing audio server ID
-                updatedSlot._currentServerAudioUrl = originalSlot._currentServerAudioUrl; // Copy existing audio server URL
+                updatedSlot._currentServerAudioId = originalSlot._currentServerAudioId;
+                updatedSlot._currentServerAudioUrl = originalSlot._currentServerAudioUrl;
 
 
-                // Replace the slot in the array to trigger reactivity
                 localTestModel.drag_drop_slots[index] = updatedSlot;
-                localTestModel.drag_drop_slots = localTestModel.drag_drop_slots; // Explicit array re-assignment
-                localTestModel = localTestModel; // Force top-level reactivity
+                localTestModel.drag_drop_slots = localTestModel.drag_drop_slots;
+                localTestModel = localTestModel;
             }
         }
         event.target.value = null;
@@ -315,9 +297,8 @@
     function onSlotImageCropComplete(slot, e) { slot._imageCroppedAreaPixels = e.detail.pixels; localTestModel = localTestModel; }
 
     async function getCroppedSlotImage(slot, imageSrc, pixelCrop) {
-        const originalFile = attachedSlotFiles.get(slot.id); // Получаем оригинальный файл из Map
+        const originalFile = attachedSlotFiles.get(slot.id);
 
-        // Если нет области обрезки или она нулевая, или нет оригинального файла, возвращаем оригинальный файл из Map
         if (!originalFile || !pixelCrop || pixelCrop.width === 0 || pixelCrop.height === 0) {
             return originalFile || null;
         }
@@ -331,7 +312,6 @@
             });
         } catch (error) {
             console.error("Ошибка загрузки изображения слота для обрезки:", error);
-            /* addNotification("Ошибка загрузки изображения слота для обрезки.", "error"); */
             return null;
         }
         
@@ -358,19 +338,17 @@
                     resolve(null); 
                     return; 
                 }
-                // Используем имя и тип из originalFile (из Map)
                 resolve(new File(
                     [blob], 
-                    originalFile.name, // Имя из оригинального файла
-                    { type: originalFile.type || blob.type || 'image/png' } // Тип из оригинального файла или blob
+                    originalFile.name,
+                    { type: originalFile.type || blob.type || 'image/png' }
                 ));
-            }, originalFile.type || 'image/png', 0.9); // Также используем тип из originalFile
+            }, originalFile.type || 'image/png', 0.9);
         });
     }
     function removeSlotAttachedImage(slotToRemoveImageFrom) {
-        // Remove from the map
         attachedSlotFiles.delete(slotToRemoveImageFrom.id);
-        attachedSlotFiles = attachedSlotFiles; // Trigger reactivity for the Map
+        attachedSlotFiles = attachedSlotFiles;
 
         const index = localTestModel.drag_drop_slots.findIndex(s => s.id === slotToRemoveImageFrom.id);
         if (index !== -1) {
@@ -383,16 +361,15 @@
             const updatedSlot = new DragDropSlotModel({
                 id: originalSlot.id,
                 prompt_text: originalSlot.prompt_text,
-                prompt_image_file: null, // Explicitly set to null in JSON for removal
-                prompt_audio_file: originalSlot.prompt_audio_file, // Keep existing URL or null
+                prompt_image_file: null,
+                prompt_audio_file: originalSlot.prompt_audio_file,
                 correct_answer_text: originalSlot.correct_answer_text,
                 explanation: originalSlot.explanation,
                 order: originalSlot.order,
             });
 
-            // Manually set temporary Svelte-specific properties
             updatedSlot._attachedImageFile = null;
-            updatedSlot._currentServerImageId = null; // Clear server ID
+            updatedSlot._currentServerImageId = null;
             updatedSlot._imagePreviewUrl = null;
             updatedSlot._imageCrop = { x: 0, y: 0 };
             updatedSlot._imageZoom = 1;
@@ -405,7 +382,7 @@
             updatedSlot._currentServerAudioUrl = originalSlot._currentServerAudioUrl;
 
             localTestModel.drag_drop_slots[index] = updatedSlot;
-            localTestModel.drag_drop_slots = localTestModel.drag_drop_slots; // Explicit array re-assignment
+            localTestModel.drag_drop_slots = localTestModel.drag_drop_slots;
             localTestModel = localTestModel;
         }
     }
@@ -414,7 +391,7 @@
         const file = event.target.files[0];
         if (file) {
             attachedSlotAudioFiles.set(slotToUpdate.id, file);
-            attachedSlotAudioFiles = attachedSlotAudioFiles; // Trigger reactivity for the Map
+            attachedSlotAudioFiles = attachedSlotAudioFiles;
 
             const index = localTestModel.drag_drop_slots.findIndex(s => s.id === slotToUpdate.id);
             if (index !== -1) {
@@ -423,19 +400,17 @@
                 const updatedSlot = new DragDropSlotModel({
                     id: originalSlot.id,
                     prompt_text: originalSlot.prompt_text,
-                    prompt_image_file: originalSlot.prompt_image_file, // Keep existing URL or null
-                    prompt_audio_file: null, // Set to null in JSON for new file upload
+                    prompt_image_file: originalSlot.prompt_image_file,
+                    prompt_audio_file: null,
                     correct_answer_text: originalSlot.correct_answer_text,
                     explanation: originalSlot.explanation,
                     order: originalSlot.order,
                 });
 
-                // Manually set temporary Svelte-specific properties
                 updatedSlot._attachedAudioFile = file;
-                updatedSlot._currentServerAudioId = null; // Clear server ID as new file is attached
+                updatedSlot._currentServerAudioId = null;
                 updatedSlot._audioFileName = file.name;
 
-                // Copy image-related properties
                 updatedSlot._attachedImageFile = originalSlot._attachedImageFile;
                 updatedSlot._currentServerImageId = originalSlot._currentServerImageId;
                 updatedSlot._imagePreviewUrl = originalSlot._imagePreviewUrl;
@@ -445,7 +420,7 @@
                 updatedSlot._imageAspectRatio = originalSlot._imageAspectRatio;
 
                 localTestModel.drag_drop_slots[index] = updatedSlot;
-                localTestModel.drag_drop_slots = localTestModel.drag_drop_slots; // Explicit array re-assignment
+                localTestModel.drag_drop_slots = localTestModel.drag_drop_slots;
                 localTestModel = localTestModel;
             }
         }
@@ -454,7 +429,7 @@
 
     function removeSlotAttachedAudio(slotToRemoveAudioFrom) {
         attachedSlotAudioFiles.delete(slotToRemoveAudioFrom.id);
-        attachedSlotAudioFiles = attachedSlotAudioFiles; // Trigger reactivity for the Map
+        attachedSlotAudioFiles = attachedSlotAudioFiles;
 
         const index = localTestModel.drag_drop_slots.findIndex(s => s.id === slotToRemoveAudioFrom.id);
         if (index !== -1) {
@@ -463,20 +438,18 @@
             const updatedSlot = new DragDropSlotModel({
                 id: originalSlot.id,
                 prompt_text: originalSlot.prompt_text,
-                prompt_image_file: originalSlot.prompt_image_file, // Keep existing URL or null
-                prompt_audio_file: null, // Explicitly set to null in JSON for removal
+                prompt_image_file: originalSlot.prompt_image_file,
+                prompt_audio_file: null,
                 correct_answer_text: originalSlot.correct_answer_text,
                 explanation: originalSlot.explanation,
                 order: originalSlot.order,
             });
 
-            // Manually set temporary Svelte-specific properties
             updatedSlot._attachedAudioFile = null;
             updatedSlot._audioFileName = null;
-            updatedSlot._currentServerAudioId = null; // Clear server ID
+            updatedSlot._currentServerAudioId = null;
             updatedSlot._currentServerAudioUrl = null;
 
-            // Copy image-related properties
             updatedSlot._attachedImageFile = originalSlot._attachedImageFile;
             updatedSlot._currentServerImageId = originalSlot._currentServerImageId;
             updatedSlot._imagePreviewUrl = originalSlot._imagePreviewUrl;
@@ -486,7 +459,7 @@
             updatedSlot._imageAspectRatio = originalSlot._imageAspectRatio;
 
             localTestModel.drag_drop_slots[index] = updatedSlot;
-            localTestModel.drag_drop_slots = localTestModel.drag_drop_slots; // Explicit array re-assignment
+            localTestModel.drag_drop_slots = localTestModel.drag_drop_slots;
             localTestModel = localTestModel;
         }
     }
@@ -538,7 +511,6 @@
         const formData = new FormData();
         const testDefinition = localTestModel.toPayload();
 
-        // Обработка общих аттачментов теста
         testDefinition.attached_image = finalGeneralImageFile ? null : testCurrentServerImageId;
         testDefinition.attached_audio = testAttachedAudioFile ? null : testCurrentServerAudioId;
 
@@ -551,10 +523,8 @@
             console.log("[DragDropForm] handleSave: Добавлен общий файл аудио:", testAttachedAudioFile.name);
         }
         
-        const slotAudioFilesToAttach = []; // Для аудиофайлов слотов
+        const slotAudioFilesToAttach = [];
 
-        // JSON с testDefinition добавляется ПЕРЕД файлами слотов.
-        // В testDefinition.drag_drop_slots УЖЕ стоит prompt_image_file: null из-за slot.toPayload()
         Object.keys(testDefinition).forEach(key => {
             if (testDefinition[key] === undefined) delete testDefinition[key];
         });
@@ -563,44 +533,34 @@
         console.log("[DragDropForm] handleSave: Количество слотов в localTestModel.drag_drop_slots:", localTestModel.drag_drop_slots.length);
         console.log("[DragDropForm] handleSave: Содержимое attachedSlotFiles (Map):", new Map(attachedSlotFiles)); // Логируем копию для лучшего отображения
 
-        // Обработка аттачментов изображений и аудио для каждого слота
         for (let i = 0; i < localTestModel.drag_drop_slots.length; i++) {
             const slot = localTestModel.drag_drop_slots[i];
             console.log(`[DragDropForm] handleSave: Обработка слота ${i + 1} (ID: ${slot.id})`);
 
-            // --- Изображения слота ---
             let fileFromMap = attachedSlotFiles.get(slot.id);
             console.log(`[DragDropForm] handleSave: Слот ${i + 1} (ID: ${slot.id}) - файл изображения из Map:`, fileFromMap ? fileFromMap.name : 'НЕТ ФАЙЛА В MAP');
 
-            if (fileFromMap) { // Если для слота было выбрано/осталось изображение
+            if (fileFromMap) {
                 let finalSlotImageFile = null;
-                // Применяем логику обрезки, если необходимо
                 if (slot._imagePreviewUrl && slot._imageCroppedAreaPixels && slot._imageCroppedAreaPixels.width > 0 && slot._imageCroppedAreaPixels.height > 0) {
                     console.log(`[DragDropForm] handleSave: Слот ${i + 1} (ID: ${slot.id}) - попытка обрезки изображения.`);
                     finalSlotImageFile = await getCroppedSlotImage(slot, slot._imagePreviewUrl, slot._imageCroppedAreaPixels);
                     console.log(`[DragDropForm] handleSave: Слот ${i + 1} (ID: ${slot.id}) - результат обрезки:`, finalSlotImageFile ? finalSlotImageFile.name : 'ОБРЕЗКА НЕУДАЧНА / НЕТ ФАЙЛА');
                 } else {
-                    finalSlotImageFile = fileFromMap; // Используем файл из Map напрямую
+                    finalSlotImageFile = fileFromMap;
                     console.log(`[DragDropForm] handleSave: Слот ${i + 1} (ID: ${slot.id}) - используется оригинальный файл из Map:`, finalSlotImageFile.name);
                 }
 
-                if (finalSlotImageFile instanceof File) { // Убедимся что это действительно файл
-                    // Добавляем файл в formData с именем 'prompt_image_file'
-                    // Порядок соответствует порядку слотов в localTestModel.drag_drop_slots
+                if (finalSlotImageFile instanceof File) {
                     formData.append('prompt_image_file', finalSlotImageFile);
                     console.log(`[DragDropForm] handleSave: Слот ${i + 1} (ID: ${slot.id}) - ДОБАВЛЕН файл 'prompt_image_file':`, finalSlotImageFile.name);
                 } else {
                     console.log(`[DragDropForm] handleSave: Слот ${i + 1} (ID: ${slot.id}) - НЕТ финального файла изображения для добавления (finalSlotImageFile: ${finalSlotImageFile}).`);
-                    // Если бэкенд ожидает "пустышку" или маркер для слотов без файла, ее нужно добавить здесь.
-                    // Но по условию задачи, если файла нет, его просто не прикладываем.
                 }
             } else {
                 console.log(`[DragDropForm] handleSave: Слот ${i + 1} (ID: ${slot.id}) - нет файла изображения в attachedSlotFiles. Пропускаем добавление prompt_image_file.`);
-                // Если бэкенд ожидает "пустышку" или маркер для слотов без файла, ее нужно добавить здесь.
-                // Но по условию задачи, если файла нет, его просто не прикладываем.
             }
 
-            // --- Аудио слота ---
             let audioFileFromMap = attachedSlotAudioFiles.get(slot.id);
             if (audioFileFromMap) {
                 slotAudioFilesToAttach.push(audioFileFromMap);
@@ -608,7 +568,6 @@
             }
         }
         
-        // Добавление всех собранных аудиофайлов слотов
         for (const file of slotAudioFilesToAttach) {
             formData.append('prompt_audio_file', file);
             console.log(`[DragDropForm] handleSave: Добавлен файл 'prompt_audio_file':`, file.name);
@@ -616,7 +575,6 @@
 
         console.log("[DragDropForm] handleSave: Содержимое FormData перед отправкой (ключи):");
         for (let pair of formData.entries()) {
-            // Для файлов значением будет объект File, который может не полностью отобразиться, но ключ будет виден.
             if (pair[1] instanceof File) {
                 console.log(`  ${pair[0]}: File (name: ${pair[1].name}, size: ${pair[1].size}, type: ${pair[1].type})`);
             } else {
@@ -885,7 +843,7 @@
     border-radius: var(--spacing-border-radius-small, 8px); font-size: 0.95rem;
     transition: border-color 0.2s, box-shadow 0.2s;
     background-color: var(--color-bg-light, #fff);
-    width: 100%; /* Для select и textarea */
+    width: 100%;
     box-sizing: border-box;
 }
 .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
@@ -911,7 +869,6 @@
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0;}
 
 
-/* --- Стили для DragDropTestForm --- */
 .drag-drop-test-form .form-section {
     margin-top: 25px;
     padding-top: 20px;
@@ -925,7 +882,6 @@
     margin-bottom: 15px;
 }
 
-/* Стили для общих аттачментов (копипаст из MCQ с адаптацией) */
 .attachments-section .attachment-control > label:first-child {
     font-size: 0.95rem;
     margin-bottom: 8px;
@@ -955,7 +911,6 @@
 .form-hint.removed-hint { color: var(--color-danger-red); font-weight: 500; }
 
 
-/* Пул облачков */
 .option-pool-controls {
     display: flex;
     gap: 10px;
@@ -964,7 +919,7 @@
 }
 .option-pool-controls input[type="text"] {
     flex-grow: 1;
-    margin-bottom: 0; /* Убираем дефолтный отступ инпута */
+    margin-bottom: 0;
 }
 .btn-add-small {
     display: inline-flex; align-items: center; gap: 6px;
@@ -999,9 +954,9 @@
     background-color: var(--color-primary-light);
     color: var(--color-primary-dark);
     padding: 6px 8px 6px 12px;
-    border-radius: 15px; /* Овальные */
+    border-radius: 15px;
     font-size: 0.9em;
-    border: 1px solid transparent; /* Для ховера */
+    border: 1px solid transparent;
 }
 .pool-option-input {
     background: transparent;
@@ -1010,8 +965,8 @@
     padding: 2px 4px;
     color: inherit;
     font-size: inherit;
-    width: auto; /* Автоширина по содержимому */
-    min-width: 50px; /* Минимальная ширина для редактирования */
+    width: auto;
+    min-width: 50px;
     border-radius: 3px;
 }
 .pool-option-input:focus {
@@ -1030,7 +985,6 @@
 }
 
 
-/* Слоты */
 .slots-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -1058,7 +1012,7 @@
     font-weight: 600;
     color: var(--color-secondary);
 }
-.slot-item .form-group { margin-bottom: 5px; } /* Уменьшаем отступы внутри слота */
+.slot-item .form-group { margin-bottom: 5px; }
 .slot-item .form-group label { font-size: 0.85em; }
 .add-slot-btn {
     display: inline-flex; align-items: center; gap: 8px;

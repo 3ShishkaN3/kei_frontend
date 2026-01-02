@@ -24,7 +24,7 @@
     let croppedAreaPixels = null;
     let showCropper = false;
     function setAspect(newAspect) {
-        currentAspect = newAspect; // newAspect может быть числом (e.g., 16/9) или undefined
+        currentAspect = newAspect;
     }
     onMount(() => {
         if (itemToEdit && itemToEdit.content_details) {
@@ -51,7 +51,7 @@
             showCropper = true;
             crop = { x: 0, y: 0 };
             zoom = 1;
-            croppedAreaPixels = null; // Сбрасываем кроп, чтобы пользователь его сделал заново
+            croppedAreaPixels = null;
         }
     }
 
@@ -61,9 +61,6 @@
 
     async function getCroppedImg(imageSrc, pixelCrop) {
         if (!pixelCrop || pixelCrop.width === 0 || pixelCrop.height === 0) {
-            // Если кроп невалидный (например, не был сделан или нулевой размер),
-            // и есть оригинальный файл, вернем его. Иначе null.
-            // Это предотвратит ошибку, если пользователь не двигал рамку кропа.
             console.warn("Invalid or no crop data, using original file if available.");
             return image_file_original || null; 
         }
@@ -101,20 +98,20 @@
                     resolve(null); return;
                 }
                 resolve(new File([blob], image_file_original?.name || 'cropped-image.png', { type: blob.type || 'image/png' }));
-            }, image_file_original?.type || 'image/png', 0.9); // 0.9 - качество для jpeg
+            }, image_file_original?.type || 'image/png', 0.9);
         });
     }
 
     async function handleSubmit() {
         let finalImageFileToSend = null;
 
-        if (image_file_original && showCropper) { // Если был загружен новый файл и показан кроппер
-            if (croppedAreaPixels) { // Если пользователь сделал кроп
+        if (image_file_original && showCropper) {
+            if (croppedAreaPixels) {
                 finalImageFileToSend = await getCroppedImg(image_for_cropper, croppedAreaPixels);
-            } else { // Кроппер был, но пользователь не взаимодействовал с ним - используем оригинал
+            } else {
                 finalImageFileToSend = image_file_original;
             }
-        } else if (image_file_original) { // Кроппер не показывался, но файл был (маловероятно с текущей логикой)
+        } else if (image_file_original) {
             finalImageFileToSend = image_file_original;
         }
 
@@ -123,8 +120,6 @@
              addNotification('Пожалуйста, выберите изображение.', 'warning');
              return;
         }
-         // Если это редактирование, и новый файл не выбран/не обработан,
-         // то finalImageFileToSend будет null, и бэкенд не должен менять картинку.
 
         const contentDataForJson = {
             title: title.trim(),
@@ -136,7 +131,7 @@
         payload.append('content_data', JSON.stringify(contentDataForJson));
 
         if (finalImageFileToSend) {
-            payload.append('image', finalImageFileToSend); // Имя поля 'image' для ImageMaterial
+            payload.append('image', finalImageFileToSend);
         }
 
         dispatch('save', payload);
@@ -150,9 +145,6 @@
         image_file_original = null;
         showCropper = false;
         croppedAreaPixels = null;
-        // Файл сброшен, при сохранении (если это редактирование) бэкенд
-        // не получит 'image' и не должен менять существующее изображение.
-        // Если нужно удаление, бэк должен поддерживать это (например, image: null или image: '')
     }
 
     onDestroy(() => {
@@ -162,7 +154,6 @@
     });
 </script>
 <form on:submit|preventDefault={handleSubmit} class="item-form">
-    <!-- ... поля title, alt_text, cropper ... -->
     <div class="form-group">
         <label for="image-title">Заголовок (необязательно)</label>
         <input type="text" id="image-title" bind:value={title} disabled={isLoading} />
@@ -177,7 +168,6 @@
         <label>{showCropper ? 'Изображение (можно изменить)' : 'Выберите изображение'}</label>
         <div class="image-upload-container">
             {#if showCropper && image_for_cropper}
-                <!-- Опционально: кнопки для выбора aspect ratio -->
                 <div class="aspect-ratio-selector">
                     <label>Пропорции: </label>
                     <button type="button" class:active={currentAspect === undefined} on:click={() => setAspect(undefined)}>Своб.</button>
@@ -268,12 +258,11 @@
     .cropper-wrapper {
         position: relative;
         width: 100%;
-        height: 300px; /* Задайте подходящую высоту для кроппера */
+        height: 300px;
         background: #f0f0f0;
         border-radius: var(--spacing-border-radius-small);
-        overflow: hidden; /* Важно для svelte-easy-crop */
+        overflow: hidden;
     }
-     /* svelte-easy-crop создает свой контейнер, стилизуем его */
     :global(.cropper-wrapper .reactEasyCrop_Container) {
         border-radius: var(--spacing-border-radius-small);
     }

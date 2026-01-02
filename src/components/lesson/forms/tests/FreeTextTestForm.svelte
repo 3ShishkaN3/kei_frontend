@@ -22,7 +22,6 @@
 
     let localTestModel = new FreeTextTestModel({ title: '', test_type: 'free-text' });
 
-    // Обработка изображения вопроса
     let questionImageFile = null;
     let questionImagePreviewUrlForCropper = null;
     let showQuestionImageCropper = false;
@@ -39,7 +38,6 @@
         { label: '3:4', value: 3/4 },
     ];
 
-    // Обработка аудио вопроса
     let questionAudioFile = null;
     let questionAudioFileName = null;
     let currentQuestionAudioId = null;
@@ -56,7 +54,6 @@
             localTestModel = new FreeTextTestModel({ ...currentTestData });
         }
 
-        // Инициализация изображения вопроса
         currentQuestionImageId = currentTestData?.free_text_question?.prompt_image_file || null;
         currentQuestionImageUrl = currentTestData?.free_text_question?.prompt_image_details?.image || null;
         if (currentQuestionImageUrl && !questionImageFile) {
@@ -71,7 +68,6 @@
         const foundAr = aspectRatios.find(ar => ar.value === arFromData);
         questionImageAspectRatio = foundAr ? foundAr.value : null;
 
-        // Инициализация аудио вопроса
         currentQuestionAudioId = currentTestData?.free_text_question?.prompt_audio_file || null;
         currentQuestionAudioUrl = currentTestData?.free_text_question?.prompt_audio_details?.audio_file || null;
         if (currentQuestionAudioUrl && !questionAudioFile) {
@@ -107,7 +103,6 @@
         return true;
     }
 
-    // Обработка изображения вопроса
     function handleQuestionImageUpload(event) {
         const file = event.target.files[0];
         if (file) {
@@ -167,7 +162,6 @@
         currentQuestionImageUrl = null;
     }
 
-    // Обработка аудио вопроса
     function handleQuestionAudioUpload(event) {
         const file = event.target.files[0];
         if (file) {
@@ -255,7 +249,6 @@
                 <textarea id={"free-text-question-text-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')} bind:value={localTestModel.free_text_question.prompt_text} rows="4" placeholder="Введите текст вопроса для студентов" disabled={isLoading}></textarea>
             </div>
 
-            <!-- Изображение к вопросу -->
             <div class="form-group attachment-control">
                 <label for={"free-text-question-image-upload-input-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')}>Изображение к вопросу (необязательно)</label>
                 {#if showQuestionImageCropper && questionImagePreviewUrlForCropper}
@@ -294,7 +287,6 @@
                 {/if}
             </div>
 
-            <!-- Аудио к вопросу -->
             <div class="form-group attachment-control">
                 <label for={"free-text-question-audio-upload-input-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')}>Аудио к вопросу (необязательно)</label>
                 {#if questionAudioFileName}
@@ -422,7 +414,6 @@
         to { transform: rotate(360deg); }
     }
 
-    /* Секция аттачментов */
     .attachment-control > label:first-child {
         font-size: 0.95rem;
         margin-bottom: 8px;
@@ -546,7 +537,6 @@
         word-break: break-all;
     }
 
-    /* Действия формы */
     .form-actions {
         display: flex;
         gap: 12px;

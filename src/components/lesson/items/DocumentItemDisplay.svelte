@@ -6,23 +6,20 @@
 
     export let contentDetails = null; // { document_file: 'url', title: '...' }
 
-    let totalPage = 0;  // Привязывается к svelte-pdf через bind:totalPage
-    let currentPage = 1; // Привязывается к svelte-pdf через bind:pageNum
-    let pdfScale = 1.5;  // Привязывается к svelte-pdf через bind:scale
+    let totalPage = 0;
+    let currentPage = 1;
+    let pdfScale = 1.5;
     let loading = true;
     let error = null;
 
-    // Определяем, является ли файл PDF
     $: isPdf = contentDetails?.document_file && 
                contentDetails.document_file.toLowerCase().includes('.pdf');
 
-    // Реактивное выражение для отслеживания загрузки PDF
     $: if (totalPage > 0) {
         loading = false;
         error = null;
     }
 
-    // Реактивная проверка состояния
     $: {        
         if (!contentDetails?.document_file) {
             error = "Файл документа не найден.";
@@ -31,8 +28,6 @@
             error = "Файл не является PDF документом.";
             loading = false;
         } else if (isPdf) {
-            // PDF файл есть - показываем компонент сразу
-            // loading будет управляться через totalPage
             error = null;
         }
     }
@@ -221,7 +216,6 @@
         overflow: hidden;
     }
 
-    /* Скрываем встроенные элементы управления svelte-pdf */
     .pdf-content :global(.svelte-pdf-container) {
         max-width: 100%;
         max-height: 100%;
@@ -238,14 +232,12 @@
         background: white;
     }
 
-    /* Скрываем встроенные кнопки svelte-pdf */
     .pdf-content :global(.pdf-controls),
     .pdf-content :global(.page-info),
     .pdf-content :global(.button-control) {
         display: none !important;
     }
 
-    /* Стили для макета PDF */
     .pdf-mock {
         width: 100%;
         max-width: 600px;
@@ -317,7 +309,6 @@
         border: 1px solid var(--color-border-light, #e5e7eb);
     }
 
-    /* Адаптивность */
     @media (max-width: 768px) {
         .pdf-viewer-wrapper {
             flex-direction: column;

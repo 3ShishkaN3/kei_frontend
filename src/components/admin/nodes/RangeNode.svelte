@@ -67,7 +67,7 @@
     }
 
     .node--range {
-        border-top: 4px solid #00bcd4; /* Cyan for range */
+        border-top: 4px solid #00bcd4;
     }
 
     .node__header {

@@ -56,13 +56,8 @@ export async function createBonus(bonusData) {
     try {
         const response = await apiFetch(`${bonusBaseUrl}/`, {
             method: 'POST',
-            body: bonusData, // FormData for file upload
-            // Content-Type header is not set manually for FormData, browser does it with boundary
-        }, true); // true for isFileUpload if apiFetch supports it, or we need to handle headers manually
-
-        // Note: apiFetch in this project might set Content-Type: application/json by default.
-        // If we pass FormData, we usually need to prevent that.
-        // Let's check api.js to see how it handles FormData.
+            body: bonusData
+        }, true);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));

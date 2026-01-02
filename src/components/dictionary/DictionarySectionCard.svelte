@@ -10,7 +10,7 @@
     export let animationDelay = '0s';
 
     const dispatch = createEventDispatcher();
-    const fallbackImage = '/banner-info.jpg'; // A fallback image in public folder
+    const fallbackImage = '/banner-info.jpg';
 
     function handleNavigate() {
         if (courseId && section.id) {
@@ -81,7 +81,6 @@
         border: 2px solid transparent;
         transition: border-color 0.3s ease, box-shadow 0.3s ease;
 
-        /* Animation */
         opacity: 0;
         transform: translateY(20px);
         animation: card-enter 0.5s ease-out forwards;

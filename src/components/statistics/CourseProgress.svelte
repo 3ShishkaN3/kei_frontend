@@ -17,10 +17,9 @@
     onMount(async () => {
     try {
       const response = await getCourseProgress();
-      const progressData = response.results || response; // Handle cases where data is nested
+      const progressData = response.results || response;
       if (progressData && progressData.length > 0) {
         coursesProgress = progressData;
-        // По умолчанию выбираем первый курс
         if (coursesProgress.length > 0) {
           selectedCourseIds = [coursesProgress[0].course_id];
           updateAggregatedProgress();
@@ -269,15 +268,15 @@
   }
 
   .dot.completed {
-    background-color: #a8c5e5; /* Light blue from screenshot */
+    background-color: #a8c5e5;
   }
 
   .dot.in-progress {
-    background-color: #6c6f93; /* Dark blue/purple from screenshot */
+    background-color: #6c6f93;
   }
 
   .dot.not-started {
-    background-color: #e6e9f0; /* Light grey for not-started */
+    background-color: #e6e9f0;
   }
 
   .legend-list li > span:not(.dot) {

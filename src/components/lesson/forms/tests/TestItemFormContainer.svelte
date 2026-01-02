@@ -4,18 +4,18 @@
         MCQTestModel, 
         FreeTextTestModel, 
         WordOrderTestModel,
-        DragDropTestModel, // Добавили модель DragDrop
-        // PronunciationTestModel, // Раскомментируй, когда будут готовы
-        // SpellingTestModel     // Раскомментируй, когда будут готовы
+        DragDropTestModel,
+        // PronunciationTestModel,
+        // SpellingTestModel,
     } from '../../../../models/testTypes.js'; 
 
     import MCQTestForm from './MCQTestForm.svelte';
-    import WordOrderTestForm from './WordOrderTestForm.svelte'; // Добавили форму WordOrder
-    import DragDropTestForm from './DragDropTestForm.svelte';   // Добавили форму DragDrop
+    import WordOrderTestForm from './WordOrderTestForm.svelte';
+    import DragDropTestForm from './DragDropTestForm.svelte';
     import FreeTextTestForm from './FreeTextTestForm.svelte';
     // import PronunciationTestForm from './PronunciationTestForm.svelte';
     // import SpellingTestForm from './SpellingTestForm.svelte';
-    import { addNotification } from '../../../../stores/notifications.js'; // Для уведомлений, если нужно
+    import { addNotification } from '../../../../stores/notifications.js';
 
     export let itemToEdit = null; 
     export let isLoading = false; 
@@ -39,17 +39,14 @@
     function getFreshModelData(type) {
         const testMeta = availableTestTypes.find(t => t.value === type);
         if (testMeta && testMeta.model) {
-            // Создаем дефолтный экземпляр и берем его payload для формы
-            // Передаем test_type, чтобы модель правильно себя сконфигурировала
             return new testMeta.model({ title: '', test_type: type }).toPayload();
         }
-        return { title: '', description: '', test_type: type }; // Общий fallback
+        return { title: '', description: '', test_type: type };
     }
     
     onMount(() => {
         if (itemToEdit && itemToEdit.item_type === 'test' && itemToEdit.content_details) {
             selectedTestType = itemToEdit.content_details.test_type;
-            // Клонируем данные для редактирования, чтобы не мутировать оригинальный itemToEdit.content_details
             testDataForForm = JSON.parse(JSON.stringify(itemToEdit.content_details));
         } else {
             testDataForForm = getFreshModelData(selectedTestType);
@@ -61,55 +58,41 @@
         const testMeta = availableTestTypes.find(t => t.value === selectedTestType);
         if (testMeta) {
             specificTestFormComponent = testMeta.component;
-            // Если создаем новый тест ИЛИ тип теста изменился для нового (не для itemToEdit)
             if (!itemToEdit || (itemToEdit && itemToEdit.content_details?.test_type !== selectedTestType && !isEditingOriginalItemType())) {
                 testDataForForm = getFreshModelData(selectedTestType);
             } else if (itemToEdit && itemToEdit.content_details?.test_type === selectedTestType) {
-                // Если тип совпадает с редактируемым, используем данные itemToEdit
                  testDataForForm = JSON.parse(JSON.stringify(itemToEdit.content_details));
             }
-            // Если тип меняется для уже существующего itemToEdit, это сложный сценарий "конвертации"
-            // Пока что, если тип меняется для itemToEdit, мы сбрасываем на пустую модель нового типа.
-            // Это значит, что при смене типа теста в UI для редактируемого элемента, данные старого типа теряются.
-            // Если нужно сохранять/мигрировать, потребуется более сложная логика.
 
         } else {
             specificTestFormComponent = null;
             testDataForForm = null;
         }
-        // Необходимо "заставить" Svelte обновить testDataForForm проп для дочернего компонента
         testDataForForm = testDataForForm ? {...testDataForForm} : null; 
     }
 
-    // Хелпер, чтобы определить, редактируем ли мы оригинальный тип элемента
     function isEditingOriginalItemType() {
         return itemToEdit && itemToEdit.content_details && itemToEdit.content_details.test_type === selectedTestType;
     }
-    // TestItemFormContainer.svelte
     async function handleTestFormSave(event) {
-        const specificTestPayloadOrFormData = event.detail; // Это FormData из DragDropTestForm
+        const specificTestPayloadOrFormData = event.detail;
 
         if (specificTestPayloadOrFormData instanceof FormData) {
-            // specificTestPayloadOrFormData уже содержит все нужные файлы (включая дублирующиеся prompt_image_file)
-            // и test_definition (как JSON строку).
-            // Нам нужно только добавить 'item_type' и переименовать 'test_definition' в 'content_data'.
-
             const finalPayload = new FormData();
             finalPayload.append('item_type', 'test');
 
             let testDefinitionValue = null;
 
-            // Сначала соберем все файлы и другие поля, КРОМЕ 'test_definition'
             for (const [key, value] of specificTestPayloadOrFormData.entries()) {
                 if (key === 'test_definition') {
-                    testDefinitionValue = value; // Сохраняем значение test_definition
+                    testDefinitionValue = value;
                 } else {
-                    finalPayload.append(key, value); // Копируем все остальные поля как есть (включая файлы)
+                    finalPayload.append(key, value);
                 }
             }
 
             if (testDefinitionValue) {
-                finalPayload.append('content_data', testDefinitionValue); // Добавляем test_definition под новым именем
+                finalPayload.append('content_data', testDefinitionValue);
             } else {
                 addNotification("Ошибка: данные определения теста (test_definition) отсутствуют в FormData.", "error");
                 if (typeof itemFormModalRef !== 'undefined' && itemFormModalRef?.setLoading) {
@@ -120,7 +103,6 @@
                 return;
             }
             
-            // Логирование для проверки
             console.log("[TestItemFormContainer] FormData перед dispatch('save'):");
             for (let pair of finalPayload.entries()) {
                 if (pair[1] instanceof File) {
@@ -133,15 +115,13 @@
             dispatch('save', finalPayload);
 
         } else { 
-            // Логика для случаев, когда payload не FormData (например, для MCQ тестов без файлов)
             const sectionItemPayload = {
                 item_type: 'test',
                 content_data: {
-                    ...specificTestPayloadOrFormData, // Это должен быть объект JS
+                    ...specificTestPayloadOrFormData,
                     test_type: selectedTestType 
                 }
             };
-            // Если тип теста был изменен в контейнере (маловероятно, если форма уже отработала)
             if (specificTestPayloadOrFormData.test_type !== selectedTestType && selectedTestType) {
                 sectionItemPayload.content_data.test_type = selectedTestType;
             }
@@ -214,8 +194,7 @@
         background-color: var(--color-bg-ultra-light);
         border-radius: var(--spacing-border-radius-small);
     }
-    /* Общие стили для форм можно вынести, если они повторяются в MCQTestForm и т.д. */
-    :global(.test-item-form-container .item-form) { /* Предполагая, что формы тестов будут иметь класс .item-form */
+    :global(.test-item-form-container .item-form) {
         border-top: 1px solid #eee;
         margin-top: 15px;
         padding-top: 15px;

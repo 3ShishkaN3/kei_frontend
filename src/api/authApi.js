@@ -23,7 +23,6 @@ export async function fetchStudents(params = {}) {
   const res = await apiFetch(url);
   if (!res.ok) throw new Error('Failed to fetch students');
   const data = await res.json();
-  // API может возвращать пагинированный ответ с полем results или массив напрямую
   return Array.isArray(data) ? data : (data.results || []);
 }
 
@@ -35,13 +34,10 @@ export async function fetchStudents(params = {}) {
 export async function fetchUsers(params = {}) {
   const queryParams = new URLSearchParams();
   
-  // Добавляем параметры только если они явно указаны
   if (params.role) {
     queryParams.append('role', params.role);
   }
   
-  // Важно: добавляем is_active ТОЛЬКО если он явно указан в params
-  // Если параметр отсутствует, это означает "показать всех (и активных, и неактивных)"
   if ('is_active' in params && params.is_active !== undefined && params.is_active !== null) {
     queryParams.append('is_active', String(params.is_active));
   }
@@ -61,12 +57,10 @@ export async function fetchUsers(params = {}) {
   const res = await apiFetch(url);
   if (!res.ok) throw new Error('Failed to fetch users');
   const data = await res.json();
-  // API возвращает пагинированный ответ с полем results
-  // Возвращаем весь объект пагинации для правильной обработки
   if (Array.isArray(data)) {
     return { results: data, count: data.length, next: null, previous: null };
   }
-  return data; // Возвращаем объект с пагинацией как есть
+  return data;
 }
 
 /**

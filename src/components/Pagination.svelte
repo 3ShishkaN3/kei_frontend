@@ -8,17 +8,15 @@
     export let currentPage = 1;
     export let totalItems = 0;
     export let pageSize = 10;
-    export let maxVisibleButtons = 3; // Number of page number buttons to show
-    export let storeKey = null; // To identify which store to use
+    export let maxVisibleButtons = 3;
+    export let storeKey = null;
 
     const dispatch = createEventDispatcher();
 
     $: totalPages = Math.ceil(totalItems / pageSize);
 
-    // Calculate the range of page number buttons to display
     $: visiblePages = (() => {
         if (totalPages <= maxVisibleButtons) {
-            // Show all pages if total is less than or equal to max
             return Array.from({ length: totalPages }, (_, i) => i + 1);
         }
 
@@ -26,7 +24,6 @@
         let start = currentPage - half;
         let end = currentPage + half;
 
-        // Adjust for odd number of buttons
         if (maxVisibleButtons % 2 === 0) {
             start = currentPage - half + 1;
             end = currentPage + half;
@@ -40,18 +37,16 @@
             end = totalPages;
         }
 
-        // Ensure start is never less than 1
         start = Math.max(1, start);
 
         return Array.from({ length: Math.min(maxVisibleButtons, totalPages - start + 1) }, (_, i) => start + i);
     })();
 
-    // Track current key for transitions
     let currentKey = `page-${currentPage}`;
 
     function goToPage(page) {
         if (page >= 1 && page <= totalPages && page !== currentPage) {
-            currentKey = `page-${page}`; // Update key for animation
+            currentKey = `page-${page}`;
             dispatch('changePage', { page });
         }
     }
@@ -112,9 +107,9 @@
     button {
         min-width: 36px;
         height: 36px;
-        padding: 0 6px; /* Allow slightly smaller padding for numbers */
+        padding: 0 6px;
         border: 1px solid var(--color-border-light, #ccc);
-        border-radius: 50%; /* Make buttons circular */
+        border-radius: 50%;
         background-color: var(--color-bg-light, #fff);
         color: var(--color-text-muted, #555);
         font-weight: var(--font-weight-medium, 500);
@@ -140,17 +135,16 @@
     }
 
     button.page-number.active {
-        /* Active page gradient */
         background: linear-gradient(135deg, #D1DFFA 0%, #FFBED7 100%);
         color: var(--color-text-dark, #333);
-        border-color: transparent; /* Remove border for active gradient button */
+        border-color: transparent;
         font-weight: var(--font-weight-bold, 700);
         cursor: default;
         box-shadow: 0 2px 5px rgba(200, 200, 255, 0.4);
     }
 
     button.arrow {
-         padding: 0; /* Remove padding for icons */
+         padding: 0;
          transition: transform 0.2s ease;
     }
     

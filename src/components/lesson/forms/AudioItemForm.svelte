@@ -37,11 +37,10 @@
             previewAudioUrl = URL.createObjectURL(file);
              if(audioPlayerPreview) audioPlayerPreview.load();
         } else {
-            audio_file_original = null; // Явно сбрасываем, если файл отменен
+            audio_file_original = null;
             if (previewAudioUrl && previewAudioUrl.startsWith('blob:')) {
                  URL.revokeObjectURL(previewAudioUrl);
             }
-            // Восстанавливаем превью с сервера, если оно было
             if (current_audio_url) {
                  previewAudioUrl = current_audio_url.startsWith('http') ? current_audio_url : `${API_BASE_URL}${current_audio_url}`;
             } else {
@@ -67,7 +66,7 @@
         payload.append('content_data', JSON.stringify(contentDataForJson));
 
         if (audio_file_original) {
-            payload.append('audio_file', audio_file_original); // Имя поля 'audio_file' для AudioMaterial
+            payload.append('audio_file', audio_file_original);
         }
 
         dispatch('save', payload);
@@ -111,7 +110,6 @@
 </form>
 
 <style>
-    /* Стили аналогичны ImageItemForm.svelte */
     .item-form { display: flex; flex-direction: column; gap: 15px; }
     .form-group { display: flex; flex-direction: column; }
     .form-group label { margin-bottom: 5px; font-weight: 500; color: var(--color-text-muted); }

@@ -6,25 +6,22 @@
 
     export let testData = null;
     export let sectionItemId = null;
-    export let viewMode = 'student';
+    export let viewMode = 'student'; // 'student' или 'admin'
     export let canStudentInteract = false;
     export let isTestSubmittedByStudent = false;
     export let studentAnswerText = '';
 
     const dispatch = createEventDispatcher();
 
-    // Функция сброса теста к дефолтному состоянию
     function resetTestToDefault(event) {
         if (!canStudentInteract) return;
         
-        // Предотвращаем всплытие события, чтобы избежать отправки формы
         event.preventDefault();
         event.stopPropagation();
         
         studentAnswerText = '';
         dispatch('update:studentAnswerText', '');
         
-        // Отправляем событие о сбросе теста
         dispatch('testReset');
     }
 
@@ -36,7 +33,6 @@
 </script>
 
 <div class="free-text-test-display" data-testid="free-text-test-display" style="position: relative;">
-    <!-- Иконка перезагрузки -->
     {#if canStudentInteract}
         <button 
             class="reset-test-button" 
@@ -48,7 +44,6 @@
         </button>
     {/if}
     
-    <!-- Отображение вопроса -->
     {#if testData?.free_text_question?.prompt_text}
         <div class="question-section">
             <h5 class="question-title">Вопрос:</h5>
@@ -56,7 +51,6 @@
         </div>
     {/if}
 
-    <!-- Отображение изображения вопроса -->
     {#if testData?.free_text_question?.prompt_image_file}
         <div class="question-attachment">
             <ImageItemDisplay contentDetails={{
@@ -66,7 +60,6 @@
         </div>
     {/if}
 
-    <!-- Отображение аудио вопроса -->
     {#if testData?.free_text_question?.prompt_audio_file}
         <div class="question-attachment">
             <AudioItemDisplay contentDetails={{
@@ -76,7 +69,6 @@
         </div>
     {/if}
 
-    <!-- Поле для ответа -->
     <div class="answer-section">
         <label for="text-answer" class="answer-label">
             Ваш ответ:
@@ -98,7 +90,6 @@
 
 
 
-    <!-- Отображение правильного ответа (для админов или после проверки) -->
     {#if (viewMode === 'admin' || (viewMode === 'student' && isTestSubmittedByStudent)) && testData?.free_text_question?.reference_answer}
         <div class="correct-answer-section">
             <h5 class="correct-answer-title">Правильный ответ:</h5>
@@ -108,7 +99,6 @@
         </div>
     {/if}
 
-    <!-- Отображение объяснения (для админов или после проверки) -->
     {#if (viewMode === 'admin' || (viewMode === 'student' && isTestSubmittedByStudent)) && testData?.free_text_question?.explanation}
         <div class="explanation-section">
             <h5 class="explanation-title">Объяснение:</h5>

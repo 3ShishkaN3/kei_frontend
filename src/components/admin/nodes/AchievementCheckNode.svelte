@@ -59,7 +59,7 @@
     }
 
     .node--achievement {
-        border-top: 4px solid #e91e63; /* Pink for achievement */
+        border-top: 4px solid #e91e63;
     }
 
     .node__header {

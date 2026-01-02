@@ -1,6 +1,6 @@
 <script>
 	import { createEventDispatcher, onMount } from 'svelte';
-	import Modal from '../utils/Modal.svelte'; // Предполагается, что Modal.svelte существует
+	import Modal from '../utils/Modal.svelte';
 	import TextItemForm from './forms/TextItemForm.svelte';
 	import ImageItemForm from './forms/ImageItemForm.svelte';
 	import AudioItemForm from './forms/AudioItemForm.svelte';
@@ -9,18 +9,18 @@
     import TestItemFormContainer from './forms/tests/TestItemFormContainer.svelte'
 
 	export let isOpen = false;
-	export let itemToEdit = null; // Если редактируем существующий
+	export let itemToEdit = null;
 	export let courseId;
 	export let lessonId;
-    export let targetSectionId; // ID раздела, куда добавляем/в котором редактируем
-    export let isAdminOrStaff; // Для передачи в формы, если потребуется
+    export let targetSectionId;
+    export let isAdminOrStaff;
 
 	const dispatch = createEventDispatcher();
 
-	let selectedItemType = 'text'; // Тип по умолчанию для нового элемента
+	let selectedItemType = 'text';
     let formComponent = null;
     let modalTitle = '';
-    let isLoadingForm = false; // Для дизейбла кнопок в формах
+    let isLoadingForm = false;
 
     const itemTypes = [
         { value: 'text', label: 'Текстовый блок' },
@@ -37,7 +37,6 @@
                 selectedItemType = itemToEdit.item_type;
                 modalTitle = `Редактировать: ${itemTypes.find(it => it.value === selectedItemType)?.label || 'элемент'}`;
             } else {
-                // selectedItemType остается тем, что выбрал пользователь, или 'text' по умолчанию
                 modalTitle = `Добавить новый элемент: ${itemTypes.find(it => it.value === selectedItemType)?.label || 'текст'}`;
             }
             updateFormComponent();
@@ -54,37 +53,29 @@
             case 'test': formComponent = TestItemFormContainer; break;
             default: formComponent = null;
         }
-        // Обновление заголовка, если тип меняется при создании нового элемента
         if (!itemToEdit && isOpen) {
              modalTitle = `Добавить новый элемент: ${itemTypes.find(it => it.value === selectedItemType)?.label || 'элемент'}`;
         }
     }
 
 	function handleSave(event) {
-        isLoadingForm = true; // Показываем индикатор загрузки в форме
-        // event.detail содержит { item_type, content_data } или FormData
+        isLoadingForm = true;
         let dataToSave = event.detail;
 
-        // Если это не FormData, убедимся, что item_type установлен
         if (!(dataToSave instanceof FormData)) {
             dataToSave.item_type = selectedItemType;
         } else {
-            // Для FormData, item_type уже должен быть добавлен в самой форме
-            // (наши формы это делают)
         }
         
 		dispatch('save', dataToSave);
-        // isLoadingForm будет сброшен в Lesson.svelte после завершения API запроса
-        // или можно сделать dispatch('close') отсюда, если Lesson.svelte сам закроет модалку
 	}
 
     function handleClose() {
-        isLoadingForm = false; // Сбрасываем при закрытии
-        if (!itemToEdit) selectedItemType = 'text'; // Сброс типа для нового элемента
+        isLoadingForm = false;
+        if (!itemToEdit) selectedItemType = 'text';
         dispatch('close');
     }
 
-    // Для сброса isLoadingForm из родительского компонента, если нужно
     export function setLoading(loadingState) {
         isLoadingForm = loadingState;
     }
@@ -124,7 +115,7 @@
 
 <style>
     .item-form-modal-content {
-        padding: 10px; /* Немного отступов внутри модалки */
+        padding: 10px;
     }
     .item-type-selector {
         margin-bottom: 20px;
@@ -142,7 +133,6 @@
         font-size: 1rem;
         background-color: white;
     }
-     /* Стили для .form-group и .form-actions внутри загруженных компонентов */
     :global(.item-form-modal-content .item-form) {
         padding-top: 10px;
     }

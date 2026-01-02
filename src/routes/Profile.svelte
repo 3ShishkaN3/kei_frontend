@@ -354,7 +354,6 @@
     }
   }
 
-  // Обновление настроек профиля
   async function updateSettings(newSettings) {
     try {
       const response = await apiFetch(`${API_BASE_URL}/profile/settings`, {
@@ -373,7 +372,6 @@
     }
   }
 
-  // Обработчики переключателей настроек
   function toggleTheme() {
     const newTheme = profileSettings.theme === 'light' ? 'dark' : 'light';
     profileSettings.theme = newTheme;
@@ -386,15 +384,12 @@
     updateSettings({ show_test_answers: newValue });
   }
 
-  // Функция для открытия диалога выбора файла
   function openFileDialog() {
-    // Если есть скрытый input для файла, кликаем по нему
     if (fileInputRef) {
       fileInputRef.click();
     }
   }
 
-  // Функция для загрузки аватара
   async function uploadAvatar(event) {
     avatarError = "";
     avatarSuccess = "";
@@ -402,13 +397,11 @@
     const file = event.target.files[0];
     if (!file) return;
     
-    // Проверка типа файла (только изображения)
     if (!file.type.startsWith('image/')) {
       avatarError = "Пожалуйста, выберите изображение";
       return;
     }
     
-    // Проверка размера файла (например, до 5 МБ)
     const maxSize = 5 * 1024 * 1024; // 5 МБ
     if (file.size > maxSize) {
       avatarError = "Размер файла не должен превышать 5 МБ";
@@ -435,7 +428,8 @@
       if (response.ok) {
         const result = await response.json();
         
-        profileData.avatar = `${result.avatar || '/avatar.png'}?t=${Date.now()}`;
+        // profileData.avatar = `${result.avatar || '/avatar.png'}?t=${Date.now()}`;
+        profileData.avatar = `${result.avatar || '/avatar.png'}`;
         avatar.set(profileData.avatar);
         
         avatarSuccess = "Аватар успешно обновлен";
@@ -448,14 +442,12 @@
       avatarError = "Ошибка соединения при загрузке аватара";
     } finally {
       isAvatarUploading = false;
-      // Сбрасываем input file, чтобы можно было загружать тот же файл повторно
       if (fileInputRef) {
         fileInputRef.value = '';
       }
     }
   }
 
-  // Функция для удаления аватара
   async function deleteAvatar() {
     if (!confirm("Вы уверены, что хотите удалить аватар?")) {
       return;
@@ -471,7 +463,6 @@
       });
       
       if (response.ok) {
-        // Сбрасываем аватар на стандартный
         profileData.avatar = '/avatar.png';
         avatar.set(profileData.avatar);
         avatarSuccess = "Аватар успешно удален";
@@ -679,12 +670,11 @@ main {
   flex-direction: column;
 }
 
-/* Первый столбец: имя и роль */
 .user-col .user-name {
-  font-size: clamp(var(--spacing-profile-info-name-font-size-min), 4vw, var(--spacing-profile-info-name-font-size-max)); /* Адаптивный размер шрифта */
+  font-size: clamp(var(--spacing-profile-info-name-font-size-min), 4vw, var(--spacing-profile-info-name-font-size-max));
   font-weight: 900;
   color: var(--color-profile-info-name);
-  word-wrap: break-word; /* Длинные имена не вызовут горизонтальную прокрутку */
+  word-wrap: break-word;
 }
 
 .user-col .user-role {
@@ -694,7 +684,6 @@ main {
   margin-top: var(--spacing-profile-info-role-margin-top);
 }
 
-/* Второй и третий столбцы: телефон и почта */
 .phone-col .info-label,
 .email-col .info-label {
   font-size: clamp(0.8rem, 3vw, 1rem);
@@ -747,13 +736,13 @@ main {
 
 .btn-container {
   display: flex;
-  justify-content: center; /* Центрируем кнопку на мобильных */
+  justify-content: center;
   margin-top: var(--spacing-btn-container-margin-top);
 }
 
 .grid-2x2 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(30vw, 1fr)); /* Адаптивные колонки */
+  grid-template-columns: repeat(auto-fit, minmax(30vw, 1fr));
   gap: var(--spacing-grid-gap-row) var(--spacing-grid-gap-col);
   max-width: 100%;
 }
@@ -770,7 +759,7 @@ input,
 textarea {
   width: 100%;
   padding: var(--spacing-input-padding);
-  font-size: var(--input-font-size); /* Оптимальный размер для мобильных форм */
+  font-size: var(--input-font-size);
   border: 1px solid var(--color-input-border);
   border-radius: var(--spacing-input-border-radius);
   background-color: var(--color-input-bg);
@@ -813,7 +802,7 @@ textarea {
   font-family: var(--font-family-primary);
   font-weight: var(--font-weight-bold);
   font-size: var(--save-btn-font-size);
-  box-shadow: 0px 3px 13px rgba(0, 0, 0, 0.161); /* Оставил пока так, специфичная тень */
+  box-shadow: 0px 3px 13px rgba(0, 0, 0, 0.161);
   transition: var(--save-btn-transition);
   text-align: center;
   display: inline-block;
@@ -828,7 +817,6 @@ textarea {
   transform: translateY(1px);
 }
 
-/* Улучшенный стиль для переключателей */
 .settings-item {
   margin-bottom: var(--spacing-settings-item-margin-bottom);
   display: flex;
@@ -880,7 +868,7 @@ textarea {
 }
 
 .switch-label input:checked + .switch-slider:before {
-  transform: translateX(26px); /* Оставил пока так, зависит от размера */
+  transform: translateX(26px);
 }
 
 .error {
@@ -901,7 +889,6 @@ textarea {
   text-align: center;
 }
 
-/* Стили для инпутов с префиксами */
 .input-with-prefix {
   display: flex;
   align-items: center;
@@ -915,7 +902,7 @@ textarea {
   padding: var(--spacing-input-prefix-padding);
   background-color: var(--color-input-prefix-bg);
   color: var(--color-input-prefix-text);
-  font-size: 14px; /* Оставил пока так */
+  font-size: 14px;
   white-space: nowrap;
 }
 
@@ -931,27 +918,24 @@ textarea {
   box-shadow: 0 0 0 2px var(--color-input-focus-shadow);
 }
 
-/* Медиа-запросы для разных размеров экрана */
-
-/* Мобильные устройства (портретная ориентация) */
 @media (max-width: 480px) {
   .profile-content {
     padding: 4rem 5% 1.5rem;
   }
 
   .avatar {
-    width: 5rem; /* Оставил пока так */
-    height: 5rem; /* Оставил пока так */
-    top: 5rem; /* Оставил пока так */
+    width: 5rem;
+    height: 5rem;
+    top: 5rem;
   }
 
   .profile-info-cols .col {
-    flex: 1 1 100%; /* На маленьких экранах столбцы занимают 100% ширины */
-    padding: 0.5rem 0; /* Оставил пока так */
+    flex: 1 1 100%;
+    padding: 0.5rem 0;
   }
 
   .block {
-    padding: 1.2rem; /* Оставил пока так */
+    padding: 1.2rem;
   }
 
   .btn-container {
@@ -963,55 +947,52 @@ textarea {
   }
 
   .grid-2x2 {
-    grid-template-columns: 1fr; /* Один столбец на планшетах */
+    grid-template-columns: 1fr;
   }
 }
 
-/* Планшеты (портретная ориентация) */
 @media (min-width: 481px) and (max-width: 768px) {
   .profile-info-cols .col {
-    flex: 1 1 45%; /* На планшетах колонки занимают примерно половину ширины */
+    flex: 1 1 45%;
   }
 
   .user-col {
-    flex-basis: 100%; /* Имя пользователя занимает всю ширину */
-    margin-bottom: 1rem; /* Оставил пока так */
+    flex-basis: 100%;
+    margin-bottom: 1rem;
   }
 
   .grid-2x2 {
-    grid-template-columns: 1fr; /* Один столбец на планшетах */
+    grid-template-columns: 1fr;
   }
 }
 
-/* Планшеты (альбомная ориентация) и небольшие десктопы */
 @media (min-width: 769px) and (max-width: 1024px) {
   .profile-info-cols .col {
-    flex: 1 1 30%; /* Три колонки на средних экранах */
+    flex: 1 1 30%;
   }
 }
 
-/* Большие экраны */
 @media (min-width: 1200px) {
   .profile-info-cols {
-    align-items: center; /* Возвращаем центрирование по вертикали на больших экранах */
+    align-items: center;
   }
 
   .block {
-    padding: 2.5rem; /* Оставил пока так */
+    padding: 2.5rem;
   }
 
   .btn-container {
-    justify-content: flex-end; /* Кнопки справа на больших экранах */
+    justify-content: flex-end; 
   }
 }
 
 @media (min-width: 1800px) {
   main {
-    max-width: 1400px; /* Оставил пока так */
+    max-width: 1400px; 
   }
 
   body {
-    font-size: 18px; /* Оставил пока так */
+    font-size: 18px; 
   }
 }
 
@@ -1025,17 +1006,17 @@ textarea {
   }
 
   .save-btn {
-    padding: 0.9rem 1.5rem; /* Оставил пока так */
+    padding: 0.9rem 1.5rem; 
   }
 
   .switch-slider {
-    width: 56px; /* Оставил пока так */
-    height: 28px; /* Оставил пока так */
+    width: 56px; 
+    height: 28px; 
   }
 
   .switch-slider:before {
-    height: 22px; /* Оставил пока так */
-    width: 22px; /* Оставил пока так */
+    height: 22px; 
+    width: 22px; 
   }
 }
 
@@ -1066,7 +1047,6 @@ textarea {
 
 
 <main>
-  <!-- Скрытый input для загрузки файла -->
   <input 
     type="file" 
     accept="image/*" 
@@ -1082,7 +1062,6 @@ textarea {
   <section class="profile-block">
     <div class="profile-banner"></div>
     
-    <!-- Аватар с возможностью управления -->
     <div class="avatar-container">
       <img 
         src={profileData.avatar || '/avatar.png'} 
@@ -1118,7 +1097,6 @@ textarea {
     
     <div class="profile-content">
       <div class="profile-info-cols">
-        <!-- Первый столбец: имя и роль -->
         <div class="col user-col">
           <div class="user-name">{userData.username}</div>
           <div class="user-role">
@@ -1151,8 +1129,6 @@ textarea {
     </div>
   </section>
 
-  <!-- Остальные блоки без изменений -->
-  <!-- Блок 2. Персональная информация -->
   <section class="block">
     <h2>Персональная информация</h2>
     <div class="grid-2x2">
@@ -1211,7 +1187,6 @@ textarea {
   </section>
 
 
-  <!-- Блок 3. О себе -->
   <section class="block">
     <h2>О себе</h2>
     <label for="aboutMe">Расскажите о себе</label>

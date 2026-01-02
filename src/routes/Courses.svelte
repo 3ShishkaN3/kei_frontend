@@ -630,10 +630,10 @@
         width: calc(var(--font-size-dot) + 2px);
         height: calc(var(--font-size-dot) + 2px);
         transform: scale(1.2);
-        box-shadow: 0 2px 4px rgba(77, 68, 181, 0.2); /* Оставил пока так, специфичный цвет */
+        box-shadow: 0 2px 4px rgba(77, 68, 181, 0.2);
     }
     .carousel-slide {
-        padding: 10px; /* Оставил пока так */
+        padding: 10px;
         min-height: var(--min-height-slide);
         display: flex;
         align-items: stretch;
@@ -649,17 +649,17 @@
     :global(.slick-active) {
         z-index: 5;
     }
-     .carousel-slide > :global(*) { /* Применяем к CourseCard */
+     .carousel-slide > :global(*) {
         width: 100%;
         height: 100%;
-        display: block; /* Убедимся, что компонент блочный */
+        display: block;
     }
     .carousel-arrow {
         position: absolute;
-        top: calc(50% - 30px); /* Корректируем позицию с учетом высоты футера карточки */
+        top: calc(50% - 30px);
         transform: translateY(-50%);
         background: var(--color-bg-light);
-        border: var(--border-width-button) solid #ddd; /* Оставил пока так, специфичный цвет */
+        border: var(--border-width-button) solid #ddd;
         border-radius: var(--spacing-border-radius-dot);
         width: 40px;
         height: 40px;

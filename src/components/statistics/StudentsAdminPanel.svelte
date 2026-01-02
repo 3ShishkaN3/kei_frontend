@@ -22,7 +22,6 @@
   let totalPages = 1;
   let totalCount = 0;
   
-  // Модальные окна
   let showContactModal = false;
   let showRoleModal = false;
   let showCoursesModal = false;
@@ -38,10 +37,9 @@
   let newRole = 'student';
   let newIsActive = true;
   
-  let selectedStudents = new Set(); // Множество выбранных учеников
+  let selectedStudents = new Set();
   let bulkAction = 'activate';
   
-  // Курсы для управления помощниками
   let allCourses = [];
   
   onMount(async () => {
@@ -52,44 +50,32 @@
   async function loadStudents() {
     isLoading = true;
     try {
-      // Создаем новый объект параметров каждый раз, чтобы избежать проблем с реактивностью
       const params = {};
       
-      // Обязательные параметры пагинации
       params.page = currentPage;
       params.page_size = pageSize;
       
-      // Добавляем фильтр по активности только если нужно показать ТОЛЬКО активных
-      // Если showInactive = true, параметр is_active НЕ добавляется, чтобы получить ВСЕХ (и активных, и неактивных)
       if (!showInactive) {
         params.is_active = true;
       }
-      // Если showInactive = true, параметр is_active не добавляется вообще
-      // На бэкенде это означает "показать всех, независимо от статуса"
       
       if (searchQuery) {
         params.search = searchQuery;
       }
       
-      // Для админов используем fetchUsers чтобы показать всех пользователей с разными ролями
-      // Для преподавателей используем fetchStudents (только ученики)
       const response = userRole === 'admin' 
         ? await fetchUsers(params) 
         : await fetchStudents(params);
       
-      // Поддержка как пагинации, так и обычного массива
       if (Array.isArray(response)) {
-        // Если ответ - массив напрямую
         students = response;
         totalCount = response.length;
         totalPages = 1;
       } else if (response && typeof response === 'object' && 'results' in response) {
-        // Если ответ - объект с пагинацией
         students = Array.isArray(response.results) ? response.results : [];
         totalCount = response.count || students.length;
         totalPages = Math.ceil(totalCount / pageSize);
       } else {
-        // Неожиданный формат
         students = [];
         totalCount = 0;
         totalPages = 1;
@@ -104,10 +90,8 @@
   
   async function loadCourses() {
     try {
-      // Загружаем опубликованные и бесплатные курсы
       const published = await fetchCourses({ status: 'published' });
       const free = await fetchCourses({ status: 'free' });
-      // Объединяем и удаляем дубликаты
       const all = [...published, ...free];
       allCourses = all.filter((course, index, self) => 
         index === self.findIndex(c => c.id === course.id)
@@ -124,8 +108,6 @@
   }
   
   function toggleInactive(event) {
-    // Respect the actual checkbox state coming from the DOM when called
-    // as an event handler (prevents double-toggle when using bind:checked).
     if (event && event.target && typeof event.target.checked === 'boolean') {
       showInactive = event.target.checked;
     } else {
@@ -141,7 +123,7 @@
     } else {
       selectedStudents.add(studentId);
     }
-    selectedStudents = selectedStudents; // Для реактивности
+    selectedStudents = selectedStudents;
   }
   
   function toggleSelectAll() {
@@ -187,7 +169,6 @@
   async function showAssistantManagement(student) {
     selectedStudent = student;
     try {
-      // Загружаем все курсы где ученик может быть помощником
       selectedStudentAssistants = [];
       for (const course of allCourses) {
         try {
@@ -257,7 +238,7 @@
     
     try {
       await bulkEnrollStudents(courseId, [selectedStudent.id]);
-      await showCoursesManagement(selectedStudent); // Обновляем данные
+      await showCoursesManagement(selectedStudent);
       alert('Ученик успешно записан на курс');
     } catch (error) {
       alert('Ошибка записи на курс: ' + error.message);
@@ -273,7 +254,7 @@
     
     try {
       await bulkLeaveStudents(courseId, [selectedStudent.id]);
-      await showCoursesManagement(selectedStudent); // Обновляем данные
+      await showCoursesManagement(selectedStudent);
       alert('Ученик отчислен с курса');
     } catch (error) {
       alert('Ошибка отчисления: ' + error.message);
@@ -418,7 +399,6 @@
   {/if}
 </div>
 
-<!-- Модальное окно контактной информации -->
 <Modal open={showContactModal} title="Контактная информация" onClose={() => showContactModal = false}>
   {#if selectedStudentProfile}
     <div class="contact-info">
@@ -450,7 +430,6 @@
   {/if}
 </Modal>
 
-<!-- Модальное окно управления ролью -->
 <Modal open={showRoleModal} title="Управление ролью" onClose={() => showRoleModal = false}>
   {#if selectedStudent}
     <div class="role-management">
@@ -487,7 +466,6 @@
   </div>
 </Modal>
 
-<!-- Модальное окно управления курсами -->
 <Modal open={showCoursesModal} title="Курсы ученика" width={800} onClose={() => showCoursesModal = false}>
   {#if selectedStudent && selectedStudentStats}
     <div class="courses-management">
@@ -558,7 +536,6 @@
   {/if}
 </Modal>
 
-<!-- Модальное окно управления помощниками -->
 {#if userRole === 'admin'}
   <Modal open={showAssistantModal} title="Управление доступом помощника" width={800} onClose={() => showAssistantModal = false}>
     {#if selectedStudent}
@@ -584,7 +561,6 @@
   </Modal>
 {/if}
 
-<!-- Модальное окно подтверждения удаления -->
 <ConfirmModal
   isOpen={showConfirmModal}
   title="Удалить ученика?"
@@ -593,7 +569,6 @@
   on:cancel={() => { showConfirmModal = false; selectedStudent = null; }}
 />
 
-<!-- Модальное окно массовых операций -->
 <Modal open={showBulkModal} title="Массовые операции" onClose={() => showBulkModal = false}>
   <div class="bulk-operation">
     <p>Выбрано учеников: {selectedStudents.size}</p>

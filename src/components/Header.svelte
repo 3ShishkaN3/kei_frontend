@@ -287,7 +287,7 @@
       var(--color-auth-button-gradient-hover-end) 100%
     );
     transform: scale(1.05);
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2); /* Оставил пока так, специфичная тень */
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
   }
   .auth-button:active {
     background-image: linear-gradient(
@@ -296,7 +296,7 @@
       var(--color-auth-button-gradient-active-end) 100%
     );
     transform: scale(0.95);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Оставил пока так, специфичная тень */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
   }
 
   .logout-button {
@@ -323,7 +323,7 @@
       var(--color-logout-button-gradient-hover-end) 100%
     );
     transform: scale(1.05);
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2); /* Оставил пока так, специфичная тень */
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
   }
   .logout-button:active {
     background-image: linear-gradient(
@@ -332,7 +332,7 @@
       var(--color-logout-button-gradient-active-end) 100%
     );
     transform: scale(0.95);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Оставил пока так, специфичная тень */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
   }
 
   .menu-button {
@@ -404,11 +404,11 @@
     }
 
     .nav-buttons {
-      gap: 8px; /* Оставил пока так */
+      gap: 8px;
     }
 
     .simple-button {
-      padding: 8px 10px; /* Оставил пока так */
+      padding: 8px 10px;
     }
   }
 
@@ -428,39 +428,39 @@
   }
 
   .mobile-menu {
-    display: flex; /* Изменено, всегда отображаем, но скрываем по высоте и прозрачности */
+    display: flex;
     flex-direction: column;
     padding: var(--spacing-mobile-menu-padding);
-    background: rgba(255, 255, 255, 0.95); /* Оставил пока так */
+    background: rgba(255, 255, 255, 0.95);
     position: absolute;
     top: 100%;
     left: 0;
     right: 0;
-    max-height: 0; /* Начинаем с нулевой высоты */
+    max-height: 0;
     opacity: 0;
-    transform: translateY(-20px); /* Оставил пока так */
+    transform: translateY(-20px);
     transition:
       opacity var(--animation-duration-transition) ease,
       transform var(--animation-duration-transition) ease,
       max-height var(--animation-duration-transition) ease,
       padding var(--animation-duration-transition) ease;
-    z-index: 10; /* Оставил пока так */
+    z-index: 10;
     align-items: center;
     box-shadow: 0 4px 8px var(--color-header-shadow);
-    pointer-events: none; /* Блокируем взаимодействие когда меню скрыто */
-    overflow: hidden; /* Скрываем содержимое, пока меню закрыто */
-    padding-top: 0; /* Уменьшаем padding при закрытии */
+    pointer-events: none;
+    overflow: hidden;
+    padding-top: 0;
     padding-bottom: 0;
   }
 
   .mobile-menu.open {
-    max-height: 500px; /* Достаточно большое значение, чтобы вместить содержимое */
+    max-height: 500px;
     opacity: 1;
     transform: translateY(0);
-    pointer-events: auto; /* Разрешаем взаимодействие когда меню открыто */
+    pointer-events: auto;
     padding: var(
       --spacing-mobile-menu-padding
-    ); /* Восстанавливаем padding при открытии */
+    );
   }
 
   .navigation-buttons {
@@ -532,22 +532,22 @@
   header::after {
     content: "";
     position: absolute;
-    left: 80px; /* Оставил пока так */
-    right: 80px; /* Оставил пока так */
-    bottom: 20px; /* Оставил пока так */
+    left: 80px;
+    right: 80px;
+    bottom: 20px;
     height: var(--spacing-header-bottom-border-height);
-    background: rgba(0, 0, 0, 0.2); /* Оставил пока так */
+    background: rgba(0, 0, 0, 0.2);
   }
 
   @keyframes pulse {
     0% {
-      box-shadow: 0 0 0 0 rgba(194, 182, 252, 0.7); /* Оставил пока так */
+      box-shadow: 0 0 0 0 rgba(194, 182, 252, 0.7);
     }
     70% {
-      box-shadow: 0 0 0 10px rgba(194, 182, 252, 0); /* Оставил пока так */
+      box-shadow: 0 0 0 10px rgba(194, 182, 252, 0);
     }
     100% {
-      box-shadow: 0 0 0 0 rgba(194, 182, 252, 0); /* Оставил пока так */
+      box-shadow: 0 0 0 0 rgba(194, 182, 252, 0);
     }
   }
 
@@ -601,7 +601,7 @@
 
   .simple-button:active {
     transform: scale(0.95);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Оставил пока так, специфичная тень */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     background: var(--color-simple-button-active-bg);
   }
 
@@ -614,8 +614,8 @@
   }
 
   .mobile-menu-title {
-    font-size: 14px; /* Оставил пока так */
-    color: #666; /* Оставил пока так */
+    font-size: 14px;
+    color: #666;
     margin-bottom: var(--spacing-mobile-menu-title-margin-bottom);
     font-weight: var(--font-weight-semi-bold);
   }

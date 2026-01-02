@@ -212,7 +212,6 @@
         border-color: #ff6b6b;
     }
 
-    /* Custom Checkbox */
     .checkbox-container {
         display: inline-block;
         position: relative;
@@ -275,7 +274,6 @@
         transform: rotate(45deg);
     }
 
-    /* Responsive Design */
     @media (max-width: 768px) {
         th, td {
             padding: 0.8rem 1rem;
@@ -361,7 +359,6 @@
         }
     }
 
-    /* Scrollbar styling */
     .table-wrapper::-webkit-scrollbar {
         width: 8px;
         height: 8px;
@@ -381,7 +378,6 @@
         background: linear-gradient(135deg, var(--color-purple-active), var(--color-pink-active));
     }
 
-    /* Animations */
 
     @keyframes fadeIn {
         0% {
@@ -394,7 +390,6 @@
         }
     }
 
-    /* Table entry animations */
     tbody tr:nth-child(1) { animation-delay: 0.1s; }
     tbody tr:nth-child(2) { animation-delay: 0.15s; }
     tbody tr:nth-child(3) { animation-delay: 0.2s; }

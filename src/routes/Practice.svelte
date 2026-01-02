@@ -42,19 +42,17 @@
     let isAdminView = false;
     let isPrivilegedUser = false;
     
-    // Виртуальная карусель для карточек
     let currentCardIndex = 0;
     let visibleEntries = [];
     let previousCardIndex = 0;
-    let totalCardsCount = 0; // Общее количество карточек (не изученных)
+    let totalCardsCount = 0;
     let metaData = null;
     
-    // Кеширование чанков для карточек
-    let cardChunks = new Map(); // Map<chunkIndex, entries[]>
+    let cardChunks = new Map();
     let currentChunkIndex = 0;
     const CARDS_CHUNK_SIZE = 10;
-    const PRELOAD_CHUNKS = 1; // Сколько соседних чанков предзагружать
-    let loadingChunks = new Set(); // Отслеживание загружающихся чанков
+    const PRELOAD_CHUNKS = 1;
+    let loadingChunks = new Set();
     
     user.subscribe(value => {
         isPrivilegedUser = value && value.isAuthenticated && ['admin', 'teacher', 'assistant'].includes(value.role);
@@ -69,14 +67,11 @@
     let totalPages = 1;
     const ITEMS_PER_PAGE = 10;
 
-    // Для таблицы используем старую логику
     $: tableEntries = isAdminView ? entries : entries.filter(e => !e.is_learned);
     
-    // Для карточек используем виртуальную логику
     $: {
         if (displayMode === 'cards' && metaData) {
             totalCardsCount = isAdminView ? metaData.total_count : metaData.unlearned_count;
-            // Если мы перешли в режим карточек, убеждаемся что чанк загружен
             ensureChunkLoaded(Math.floor(currentCardIndex / CARDS_CHUNK_SIZE));
         } else if (displayMode === 'table') {
             visibleEntries = tableEntries;
@@ -106,7 +101,6 @@
             totalItems = entriesData.count;
             totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
-            // Инициализируем карточки если находимся в режиме карточек
             if (displayMode === 'cards') {
                 await initializeCards();
             }
@@ -122,21 +116,18 @@
         }
     });
 
-    // Функции для работы с чанками карточек
     async function initializeCards() {
         console.log('🎴 Инициализация карточек, режим админа:', isAdminView);
         cardChunks.clear();
-        loadingChunks.clear(); // Очищаем заблокированные чанки
+        loadingChunks.clear();
         currentChunkIndex = 0;
         currentCardIndex = 0;
         previousCardIndex = 0;
         
-        // Обновляем общее количество карточек
         totalCardsCount = isAdminView ? metaData.total_count : metaData.unlearned_count;
         console.log('📊 Общее количество карточек:', totalCardsCount);
         
         if (totalCardsCount > 0) {
-            // Загружаем первый чанк
             const firstChunk = await loadCardChunk(0);
             updateVisibleEntries();
             console.log('✅ Первый чанк загружен, записей в чанке:', firstChunk?.length || 0);
@@ -154,10 +145,8 @@
             return cardChunks.get(chunkIndex);
         }
 
-        // Защита от повторной загрузки
         if (loadingChunks.has(chunkIndex)) {
             console.log(`⏳ Чанк ${chunkIndex} уже загружается, ждем...`);
-            // Ждем завершения загрузки
             while (loadingChunks.has(chunkIndex)) {
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
@@ -168,7 +157,6 @@
         console.log(`🔒 Заблокирован чанк ${chunkIndex} для загрузки`);
 
         try {
-            // Вычисляем какую страницу загружать для этого чанка
             const entriesOffset = chunkIndex * CARDS_CHUNK_SIZE;
             const page = Math.floor(entriesOffset / CARDS_CHUNK_SIZE) + 1;
             
@@ -182,7 +170,6 @@
 
             console.log(`📡 Ответ от API для чанка ${chunkIndex}:`, data);
             
-            // Записи уже отфильтрованы на сервере
             const chunkEntries = data.results || [];
             console.log(`📥 Получено записей для чанка ${chunkIndex}:`, chunkEntries.length, chunkEntries);
             
@@ -210,10 +197,8 @@
             console.log(`✅ Чанк ${chunkIndex} уже загружен`);
         }
         
-        // Всегда обновляем visibleEntries
         updateVisibleEntries();
         
-        // Предзагружаем соседние чанки
         const totalChunks = Math.ceil(totalCardsCount / CARDS_CHUNK_SIZE);
         for (let i = 1; i <= PRELOAD_CHUNKS; i++) {
             const prevChunk = chunkIndex - i;
@@ -221,12 +206,12 @@
             
             if (prevChunk >= 0 && !cardChunks.has(prevChunk) && !loadingChunks.has(prevChunk)) {
                 console.log(`📦 Предзагрузка чанка ${prevChunk}`);
-                loadCardChunk(prevChunk); // Без await для фоновой загрузки
+                loadCardChunk(prevChunk);
             }
             
             if (nextChunk < totalChunks && !cardChunks.has(nextChunk) && !loadingChunks.has(nextChunk)) {
                 console.log(`📦 Предзагрузка чанка ${nextChunk}`);
-                loadCardChunk(nextChunk); // Без await для фоновой загрузки
+                loadCardChunk(nextChunk);
             }
         }
     }
@@ -240,7 +225,6 @@
     }
 
     function getCurrentCardEntry() {
-        // Используем visibleEntries как источник текущих карточек
         const indexInChunk = currentCardIndex % CARDS_CHUNK_SIZE;
         const entry = visibleEntries[indexInChunk];
         
@@ -297,29 +281,21 @@
                 entry.is_learned = true;
             }
             
-            // Обновляем entries для таблицы
             entries = entries.map(e => e.id === entry.id ? { ...e, is_learned: entry.is_learned } : e);
             
-            // Обновляем карточки если мы в режиме карточек
             if (displayMode === 'cards') {
-                // Обновляем записи в кеше чанков
                 for (let [chunkIndex, chunk] of cardChunks) {
                     const updatedChunk = chunk.map(e => e.id === entry.id ? { ...e, is_learned: entry.is_learned } : e);
                     cardChunks.set(chunkIndex, updatedChunk);
                 }
                 
-                // В режиме студента после отметки слова как изученного обновим только текущий чанк
                 if (!isAdminView && entry.is_learned) {
-                    // Обновим метаданные (чтобы скорректировать общее количество)
                     const metaResponse = await fetchDictionaryMetadata(sectionId);
                     metaData = metaResponse;
-                    // Очистим кеш чанков для подгрузки без изученных записей
                     cardChunks.clear();
                     loadingChunks.clear();
-                    // Подгрузим текущий чанк заново
                     const currentChunk = Math.floor(currentCardIndex / CARDS_CHUNK_SIZE);
                     await ensureChunkLoaded(currentChunk);
-                    // Перейти к следующей карточке автоматически
                     if (currentCardIndex < totalCardsCount - 1) {
                         await goToNextCard();
                     } else {
@@ -368,9 +344,7 @@
         
         await loadEntries(currentPage);
         
-        // Для новой записи - найти ее в списке и переключиться на нее
         if (isNewEntry && displayMode === 'cards') {
-            // Небольшая задержка для обновления данных
             setTimeout(() => {
                 const newEntryIndex = visibleEntries.findIndex(e => e.id === savedEntry.id);
                 if (newEntryIndex !== -1) {
@@ -389,7 +363,6 @@
         loadEntries(event.detail.page);
     }
 
-    // Carousel navigation functions для виртуальной карусели
     async function goToPrevCard() {
         if (currentCardIndex > 0) {
             previousCardIndex = currentCardIndex;
@@ -420,13 +393,10 @@
         }
     }
 
-    // Определяем направление анимации
     $: slideDirection = currentCardIndex > previousCardIndex ? 'next' : 'prev';
 
-    // Обработчик изменения режима отображения и админ режима
     $: if (displayMode === 'cards' && metaData) {
         console.log('🔄 Переключение в режим карточек, инициализация...');
-        // Небольшая задержка чтобы убедиться что все данные обновились
         setTimeout(() => initializeCards(), 50);
     }
 
@@ -535,7 +505,6 @@
                             </button>
                         </div>
                         
-                        <!-- Умные индикаторы вместо тысяч точек -->
                         <div class="carousel-smart-indicators">
                             {#if totalCardsCount > 20}
                                 <div class="progress-bar-container">
@@ -551,7 +520,6 @@
                                     </div>
                                 </div>
                             {:else}
-                                <!-- Показываем точки только если карточек мало -->
                                 <div class="carousel-indicators">
                                     {#each Array(totalCardsCount) as _, index}
                                         <button 
@@ -708,7 +676,6 @@
         padding-top: 1rem;
     }
 
-    /* Carousel Styles */
     .carousel-container {
         max-width: 900px;
         margin: 0 auto;
@@ -808,7 +775,6 @@
         transform: scale(1.4);
     }
 
-    /* Новые стили для прогресс-бара */
     .progress-bar-container {
         max-width: 400px;
         margin: 0 auto;

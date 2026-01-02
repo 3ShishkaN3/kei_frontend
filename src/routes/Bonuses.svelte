@@ -212,7 +212,7 @@
         max-width: var(--max-width-page);
         margin: 0 auto;
         padding: var(--spacing-padding-page);
-        padding-top: 100px; /* Offset for fixed header */
+        padding-top: 100px;
         min-height: var(--min-height-page);
     }
 
@@ -362,7 +362,7 @@
         font-family: var(--font-family-primary);
         font-size: 1.3rem;
         color: var(--color-text-dark);
-        padding-right: 60px; /* Space for admin controls */
+        padding-right: 60px;
     }
 
     .bonus-card p {

@@ -3,7 +3,7 @@
     import { fly } from 'svelte/transition';
     import Close from 'svelte-material-icons/Close.svelte';
 
-    export let courseToEdit = null; // null для создания, объект для редактирования
+    export let courseToEdit = null;
 
     const dispatch = createEventDispatcher();
 
@@ -12,8 +12,8 @@
     let description = '';
     let status = 'draft'; // 'draft', 'published', 'free'
     let coverImageFile = null;
-    let currentImageUrl = null; // Для отображения текущего изображения при редактировании
-    let imagePreviewUrl = null; // Для предпросмотра нового изображения
+    let currentImageUrl = null;
+    let imagePreviewUrl = null;
 
     let isLoading = false;
     let errors = {}; // { title: ['Error message'], ... }
@@ -24,7 +24,7 @@
             subtitle = courseToEdit.subtitle || '';
             description = courseToEdit.description || '';
             status = courseToEdit.status || 'draft';
-            currentImageUrl = courseToEdit.cover_image; // URL текущего изображения
+            currentImageUrl = courseToEdit.cover_image;
         }
     });
 
@@ -32,7 +32,6 @@
         const file = event.target.files[0];
         if (file) {
             coverImageFile = file;
-            // Создаем URL для предпросмотра
             const reader = new FileReader();
             reader.onload = (e) => {
                 imagePreviewUrl = e.target.result;
@@ -48,42 +47,29 @@
         isLoading = true;
         errors = {};
 
-        // Используем FormData для отправки файла и данных
         const formData = new FormData();
         formData.append('title', title);
         formData.append('subtitle', subtitle);
         formData.append('description', description);
         formData.append('status', status);
 
-        // Добавляем файл, только если он был выбран
         if (coverImageFile) {
             formData.append('cover_image', coverImageFile);
         } else if (!courseToEdit && !currentImageUrl) {
-            // Если это создание нового курса и файл не выбран,
-            // можно отправить пустой 'cover_image' или не отправлять,
-            // в зависимости от логики бэкенда (будет ли он использовать default).
-            // formData.append('cover_image', ''); // Раскомментируйте, если нужно
         }
-         // Если при редактировании файл не менялся, поле cover_image не отправляется,
-         // бэкенд не должен удалять старое изображение.
 
         dispatch('save', formData);
-
-        // Сброс isLoading должен произойти в родительском компоненте после ответа API
-        // isLoading = false; // Не сбрасываем здесь
     }
 
     function closeModal() {
         dispatch('close');
     }
 
-    // Закрытие по клику вне окна
     function handleBackdropClick(event) {
         if (event.target === event.currentTarget) {
             closeModal();
         }
     }
-    // Закрытие по Escape
     function handleKeydown(event) {
          if (event.key === 'Escape') {
              closeModal();
@@ -161,14 +147,14 @@
 </div>
 
 <style>
-    :root { /* Берем цвета из Courses.svelte или определяем здесь */
+    :root {
         --purple-light: #C2B6FC;
         --text-dark: #333;
         --text-muted: #555;
         --danger-red: #dc3545;
         --bg-light: #fff;
         --border-light: #ccc;
-        --primary-action: #4D44B5; /* Темно-синий для основной кнопки */
+        --primary-action: #4D44B5;
         --primary-action-hover: #5f55d1;
     }
     .modal-backdrop {
@@ -181,7 +167,7 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        z-index: 1000; /* Выше всего остального */
+        z-index: 1000;
          backdrop-filter: blur(4px);
     }
 
@@ -231,7 +217,7 @@
         color: var(--text-dark);
         font-size: 0.9rem;
     }
-    label:has(+[required])::after { /* Добавляем звездочку к обязательным полям */
+    label:has(+[required])::after {
         content: ' *';
         color: var(--danger-red);
     }

@@ -6,16 +6,14 @@
 
     export let currentPage = 1;
     export let totalPages = 1;
-    export let maxVisibleButtons = 3; // Number of page number buttons to show
-    export let showPageJump = false; // Show input to jump to specific page
-    // Track paginator range start for flipping visible page buttons
+    export let maxVisibleButtons = 3;
+    export let showPageJump = false;
     let pageRangeStart = 1;
 
     const dispatch = createEventDispatcher();
 
     let pageJumpInput = currentPage;
 
-    // Calculate the range of page number buttons to display
     $: visiblePages = (() => {
         if (totalPages <= maxVisibleButtons) {
             return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -25,18 +23,13 @@
         return Array.from({ length: end - start + 1 }, (_, i) => start + i);
     })();
 
-    // Keep `pageRangeStart` clamped to valid bounds, but do NOT auto-move
-    // the visible block to include `currentPage`. This lets arrows flip
-    // visible blocks independently of which page is active.
     $: {
         const maxStart = Math.max(totalPages - maxVisibleButtons + 1, 1);
         if (pageRangeStart < 1) pageRangeStart = 1;
         else if (pageRangeStart > maxStart) pageRangeStart = maxStart;
     }
 
-    // Add functions to flip paginator range
     function shiftPaginatorLeft() {
-        // Переключаемся на предыдущий блок страниц (сдвиг на maxVisibleButtons)
         const newStart = Math.max(1, pageRangeStart - maxVisibleButtons);
         if (newStart !== pageRangeStart) {
             pageRangeStart = newStart;
@@ -44,7 +37,6 @@
     }
 
     function shiftPaginatorRight() {
-        // Переключаемся на следующий блок страниц (сдвиг на maxVisibleButtons)
         const maxStart = Math.max(totalPages - maxVisibleButtons + 1, 1);
         const newStart = Math.min(maxStart, pageRangeStart + maxVisibleButtons);
         if (newStart !== pageRangeStart) {
@@ -52,7 +44,7 @@
         }
     }
 
-    $: pageJumpInput = currentPage; // Update input when currentPage changes
+    $: pageJumpInput = currentPage;
 
     function goToPage(page) {
         if (page >= 1 && page <= totalPages && page !== currentPage) {
@@ -222,7 +214,6 @@
         color: #bbb;
     }
 
-    /* Page Jump Styles */
     .page-jump {
         display: flex;
         align-items: center;
@@ -279,7 +270,6 @@
         box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
     }
 
-    /* Page Info */
     .page-info {
         font-size: 0.85rem;
         color: var(--color-text-muted, #666);
@@ -287,7 +277,6 @@
         text-align: center;
     }
 
-    /* Responsive Design */
     @media (max-width: 768px) {
         .pagination-container {
             gap: 0.75rem;

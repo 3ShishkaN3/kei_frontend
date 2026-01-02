@@ -21,22 +21,18 @@
   let notes = [];
   let loading = false;
   let error = '';
-  let requestId = 0; // protects against stale async responses
+  let requestId = 0;
 
-  // Students list for admin/teacher
   let students = [];
   let studentsLoading = false;
 
-  // Filters for admin/teacher
   let filter = { participant_id: '', status: '', from: '', to: '' };
 
-  // Modal state
   let showEventModal = false;
   let showNoteModal = false;
   let draftEvent = resetEvent();
   let draftNote = resetNote();
   
-  // Convert students to options for Select components
   $: studentOptions = Array.isArray(students) ? students.map(s => ({ label: s.username || s.email, value: String(s.id) })) : [];
 
 function toLocalInput(dt) {
@@ -93,7 +89,7 @@ function resetEvent(date) {
   }
   function startGridDate(y, m) {
     const first = firstDayOfMonth(y, m);
-    const dow = (first.getDay() + 6) % 7; // Monday=0
+    const dow = (first.getDay() + 6) % 7;
     const d = new Date(first);
     d.setDate(first.getDate() - dow);
     return d;
@@ -124,7 +120,6 @@ function resetEvent(date) {
     for (const e of list || []) {
       const startKey = toLocalDateKey(e.start_at);
       const endKey = toLocalDateKey(e.end_at);
-      // expand date range inclusively
       let cur = startKey;
       while (cur <= endKey) {
         (map[cur] ||= []).push(e);
@@ -197,7 +192,6 @@ function resetEvent(date) {
     return new Date(d).toISOString().slice(0, 10);
   }
 
-  // Normalize to local YYYY-MM-DD to avoid timezone off-by-one
   function toLocalDateKey(dateLike) {
     const d = new Date(dateLike);
     const y = d.getFullYear();
@@ -216,11 +210,9 @@ function resetEvent(date) {
 
   function openCreateEvent(day) {
     draftEvent = resetEvent(day);
-    // for student/assistant participants ignored by backend, but keep UX simple
     showEventModal = true;
   }
 function openEditEvent(ev) {
-  // Extract participant IDs from event (API returns participant_ids as array of numbers)
   const participantIds = ev.participant_ids ? ev.participant_ids.map(id => String(id)) : [];
   draftEvent = { 
     ...ev, 
@@ -232,7 +224,6 @@ function openEditEvent(ev) {
 }
 async function saveEvent() {
   try {
-    // Convert participant IDs from strings to numbers
     const participantIds = Array.isArray(draftEvent.participants) 
       ? draftEvent.participants.map(id => parseInt(id, 10)).filter(id => !isNaN(id))
       : [];
@@ -415,11 +406,9 @@ async function saveEvent() {
 </div>
 
 <style>
-  /* Integrate calendar into parent card (no nested card look) */
   .cal-wrapper { background: transparent; border: none; box-shadow: none; padding: 0; font-family: var(--font-family-primary); }
   .cal-wrapper:hover { box-shadow: none; }
   
-  /* Use main site font in modals */
   :global(.modal), :global(.modal *), :global(.modal-title), :global(.modal-body), :global(.modal-actions) {
     font-family: var(--font-family-primary) !important;
   }
@@ -429,18 +418,15 @@ async function saveEvent() {
   .cal-title { flex: 1; text-align: center; font-family: 'Play', sans-serif; font-weight: 600; color: var(--color-primary); text-transform: capitalize; font-size: 1.5rem; }
   .cal-filters { display: flex; gap: 10px; align-items: flex-end;}
   .input { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--color-input-border); background: var(--color-input-bg); }
-  /* removed old simple button styles in favor of IconButton */
 
   .cal-grid-wrap { width: 100%; overflow-x: auto; }
   .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(110px, 1fr)); gap: 8px; min-width: 770px; }
   .cal-weekday { text-align: center; font-weight: 400; color: var(--color-label); padding: 6px 0; font-family: 'Play', sans-serif; }
   
-  /* Colorful cell backgrounds (subtle pastel colors by day of week) */
   .cal-cell { border: 1px solid var(--color-border-light); border-radius: 12px; padding: 6px; min-height: 110px; display: flex; flex-direction: column; gap: 6px; position: relative; }
   .cal-cell--muted { opacity: 0.5; }
   .cal-cell--today { box-shadow: inset 0 0 0 2px var(--color-primary); }
   .cal-cell--today .cal-day-number { color: var(--color-primary); font-weight: 600; }
-  /* Pastel colors for each day of week */
   .cal-cell--monday { background: rgba(194, 182, 252, 0.12); }
   .cal-cell--tuesday { background: rgba(133, 171, 230, 0.12); }
   .cal-cell--wednesday { background: rgba(186, 255, 201, 0.12); }
@@ -448,7 +434,6 @@ async function saveEvent() {
   .cal-cell--friday { background: rgba(255, 153, 153, 0.12); }
   .cal-cell--saturday { background: rgba(255, 241, 194, 0.15); }
   .cal-cell--sunday { background: rgba(255, 215, 221, 0.15); }
-  /* Lighter shades for empty cells */
   .cal-cell--empty.cal-cell--monday { background: rgba(194, 182, 252, 0.06); }
   .cal-cell--empty.cal-cell--tuesday { background: rgba(133, 171, 230, 0.06); }
   .cal-cell--empty.cal-cell--wednesday { background: rgba(186, 255, 201, 0.06); }
@@ -463,7 +448,6 @@ async function saveEvent() {
   .cal-actions { display: flex; gap: 4px; position: relative; z-index: 2; opacity: 0; transition: opacity 0.2s ease; pointer-events: auto; }
   .cal-actions :global(.icon-btn) { flex-shrink: 0; }
   .cal-cell:hover .cal-actions { opacity: 1; }
-  /* replaced by IconButton */
   .cal-items { display: flex; flex-direction: column; gap: 4px; }
   .cal-event { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 8px; cursor: pointer; background: var(--color-bg-admin-button); color: var(--color-text-dark); transition: transform var(--animation-duration-transition), background var(--animation-duration-transition); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cal-event:hover { transform: translateY(-1px); }
@@ -480,7 +464,6 @@ async function saveEvent() {
   .modal { width: min(680px, 92vw); background: var(--color-block-bg); border: 1px solid var(--color-block-border); border-radius: 12px; padding: 18px; box-shadow: 0 10px 30px var(--color-shadow); animation: zoomIn var(--animation-duration-transition) ease; }
   .row { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
-  /* buttons are now from UI kit */
   .cal-error { color: var(--color-error); background: var(--color-error-bg); padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; }
 
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -495,7 +478,6 @@ async function saveEvent() {
     .cal-cell { min-height: 96px; }
     .cal-actions { gap: 4px; }
     .cal-filters { width: 100%; }
-    /* On touch devices, show actions without hover */
     .cal-actions { opacity: 1; }
     .cal-title { font-size: 1.25rem; }
   }

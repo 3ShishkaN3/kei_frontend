@@ -3,7 +3,6 @@
 
   const START_YEAR = 2024;
   const currentYear = new Date().getFullYear();
-  // Показываем либо "2024", либо "2024—{текущий}" если год позже
   $: yearText = currentYear <= START_YEAR ? String(START_YEAR) : `${START_YEAR}—${currentYear}`;
 </script>
 
@@ -25,9 +24,8 @@
     font-size: 0.95rem;
   }
   .copyright { color: var(--color-text-muted, #6b6b6b); }
-  .footer-bug-btn { /* небольшой отступ и выравнивание */ }
+  .footer-bug-btn { }
 
-  /* Адаптивность: при узких экранах размещаем элементы в колонку */
   @media (max-width: 640px) {
     .footer-inner {
       flex-direction: column;
@@ -38,7 +36,6 @@
       text-align: center;
     }
     .copyright { font-size: 0.92rem; }
-    /* кнопка во весь контейнер с ограничением по ширине */
     .footer-bug-btn {
       display: block;
       width: 100%;

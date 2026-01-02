@@ -1,6 +1,6 @@
 <script>
   export let label = '';
-  export let value = []; // массив выбранных значений
+  export let value = [];
   export let name = '';
   export let disabled = false;
   export let options = []; // [{label, value}]

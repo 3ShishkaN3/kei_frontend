@@ -6,9 +6,9 @@
     import Modal from '../utils/Modal.svelte';
 
     export let isOpen = false;
-    export let entry = null; // null for create, object for edit
+    export let entry = null;
     export let sectionId;
-    export let courseId; // This is no longer needed but kept for modal signature
+    export let courseId;
 
     let localEntry = {};
     let audioFile = null;

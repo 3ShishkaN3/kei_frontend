@@ -4,21 +4,20 @@
     import 'plyr/dist/plyr.css';
 
     export let contentDetails;
-    // Ожидаемая структура от бэкенда (из твоего примера):
     // contentDetails: { title?: string, video_file?: string, video_url?: string, source_type?: string, transcript?: string }
-    // video_file: "http://localhost:8000/media/material_video/1006_motion_background_abstract_hd1627720p5000br_7gc3m3E.mp4"
-    // video_url: null (в твоем примере)
-    // source_type: "url" (в твоем примере, что может означать "файл по URL")
+    // video_file: "http://****//media/material_video/1006_motion_background_abstract_hd1627720p5000br_7gc3m3E.mp4"
+    // video_url: null
+    // source_type: "url"
 
     let videoElement;
-    let player; // Экземпляр Plyr
+    let player;
     let showTranscript = false;
 
     $: finalVideoOptions = getVideoOptions();
 
     function getExtension(filename) {
         if (!filename || typeof filename !== 'string') return 'mp4'; // Default
-        const parts = filename.split('?')[0].split('.'); // Убираем query params перед поиском расширения
+        const parts = filename.split('?')[0].split('.');
         return parts.pop().toLowerCase();
     }
 
@@ -32,7 +31,6 @@
     function getVideoOptions() {
         if (!contentDetails) return null;
 
-        // Приоритет: если есть video_url и это известный провайдер (YouTube/Vimeo)
         const embedUrl = contentDetails.video_url;
         const embedProvider = getProviderFromUrl(embedUrl);
 
@@ -43,47 +41,35 @@
                     src: embedUrl,
                     provider: embedProvider,
                 }],
-                plyrProvider: embedProvider // Для выбора правильного рендера в HTML
+                plyrProvider: embedProvider
             };
         }
 
-        // Второе: если есть video_file (URL на загруженный файл)
         if (contentDetails.video_file) {
             return {
                 type: 'video',
                 title: contentDetails.title || 'Видео',
                 sources: [{
-                    src: contentDetails.video_file, // URL уже полный
+                    src: contentDetails.video_file, 
                     type: `video/${getExtension(contentDetails.video_file)}`,
                 }],
-                plyrProvider: 'html5' // Plyr будет использовать HTML5 <video> тег
+                plyrProvider: 'html5' 
             };
         }
         
-        return null; // Источник не найден
+        return null;
     }
     
-    // Эта функция будет вызываться при изменении finalVideoOptions
     function initializeOrUpdatePlayer(options) {
         if (player) {
             player.destroy();
             player = null;
         }
         if (videoElement && options && options.sources && options.sources.length > 0) {
-            // Для HTML5, Plyr ожидает <video> тег. Для YouTube/Vimeo - iframe.
-            // Мы будем управлять этим в шаблоне. Здесь просто создаем Plyr.
             if (options.plyrProvider === 'html5') {
-                // Убедимся, что videoElement это <video>, а не <div> от предыдущего iframe
-                if (videoElement.tagName !== 'VIDEO') {
-                    // Это сложный случай, если тип плеера меняется. Проще пересоздать компонент.
-                    // Для простоты, предполагаем, что videoElement всегда будет нужного типа
-                    // или что Svelte перерисует его правильно.
-                }
+                if (videoElement.tagName !== 'VIDEO') { }
             }
-            player = new Plyr(videoElement, { /* опции Plyr */ });
-            // Для HTML5, источник устанавливается через <source> тег.
-            // Для YouTube/Vimeo, Plyr сам обрабатывает iframe.
-            // Если нужно явно обновить источник для уже созданного плеера HTML5:
+            player = new Plyr(videoElement, { });
             if (options.plyrProvider === 'html5' && player && player.isHTML5) {
                  player.source = { type: 'video', title: options.title, sources: options.sources };
             }
@@ -91,12 +77,9 @@
         }
     }
 
-    // Реактивно вызываем инициализацию/обновление плеера
     $: initializeOrUpdatePlayer(finalVideoOptions);
 
     onMount(() => {
-        // Первичная инициализация, если finalVideoOptions уже есть
-        // (хотя реактивный блок $: initializeOrUpdatePlayer должен это покрыть)
         if (!player && videoElement && finalVideoOptions) {
              initializeOrUpdatePlayer(finalVideoOptions);
         }
@@ -172,16 +155,14 @@
         color: var(--color-text-dark);
         margin-bottom: 12px;
     }
-    /* Чтобы стили Plyr применялись корректно */
     .plyr__video-embed {
         border-radius: var(--spacing-border-radius-block);
-        overflow: hidden; /* Для скругления углов у iframe */
+        overflow: hidden;
         box-shadow: var(--color-shadow);
     }
-     /* Для YouTube/Vimeo iframe, чтобы они занимали место, пока Plyr не инициализировался */
     .plyr__video-embed iframe {
         width: 100%;
-        aspect-ratio: 16 / 9; /* Стандартное соотношение сторон для видео */
+        aspect-ratio: 16 / 9;
         border: none;
     }
 

@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const notifications = writable([]);
 
-const defaultDuration = 5000; // 5 seconds
+const defaultDuration = 5000;
 
 export function addNotification(message, type = 'info', duration = defaultDuration) {
     const id = uuidv4();

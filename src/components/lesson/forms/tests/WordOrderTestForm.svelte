@@ -63,7 +63,7 @@
             localTestModel = new WordOrderTestModel({ 
                 ...currentTestData, 
                 draggable_options_pool: poolCopy,
-                correct_ordered_texts: correctTexts, // Передаем в конструктор модели
+                correct_ordered_texts: correctTexts,
                 display_prompt: wosDetails.display_prompt || "",
                 explanation: wosDetails.explanation || ""
             });
@@ -93,12 +93,9 @@
             localTestModel.addOptionToPool("Слово 3");
         }
         if (localTestModel.word_order_sentence.correct_ordered_texts.length === 0 && currentTestData?.title !== undefined && localTestModel.draggable_options_pool.length > 0) {
-            // Не добавляем автоматически в правильную последовательность, пусть преподаватель сам решает
         }
         localTestModel = localTestModel;
-        // Нужно вызвать tick, чтобы Svelte успел обновить DOM перед возможным доступом к textareaElement и т.д.
         tick().then(() => {
-            // Дополнительные действия после обновления DOM, если нужны
         });
     }
     
@@ -191,7 +188,6 @@
             const oldText = localTestModel.draggable_options_pool[index];
             localTestModel.draggable_options_pool[index] = newText;
             
-            // Обновить correct_ordered_texts, если они использовали старый текст
             localTestModel.word_order_sentence.correct_ordered_texts = localTestModel.word_order_sentence.correct_ordered_texts.map(txt => txt === oldText ? newText : txt);
             localTestModel = localTestModel;
         } else if (!newText) {
@@ -250,12 +246,10 @@
 
         Object.keys(testPayload).forEach(key => {
             if (testPayload[key] === undefined) delete testPayload[key];
-            // Убедимся, что word_order_sentence содержит правильные поля
             if (key === 'word_order_sentence' && testPayload[key]) {
                 if (!Array.isArray(testPayload[key].correct_ordered_texts)) {
                     testPayload[key].correct_ordered_texts = [];
                 }
-                // distractor_words не должно быть, модель его не содержит
                 delete testPayload[key].distractor_words; 
             }
         });
@@ -443,7 +437,6 @@
     </div>
 </div>
 <style>
-    /* --- Общие стили для форм (если еще не вынесены) --- */
 .item-form { display: flex; flex-direction: column; gap: 20px; }
 .form-group { display: flex; flex-direction: column; }
 .form-group label { 
@@ -465,7 +458,7 @@
     box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 175, 164, 255), 0.2);
     outline: none;
 }
-.form-group textarea { line-height: 1.5; min-height: 60px; } /* Меньше для подсказки/пояснения */
+.form-group textarea { line-height: 1.5; min-height: 60px; }
 .form-loading-placeholder { display: flex; align-items: center; justify-content: center; padding: 30px; color: var(--color-text-muted); }
 .spinner { border: 3px solid rgba(var(--color-primary-rgb), 0.2); border-left-color: var(--color-primary); border-radius: 50%; width: 24px; height: 24px; animation: form-spin 1s linear infinite; margin-right: 10px; }
 @keyframes form-spin { to { transform: rotate(360deg); } }
@@ -477,7 +470,6 @@
 .btn-cancel { background-color: var(--color-bg-ultra-light, #f8f9fa); color: var(--color-text-muted, #555); padding: 10px 20px; border: 1px solid var(--color-border-light, #ddd); border-radius: var(--spacing-border-radius-button); cursor: pointer; transition: background-color 0.2s; }
 .btn-cancel:hover:not(:disabled) { background-color: #e9ecef; }
 
-/* Стили для общих аттачментов (идентичны DragDropTestForm) */
 .attachments-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--color-border-light, #eee); }
 .attachments-header { margin-top: 0; margin-bottom: 15px; font-size: 1.1em; font-weight: var(--font-weight-semi-bold); color: var(--color-text-dark); }
 .form-row { display: flex; gap: 20px; margin-bottom:10px;}
@@ -488,7 +480,6 @@
 .file-upload-label:hover { background-color: rgba(var(--color-primary-rgb, 175, 164, 255), 0.05); border-color: var(--color-primary, #AFA4FF); }
 .file-upload-label span { font-size: 0.9em; flex-grow: 1; text-align: center; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0;}
-/* ... (остальные стили для аттачментов: cropper, aspect-ratio, remove-btn, previews - как в DragDropTestForm) ... */
 .cropper-wrapper-test.general-test-cropper { position: relative; width: 100%; height: 200px; background: #eef2f7; border-radius: var(--spacing-border-radius-small); overflow: hidden; margin-bottom: 10px; border: 1px solid var(--color-border-light); }
 .attachment-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; gap: 10px; flex-wrap: wrap;}
 .aspect-ratio-controls { display: flex; gap: 5px; align-items: center; color: var(--color-text-muted); }
@@ -508,7 +499,6 @@
 .form-hint.removed-hint { color: var(--color-danger-red); font-weight: 500; }
 
 
-/* --- Стили для WordOrderTestForm --- */
 .word-order-test-form .form-section {
     margin-top: 25px;
     padding-top: 20px;
@@ -521,7 +511,6 @@
     margin-bottom: 15px;
 }
 
-/* Пул слов/фраз (аналогично DragDropTestForm) */
 .option-pool-controls {
     display: flex; gap: 10px; margin-bottom: 10px; align-items: center;
 }
@@ -538,7 +527,7 @@
 .btn-add-small:hover:not(:disabled) { background-color: var(--color-primary-light); color: var(--color-primary-dark); border-color: var(--color-primary); }
 .btn-add-small:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.options-pool-list.word-order-pool { /* Специфичные стили для пула в WordOrder, если нужны */
+.options-pool-list.word-order-pool {
     display: flex; flex-wrap: wrap; gap: 8px;
     padding: 10px; background-color: var(--color-bg-light);
     border: 1px solid var(--color-border-light);
@@ -546,12 +535,12 @@
 }
 .pool-option-item {
     display: flex; align-items: center; gap: 6px;
-    background-color: var(--color-purple-light); /* Другой цвет для отличения от DragDrop */
+    background-color: var(--color-purple-light);
     color: var(--color-primary-dark);
-    padding: 6px 8px; border-radius: 6px; /* Менее овальные */
+    padding: 6px 8px; border-radius: 6px;
     font-size: 0.9em; border: 1px solid transparent;
 }
-.pool-option-input { /* Инпут для редактирования слова в пуле */
+.pool-option-input {
     background: transparent; border: none; outline: none;
     padding: 2px 4px; color: inherit; font-size: inherit;
     width: auto; min-width: 50px; border-radius: 3px;
@@ -564,15 +553,14 @@
 .btn-delete-small:hover:not(:disabled) { opacity: 1; color: var(--color-danger-red); }
 .empty-list-message { width: 100%; text-align: center; font-size: 0.9em; color: #999; font-style: italic; padding: 10px 0; }
 
-/* Правильная последовательность */
 .correct-sequence-list {
-    border: 1px solid var(--color-secondary-light, #d1d8f8); /* Добавить --color-secondary-light */
+    border: 1px solid var(--color-secondary-light, #d1d8f8);
     border-radius: var(--spacing-border-radius-small);
     padding: 10px;
     min-height: 50px;
     background-color: var(--color-bg-light);
     display: flex;
-    flex-direction: column; /* Элементы друг под другом */
+    flex-direction: column;
     gap: 8px;
 }
 .sequence-item {
@@ -584,7 +572,7 @@
     font-size: 0.95em;
     color: var(--color-text-dark);
 }
-.sequence-item > span:first-child { /* Номер по порядку */
+.sequence-item > span:first-child {
     margin-right: 8px;
     color: var(--color-text-muted);
     font-weight: 500;
@@ -600,7 +588,7 @@
 }
 .sequence-item-controls .btn-action-small:hover:not(:disabled),
 .sequence-item-controls .btn-delete-small:hover:not(:disabled) {
-    background-color: rgba(var(--color-text-muted-rgb, 85,85,85), 0.1); /* Добавить --color-text-muted-rgb */
+    background-color: rgba(var(--color-text-muted-rgb, 85,85,85), 0.1);
     border-radius: 50%;
 }
 </style>

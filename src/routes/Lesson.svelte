@@ -55,9 +55,6 @@
     let currentSectionData = null;
 
     let studentSubmissionsMap = {}; 
-    // Берём статус завершения секции напрямую из backend JSON (SectionSerializer.is_completed)
-    // Показывать подсказки/подсветку только для тех тестов,
-    // которые студент СЕЙЧАС отправил в текущей сессии
     let revealAnswersMap = {};
 
 	let isMobileSidebarOpen = false;
@@ -81,7 +78,6 @@
 
 	const dispatch = createEventDispatcher();
 
-    // Локальное состояние: какие нетестовые элементы уже отмечены как просмотренные
     let viewedItemIds = new Set();
     let markingInFlight = new Set();
     let itemObserver = null;
@@ -152,7 +148,6 @@
             if (!preserveSubmissions) {
                 studentSubmissionsMap = {};
                 revealAnswersMap = {};
-                // 1) Берём, что уже пришло внутри lesson details (если бэкенд это отдаёт)
                 newSections.forEach(section => {
                     (section.items || []).forEach(item => {
                         if (item.item_type === 'test' && item.content_details?.student_submission_details) {
@@ -161,15 +156,12 @@
                     });
                 });
 
-                // 2) Дополняем из общего списка отправок по текущему уроку,
-                // чтобы статусы отображались у всех ранее пройденных тестов
                 try {
                     const submissionsList = await lessonApi.fetchTestSubmissions({
                         lesson_id: lessonId,
                         ordering: '-submitted_at'
                     });
 
-                    // Построим соответствие test.id → массив sectionItem.id в этом уроке
                     const testIdToItemIdsMap = {};
                     newSections.forEach(section => {
                         (section.items || []).forEach(item => {
@@ -181,19 +173,16 @@
                         });
                     });
 
-                    // Проставляем статусы для тех sectionItem, где ещё нет данных
                     submissionsList.forEach(sub => {
                         const itemIds = testIdToItemIdsMap[sub.test] || [];
                         itemIds.forEach(itemId => {
                             if (!studentSubmissionsMap[itemId]) {
-                                // Берём только агрегированную информацию (без ответов)
                                 studentSubmissionsMap[itemId] = {
                                     id: sub.id,
                                     test: sub.test,
                                     submitted_at: sub.submitted_at,
                                     status: sub.status,
                                     score: sub.score,
-                                    // Доп. поля могут отсутствовать в листе — это нормально
                                 };
                             }
                         });
@@ -218,7 +207,6 @@
                 isSectionLoading = false;
             }
 
-            // Настраиваем отслеживание видимости материалов текущего раздела
             await tick();
             setupItemObserver();
 		}
@@ -235,7 +223,6 @@
                  if (typeof localStorage !== 'undefined' && lessonId && currentSectionId) {
                     localStorage.setItem(`${LAST_SECTION_STORAGE_KEY_PREFIX}${lessonId}`, currentSectionId.toString());
                  }
-                 // Переинициализируем observer при смене секции
                  tick().then(setupItemObserver);
             } else {
                  currentSectionData = null; 
@@ -259,19 +246,17 @@
 
     function switchSection(sectionId) {
         if (currentSectionId !== sectionId) {
-            currentSectionId = sectionId; // Это вызовет реактивный блок $: {} для сохранения в localStorage
+            currentSectionId = sectionId; 
             if (isMobileSidebarOpen) isMobileSidebarOpen = false;
             const mainContentEl = document.querySelector('.lesson-main-content');
             if (mainContentEl) {
                  mainContentEl.scrollTo({ top: 0, behavior: 'auto' });
             }
-            // Сброс наблюдателя при смене секции
             setupItemObserver();
         }
     }
 
     function setupItemObserver() {
-        // Очистка предыдущего наблюдателя
         if (itemObserver) {
             itemObserver.disconnect();
             itemObserver = null;
@@ -291,7 +276,6 @@
                     try {
                         await lessonApi.markItemViewed(courseId, lessonId, sectionId, itemId);
                         viewedItemIds = new Set([...viewedItemIds, itemId]);
-                        // Обновляем прогресс секций реактивно
                         await refreshSectionProgress();
                     } catch (e) {
                         console.warn('Не удалось отметить просмотр материала', itemId, e);
@@ -302,7 +286,6 @@
             }
         }, { threshold: [0, 0.25, 0.5, 0.6, 0.75, 1] });
 
-        // Подписываемся на все элементы текущей секции
         const items = container.querySelectorAll('[data-item-id]');
         items.forEach(el => itemObserver && itemObserver.observe(el));
     }
@@ -322,7 +305,6 @@
                 const isCompleted = completion >= 99.5 || !!completedAt || (totalTests === 0 && isVisited);
                 return { ...s, is_completed: isCompleted };
             });
-            // Обновим флаг урока, если все секции завершены
             if (lessonData) {
                 const allDone = sections.length > 0 && sections.every(s => s.is_completed);
                 lessonData = { ...lessonData, is_completed: allDone };
@@ -377,15 +359,14 @@
             const previousSectionIdIfActive = currentSectionId === sectionId ? null : currentSectionId;
             try {
                 await lessonApi.deleteSection(courseId, lessonId, sectionId);
-                // Определяем, какая секция должна стать активной после удаления
                 const remainingSections = sections.filter(s => s.id !== sectionId);
                 let newActiveSectionId = null;
                 if (remainingSections.length > 0) {
-                    if (currentSectionId === sectionId) { // Если удалили активную
-                        newActiveSectionId = remainingSections[0].id; // Активируем первую из оставшихся
-                    } else if (remainingSections.some(s => s.id === currentSectionId)) { // Если активная не удалена
+                    if (currentSectionId === sectionId) {
+                        newActiveSectionId = remainingSections[0].id; 
+                    } else if (remainingSections.some(s => s.id === currentSectionId)) { 
                         newActiveSectionId = currentSectionId;
-                    } else { // Активная была, но ее нет среди оставшихся (не должно быть, но на всякий)
+                    } else {
                         newActiveSectionId = remainingSections[0].id;
                     }
                 }
@@ -577,7 +558,6 @@
             }
             
             const submissionResult = await lessonApi.submitTestAnswers(testId, payloadToSend);
-            // Attempt to fetch full submission details for correct answers; fallback if endpoint unavailable
             let resultSubmission = submissionResult;
             try {
                 resultSubmission = await lessonApi.fetchTestSubmissionDetails(submissionResult.id);
@@ -588,14 +568,10 @@
                 ...studentSubmissionsMap,
                 [sectionItemId]: resultSubmission
             };
-            // Разрешаем подсветку/подсказки только для этого конкретного теста
             revealAnswersMap = {
                 ...revealAnswersMap,
                 [sectionItemId]: true
             };
-            // Не вызываем loadLessonData, чтобы studentSubmissionsMap не перезаписался,
-            // если бэкенд не отдает student_submission_details с lessonData.
-            // Обновление studentSubmissionsMap должно вызвать реактивность в TestItemDisplay.
 
         } catch(err) {
              addNotification(`Ошибка отправки теста: ${err.message || 'Неизвестная ошибка'}`, 'error');
@@ -633,7 +609,6 @@
         try {
             const refreshedSubmission = await lessonApi.fetchTestSubmissionDetails(submissionId);
             
-            // Find which sectionItem this submission belongs to
             let targetSectionItemId = null;
             for (const section of sections) {
                 for (const item of section.items) {
@@ -653,8 +628,6 @@
                 };
                 addNotification('Статус проверки обновлен.', 'success');
             } else {
-                // Fallback if not found in current map - maybe reload all submissions?
-                // For now, just log it.
                 console.warn(`Could not find section item for submission ID ${submissionId} to refresh.`);
             }
 
@@ -669,7 +642,6 @@
     <meta name="og:title" content={lessonData ? `${lessonData.title} — Kei` : 'Урок — Kei'} />
     <meta name="twitter:title" content={lessonData ? `${lessonData.title} — Kei` : 'Урок — Kei'} />
   </svelte:head>
-<!-- Добавляем on:click={handleOverlayClick} -->
 <div 
     class="lesson-page-container {isAdminOrStaff && viewMode === 'admin' ? 'admin-view' : 'student-view'}"
     class:sidebar-mobile-active={isMobileSidebarOpen}
@@ -1200,7 +1172,7 @@
             width: clamp(280px, 75vw, 320px);
             height: 100vh; 
             background-color: var(--color-bg-light);
-            z-index: 1005; /* Сайдбар должен быть выше оверлея */
+            z-index: 1005;
             transform: translateX(-105%);
             transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
             box-shadow: 3px 0 15px rgba(0,0,0,0.15);
@@ -1215,14 +1187,12 @@
         .lesson-sidebar.mobile-open { transform: translateX(0); }
         .sidebar-toggle-button { display: inline-flex; }
         .lesson-page-container {padding: clamp(30px, 8vw, 50px) var(--spacing-padding-page);}
-        /* Оверлей, который появляется, когда сайдбар открыт на мобильных */
         .lesson-page-container.sidebar-mobile-active::before {
             content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background-color: rgba(0,0,0,0.4); 
-            z-index: 1000; /* Оверлей ниже сайдбара, но выше остального контента */
+            z-index: 1000;
             opacity: 1; visibility: visible; transition: opacity 0.3s ease;
         }
-        /* Скрытие оверлея по умолчанию */
         .lesson-page-container::before {
              content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
              background-color: rgba(0,0,0,0.4); z-index: 1000;

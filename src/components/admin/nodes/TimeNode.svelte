@@ -3,7 +3,6 @@
 
     export let data;
 
-    // Days of week
     const days = [
         { value: 0, label: "Пн" },
         { value: 1, label: "Вт" },
@@ -14,7 +13,6 @@
         { value: 6, label: "Вс" },
     ];
 
-    // Initialize days if not present
     if (!data.days) data.days = [];
 
     function toggleDay(dayValue) {
@@ -78,7 +76,7 @@
     }
 
     .node--time {
-        border-top: 4px solid #ff9800; /* Orange for time */
+        border-top: 4px solid #ff9800;
     }
 
     .node__header {

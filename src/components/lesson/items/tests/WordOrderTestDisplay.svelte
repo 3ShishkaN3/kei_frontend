@@ -17,28 +17,22 @@
     const dispatch = createEventDispatcher();
     const flipDurationMs = 200;
 
-    // Уникальный тип для этого компонента
     const dndType = `wordOrder_${sectionItemId}`;
 
-    // Функция сброса теста к дефолтному состоянию
     function resetTestToDefault(event) {
         if (!canStudentInteract) return;
 
-        // Предотвращаем всплытие события, чтобы избежать отправки формы
         event.preventDefault();
         event.stopPropagation();
 
-        // Возвращаем все слова из последовательности обратно в пул
         const allItemsFromSequence = [...currentWordSequence];
         wordOrderAvailableOptionsInPool = [
             ...wordOrderAvailableOptionsInPool,
             ...allItemsFromSequence,
         ];
 
-        // Очищаем последовательность
         currentWordSequence = [];
 
-        // Сортируем пул по исходному порядку
         wordOrderAvailableOptionsInPool = wordOrderAvailableOptionsInPool.sort(
             (a, b) => {
                 const indexA = dndBasePoolForCurrentTest.findIndex(
@@ -51,18 +45,15 @@
             },
         );
 
-        // Отправляем обновления
         dispatch("update:currentWordSequence", currentWordSequence);
         dispatch(
             "update:wordOrderAvailableOptionsInPool",
             wordOrderAvailableOptionsInPool,
         );
 
-        // Отправляем событие о сбросе теста
         dispatch("testReset");
     }
 
-    // Обработчики для пула слов
     function handleDndPoolConsider(e) {
         if (!canStudentInteract) return;
         wordOrderAvailableOptionsInPool = e.detail.items;
@@ -72,13 +63,10 @@
         if (!canStudentInteract) return;
         const { items, info } = e.detail;
         if (info.source === "pointer" && info.trigger === "droppedIntoZone") {
-            // Элемент перетащен из последовательности в пул
             wordOrderAvailableOptionsInPool = items;
-            // Удаляем элемент из последовательности
             currentWordSequence = currentWordSequence.filter(
                 (seqItem) => seqItem.id !== info.item.id,
             );
-            // Сортируем пул по исходному порядку
             wordOrderAvailableOptionsInPool =
                 wordOrderAvailableOptionsInPool.sort((a, b) => {
                     const indexA = dndBasePoolForCurrentTest.findIndex(
@@ -90,7 +78,6 @@
                     return indexA - indexB;
                 });
         } else {
-            // Внутреннее перемещение в пуле
             wordOrderAvailableOptionsInPool = items;
         }
 
@@ -101,7 +88,6 @@
         dispatch("update:currentWordSequence", currentWordSequence);
     }
 
-    // Обработчики для последовательности
     function handleDndSequenceConsider(e) {
         if (!canStudentInteract) return;
         currentWordSequence = e.detail.items;
@@ -112,15 +98,12 @@
         const { items, info } = e.detail;
 
         if (info.source === "pointer" && info.trigger === "droppedIntoZone") {
-            // Элемент перетащен из пула в последовательность
             currentWordSequence = items;
-            // Удаляем элемент из пула
             wordOrderAvailableOptionsInPool =
                 wordOrderAvailableOptionsInPool.filter(
                     (poolItem) => poolItem.id !== info.item.id,
                 );
         } else {
-            // Внутреннее перемещение в последовательности
             currentWordSequence = items;
         }
 
@@ -164,7 +147,6 @@
                 (i) => i.id === itemToReturn.id,
             )
         ) {
-            // Добавляем обратно в пул и сортируем по исходному порядку
             wordOrderAvailableOptionsInPool = [
                 ...wordOrderAvailableOptionsInPool,
                 { ...itemToReturn },
@@ -213,7 +195,6 @@
 </script>
 
 <div class="word-order-test-area" style="position: relative;">
-    <!-- Иконка перезагрузки -->
     {#if canStudentInteract}
         <button
             class="reset-test-button"
@@ -386,7 +367,6 @@
 </div>
 
 <style>
-    /* Кнопка сброса теста */
     .reset-test-button {
         position: absolute;
         top: -15px;

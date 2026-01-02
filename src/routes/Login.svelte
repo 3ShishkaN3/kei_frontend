@@ -10,10 +10,8 @@
     let error = "";
     let success = "";
 
-    // Состояние отображения: 'login', 'request_reset', 'confirm_reset'
     let view = "login";
 
-    // Данные для сброса пароля
     let resetEmail = "";
     let resetCode = "";
     let newPassword = "";
@@ -107,7 +105,6 @@
                     data.message ||
                     "Пароль успешно изменён. Теперь вы можете войти.";
                 view = "login";
-                // Pre-fill email for login
                 email = resetEmail;
                 password = "";
                 newPassword = "";
@@ -341,12 +338,12 @@
     .forgot-register-links a {
         text-decoration: none;
         color: inherit;
-        transition: all 0.3s ease; /* Плавное изменение */
+        transition: all 0.3s ease;
     }
 
     .forgot-register-links a:hover {
-        color: #8f7ee3; /* Затемнение при наведении */
-        opacity: 0.8; /* Немного уменьшить яркость */
+        color: #8f7ee3;
+        opacity: 0.8;
     }
 
     .confirm-email-button {

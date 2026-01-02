@@ -20,7 +20,6 @@
             {/each}
         </select>
     </div>
-    <!-- Multiple inputs possible, so we use a target handle -->
     <Handle type="target" position={Position.Top} class="node__handle" />
     <Handle type="source" position={Position.Bottom} class="node__handle" />
 </div>
@@ -36,7 +35,7 @@
     }
 
     .node--logic {
-        border-top: 4px solid #9c27b0; /* Purple for logic */
+        border-top: 4px solid #9c27b0;
     }
 
     .node__header {
