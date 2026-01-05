@@ -96,6 +96,27 @@ export async function updateLesson(courseId, lessonId, lessonData) {
     return response.json();
 }
 
+/**
+ * Изменить порядок уроков в курсе.
+ *
+ * @async
+ * @param {string|number} courseId - ID курса.
+ * @param {Array<{id:number, order:number}>} lessonsOrderPayload - массив новых порядков.
+ * @returns {Promise<Array<Object>>} Обновленный список уроков.
+ */
+export async function reorderLessons(courseId, lessonsOrderPayload) {
+    const url = `${coursesBaseUrl}/${courseId}/lessons/reorder/`;
+    const response = await apiFetch(url, {
+        method: 'POST',
+        body: lessonsOrderPayload
+    });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || errorData.detail || `Ошибка изменения порядка уроков: ${response.status}`;
+        throw new Error(errorMessage);
+    }
+    return response.json();
+}
 
 /**
  * =======================================================================
@@ -171,7 +192,6 @@ export async function deleteSection(courseId, lessonId, sectionId) {
 		throw new Error(errorData.detail || `Ошибка удаления раздела: ${response.status}`);
 	}
 }
-
 
 /**
  * =======================================================================
@@ -312,6 +332,49 @@ export async function markItemViewed(courseId, lessonId, sectionId, itemId) {
     return response.json();
 }
 
+/**
+ * =======================================================================
+ * SECTION API (Разделы урока)
+ * /api/courses/{courseId}/lessons/{lessonId}/sections/
+ * =======================================================================
+ */
+
+/**
+ * Изменить порядок разделов в уроке.
+ *
+ * @async
+ * @param {string|number} courseId - ID курса.
+ * @param {string|number} lessonId - ID урока.
+ * @param {Array<Object>} sectionsOrderPayload - Массив объектов, каждый из которых содержит `id` раздела и новый `order`.
+ * @param {number} sectionsOrderPayload[].id - ID раздела.
+ * @param {number} sectionsOrderPayload[].order - Новый порядковый номер раздела.
+ * @returns {Promise<Array<Object>>} Массив обновленных объектов разделов урока, отсортированных по новому порядку.
+ * @throws {Error} Если запрос не удался.
+ */
+export async function reorderSections(courseId, lessonId, sectionsOrderPayload) {
+	const url = `${coursesBaseUrl}/${courseId}/lessons/${lessonId}/sections/reorder/`;
+	const response = await apiFetch(url, {
+		method: 'POST',
+		body: sectionsOrderPayload
+	});
+	if (!response.ok) {
+		const errorData = await response.json().catch(() => ({}));
+		let errorMessage = `Ошибка изменения порядка разделов: ${response.status}`;
+		if (errorData.detail) {
+			errorMessage = errorData.detail;
+		} else if (errorData.error) {
+            errorMessage = errorData.error;
+            if (errorData.conflicts_with_other_sections) {
+                 errorMessage += ` Конфликты: ${JSON.stringify(errorData.conflicts_with_other_sections)}`;
+            }
+            if (errorData.missing_section_ids) {
+                errorMessage += ` Не найдены ID секций: ${errorData.missing_section_ids.join(', ')}`;
+            }
+        }
+		throw new Error(errorMessage);
+	}
+	return response.json();
+}
 
 /**
  * =======================================================================
@@ -377,7 +440,6 @@ export async function updateTest(testId, testData) {
     }
     return response.json();
 }
-
 
 /**
  * =======================================================================
@@ -483,29 +545,6 @@ export async function fetchTestSubmissionDetails(submissionId) {
 }
 
 /**
- * Изменить порядок разделов в уроке.
- *
- * @async
- * @param {string|number} courseId - ID курса.
- * @param {string|number} lessonId - ID урока.
- * @param {Array<Object>} sectionsOrderPayload - Массив объектов, каждый из которых содержит `id` раздела и новый `order`.
- * @param {number} sectionsOrderPayload[].id - ID раздела.
- * @param {number} sectionsOrderPayload[].order - Новый порядковый номер раздела.
- * @returns {Promise<Array<Object>>} Массив обновленных объектов разделов урока, отсортированных по новому порядку.
- * @throws {Error} Если запрос не удался.
- */
-export async function reorderSections(courseId, lessonId, sectionsOrderPayload) {
-	const url = `${coursesBaseUrl}/${courseId}/lessons/${lessonId}/sections/reorder/`;
-	const response = await apiFetch(url, {
-		method: 'POST',
-		body: sectionsOrderPayload
-	});
-	if (!response.ok) {
-		const errorData = await response.json().catch(() => ({}));
-		let errorMessage = `Ошибка изменения порядка разделов: ${response.status}`;
-		if (errorData.detail) {
-			errorMessage = errorData.detail;
-		} else if (errorData.error) {
             errorMessage = errorData.error;
             if (errorData.conflicts_with_other_sections) {
                  errorMessage += ` Конфликты: ${JSON.stringify(errorData.conflicts_with_other_sections)}`;
