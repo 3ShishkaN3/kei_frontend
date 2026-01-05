@@ -14,20 +14,32 @@
     position: relative;
     padding: 12px 16px;
   }
+
   .footer-inner {
     max-width: 1200px;
     margin: 0 auto;
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr; 
     align-items: center;
-    justify-content: space-between;
     gap: 16px;
     font-size: 0.95rem;
   }
-  .copyright { color: var(--color-text-muted, #6b6b6b); }
-  .footer-bug-btn { }
+
+  .copyright { 
+    color: var(--color-text-muted, #6b6b6b);
+    grid-column: 2;
+    text-align: center;
+  }
+
+  .footer-actions {
+    grid-column: 3;
+    display: flex;
+    justify-content: flex-end;
+  }
 
   @media (max-width: 640px) {
     .footer-inner {
+      display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
@@ -53,8 +65,11 @@
 
 <footer>
   <div class="footer-inner">
+    <div class="spacer"></div>
+
     <div class="copyright">&copy; {yearText} KeiSenpai</div>
-    <div>
+
+    <div class="footer-actions">
       <BugReportButton className="footer-bug-btn" />
     </div>
   </div>

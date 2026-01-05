@@ -32,7 +32,7 @@
     let editingCourse = null;
     let pageVisible = false;
     let isCarouselReady = false;
-    let currentSortOrder = '-created_at'; // По умолчанию сортировка по дате создания (новые сначала) 
+    let currentSortOrder = '-created_at';
 
     const unsubscribeUser = user.subscribe(value => {
         if (value.isAuthenticated) {
@@ -124,7 +124,6 @@
         let url = `${API_BASE_URL}/courses/`;
         const params = new URLSearchParams();
         
-        // Для студентов и помощников с записями не отправляем параметр ordering, так как у них специальная сортировка на backend
         if (currentSortOrder && currentUserRole !== 'student' && currentUserRole !== 'assistant') {
             params.append('ordering', currentSortOrder);
         }
@@ -319,14 +318,14 @@
                 on:click={() => handleSortChange('-created_at')}
                 title="Сначала новые курсы"
             >
-                Новые сначала
+                Сначала новые
             </button>
             <button 
                 class="sort-button {currentSortOrder === 'created_at' ? 'active' : ''}" 
                 on:click={() => handleSortChange('created_at')}
                 title="Сначала старые курсы"
             >
-                Старые сначала
+                Сначала старые
             </button>
             <button 
                 class="sort-button {currentSortOrder === 'title' ? 'active' : ''}" 

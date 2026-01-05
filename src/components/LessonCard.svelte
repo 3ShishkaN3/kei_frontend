@@ -32,7 +32,6 @@
     }
 
     function handleAction() {
-        // TODO: Implement navigation or action for starting/continuing lesson
         console.log(`Action clicked for lesson ${lesson.id}`);
         // Example: navigate(`/lessons/${lesson.id}`);
         dispatch('action', { lessonId: lesson.id });
@@ -41,6 +40,7 @@
 </script>
 
 <div class="lesson-card" style="animation-delay: {animationDelay};" class:admin-view={isAdminView}>
+    <slot name="dragHandle"></slot>
     {#if isAdminView}
         <div class="admin-controls">
             <button class="admin-icon-button edit" on:click|stopPropagation={handleEdit} title="Редактировать">
@@ -166,6 +166,7 @@
     .lesson-card:hover .icon-container {
          transform: scale(1.05);
      }
+    .icon-container :global(svg) { color: var(--color-purple-active); }
     .default-icon { color: var(--color-purple-active); }
 
     .info-wrapper {

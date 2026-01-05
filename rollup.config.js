@@ -15,9 +15,10 @@ import replace from '@rollup/plugin-replace';
 import dotenv from 'dotenv';
 
 const production = !process.env.ROLLUP_WATCH;
+const apiBase = production ? '/api/v1' : 'http://localhost:8000/api/v1';
 
 
-dotenv.config();
+dotenv.config()
 
 
 function serve() {
@@ -90,9 +91,8 @@ export default {
 
 	replace({
 		preventAssignment: true,
-		
-		'import.meta.env.VITE_API_BASE_URL': JSON.stringify('/api/v1'),
-		'process.env.VITE_API_BASE_URL': JSON.stringify('/api/v1'),
+		'import.meta.env.VITE_API_BASE_URL': JSON.stringify(apiBase),
+    	'process.env.VITE_API_BASE_URL': JSON.stringify(apiBase),
 		'process.env.SENTRY_DSN': JSON.stringify('https://0b5f39fd7c79eed36e50fdfb148be5c2@o4510416287236096.ingest.de.sentry.io/4510416321642576')
 	}),
 
