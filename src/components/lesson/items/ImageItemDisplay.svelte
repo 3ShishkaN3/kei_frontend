@@ -55,19 +55,19 @@
 <style>
     .image-item-display {
         padding: 10px 0;
-        text-align: center; /* Центрируем изображение */
+        text-align: center;
     }
     .item-title {
         font-size: 1.3em;
         font-weight: var(--font-weight-semi-bold);
         color: var(--color-text-dark);
         margin-bottom: 12px;
-        text-align: left; /* Заголовок по левому краю */
+        text-align: left;
     }
     figure {
         margin: 0;
         padding: 0;
-        display: inline-block; /* Чтобы не растягивалось на всю ширину, если изображение маленькое */
+        display: inline-block;
     }
     img {
         max-width: 100%;
@@ -99,7 +99,7 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        z-index: var(--z-index-lightbox, 1060); /* Добавьте в global.css, если нужно */
+        z-index: var(--z-index-lightbox, 1060);
         padding: 20px;
         box-sizing: border-box;
     }
@@ -107,7 +107,7 @@
         position: relative;
         max-width: 90vw;
         max-height: 90vh;
-        display: flex; /* Для центрирования img, если он меньше */
+        display: flex;
         justify-content: center;
         align-items: center;
     }

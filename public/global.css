@@ -1,5 +1,4 @@
 :root {
-  /* Основные цвета */
   --color-primary: #AFA4FF;
   --color-secondary: #6D7FC9;
   --color-pink-light: #EBC7F2;
@@ -24,6 +23,14 @@
   --color-bg-admin-button-create-hover: #5f55d1;
   --color-border-admin-button: #C2B6FC;
   --color-danger-red: #ff4d4d;
+  
+  --color-mcq-correct: #d4f4dd;
+  --color-mcq-correct-border: #7eb88a;
+  --color-mcq-correct-text: #1f5f2b;
+  --color-mcq-incorrect: #fce4e6;
+  --color-mcq-incorrect-border: #e57373;
+  --color-mcq-incorrect-text: #8b2635;
+  
   --color-telegram: #0088cc; 
   --color-telegram-text: #333; 
   --color-telegram-gradient-start: #d6ebff;
@@ -32,9 +39,16 @@
   --color-shadow-hover: rgba(0, 0, 0, 0.15);
   --color-border-light: rgba(0, 0, 0, 0.1);
 
+  --color-pastel-red: #ffb3ba;
+  --color-pastel-orange: #ffdfba;
+  --color-pastel-yellow: #ffffba;
+  --color-pastel-green: #baffc9;
+  --color-pastel-cyan: #bae1ff;
+  --color-pastel-blue: #babbff;
+  --color-pastel-purple: #d4baff;
+
   --color-primary-rgb: 175, 164, 255;
 
-  /* Основные размеры и интервалы */
   --spacing-padding-page: clamp(15px, 5vw, 80px);
   --spacing-margin-bottom-large: 30px;
   --spacing-margin-bottom-medium: 25px;
@@ -53,11 +67,10 @@
   --spacing-padding-section: 2rem;
   --spacing-margin-top-medium: 50px;
   --spacing-margin-top-small: 20px;
-  --spacing-margin-top-large: auto; /* Для кнопки Telegram */
+  --spacing-margin-top-large: auto;
   --spacing-padding-telegram-button: 15px 30px;
   --spacing-gap-telegram-button: 12px;
 
-  /* Типография */
   --font-family-primary: 'Montserrat', sans-serif;
   --font-family-secondary: 'Roboto', 'Arial', sans-serif;
   --font-weight-regular: 400;
@@ -74,7 +87,6 @@
   --line-height-body: 1.6;
   --line-height-title: 1.8;
 
-  /* Анимации */
   --animation-duration-entrance: 0.6s;
   --animation-duration-pulse: 1.5s;
   --animation-duration-transition: 0.3s;
@@ -85,7 +97,6 @@
   --animation-delay-admin-controls: 0.2s;
   --animation-delay-carousel: 0.3s;
 
-  /* Разное */
   --max-width-page: 1400px;
   --max-width-carousel: 800px;
   --min-height-page: 60vh;
@@ -173,9 +184,9 @@
   --animation-duration-neon-pulse: 2s;
   --animation-duration-move-up: 5s;
 
-    --color-profile-block-bg: #d0e9ff;
-  --color-profile-block-shadow: rgba(0, 0, 0, 0.1);
-  --color-profile-content-bg: #fff;
+  --color-profile-block-bg: var(--color-bg-card, #ffffff);
+  --color-profile-block-shadow: var(--color-card-shadow, 0 2px 10px rgba(0, 0, 0, 0.08));
+  --color-profile-content-bg: var(--color-bg-card, #ffffff);
   --color-profile-banner-bg-before: #c1bbeb;
   --color-profile-banner-bg-after: #ffead5;
   --color-avatar-border-profile: #fff;
@@ -222,7 +233,6 @@
   --color-success-message: #4caf50;
   --color-success-message-bg: rgba(76, 175, 80, 0.1);
 
-  /* Размеры и интервалы для Profile.svelte */
   --spacing-main-max-width: 1200px;
   --spacing-main-width: 95%;
   --spacing-main-margin-top: 20vh;
@@ -289,7 +299,6 @@
   --spacing-success-message-border-radius: 4px;
   --spacing-cancel-btn-margin-left: 1rem;
 
-  /* Разное для Profile.svelte */
   --profile-banner-bg-position: 90% bottom;
   --profile-banner-bg-repeat: no-repeat;
   --profile-banner-bg-size-value: 35%;
@@ -307,7 +316,6 @@
   --save-btn-transition: all 0.3s ease;
   --switch-transition: 0.4s;
 
-  /* Анимации для Profile.svelte */
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
@@ -379,3 +387,9 @@ button:not(:disabled):active {
 button:focus {
 	border-color: #666;
 }
+
+.cal-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; font-size: 0.85rem; }
+.cal-chip--planned { background: var(--color-purple-light); color: #222; }
+.cal-chip--in-progress { background: var(--color-soft-blue); color: #222; }
+.cal-chip--completed { background: var(--color-pastel-green); color: #222; }
+.cal-chip--cancelled { background: var(--color-danger-red); color: #fff; }

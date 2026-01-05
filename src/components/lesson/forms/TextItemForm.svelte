@@ -1,8 +1,8 @@
-<!-- TextItemForm.svelte -->
+
 <script>
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import ContextMenu from '../../utils/ContextMenu.svelte';
-  import TextItemDisplay from '../items/TextItemDisplay.svelte'; // <-- Импортируем компонент отображения
+  import TextItemDisplay from '../items/TextItemDisplay.svelte';
   
   export let itemToEdit = null;
   export let isLoading = false;
@@ -13,8 +13,7 @@
   let content = '';
   let is_markdown = true;
   
-  // --- Состояние для превью ---
-  let currentView = 'edit'; // 'edit' или 'preview'
+  let currentView = 'edit'; // или 'preview'
   
   let textareaElement;
   let contextMenuVisible = false;
@@ -95,7 +94,7 @@
   }
   
   function handleTextareaContextMenu(event) {
-    if (!is_markdown || currentView === 'preview') return; // Не показывать в режиме превью
+    if (!is_markdown || currentView === 'preview') return;
     event.preventDefault();
     showContextMenu(event.clientX, event.clientY);
   }
@@ -142,7 +141,7 @@
     if (event.key === 'Escape') {
       if (colorPickerVisible) colorPickerVisible = false;
       else if (contextMenuVisible) contextMenuVisible = false;
-      else if (currentView === 'preview') currentView = 'edit'; // Выход из превью по Esc
+      else if (currentView === 'preview') currentView = 'edit';
     }
   }
   
@@ -195,7 +194,7 @@
     }
   
     setTimeout(() => {
-      if (textareaElement) { // Проверяем, существует ли textareaElement, т.к. можем быть в режиме превью
+      if (textareaElement) {
           textareaElement.focus();
           textareaElement.setSelectionRange(finalSelectionStart, finalSelectionEnd);
       }
@@ -398,9 +397,8 @@
     });
   }
   
-  // --- Для превью ---
   $: previewContentDetails = {
-    title: title, // Отображаем текущий заголовок из формы
+    title: title,
     content: content,
     is_markdown: is_markdown
   };
@@ -413,7 +411,6 @@
         <input type="text" id="text-title" bind:value={title} disabled={isLoading} />
     </div>
   
-    <!-- Переключатель режимов -->
     <div class="view-switcher">
       <button
         type="button"
@@ -527,20 +524,19 @@
       width: 1px; height: 1px; top: -10px; left: -10px;
     }
   
-    /* --- Стили для переключателя и превью --- */
     .view-switcher {
       display: flex;
       margin-bottom: 10px;
       border: 1px solid #ccc;
       border-radius: var(--spacing-border-radius-small);
-      overflow: hidden; /* Для скругления углов у кнопок */
+      overflow: hidden;
     }
     .view-switcher button {
       flex: 1;
       padding: 8px 10px;
       background-color: #f0f0f0;
       border: none;
-      border-right: 1px solid #ccc; /* Разделитель */
+      border-right: 1px solid #ccc;
       cursor: pointer;
       font-size: 0.9rem;
       color: #555;
@@ -549,8 +545,8 @@
       border-right: none;
     }
     .view-switcher button.active {
-      background-color: var(--color-primary-light, #e0e0ff); /* Используйте свой светлый основной цвет */
-      color: var(--color-primary, #5439FF); /* Ваш основной цвет */
+      background-color: var(--color-primary-light, #e0e0ff);
+      color: var(--color-primary, #5439FF);
       font-weight: 500;
     }
     .view-switcher button:hover:not(.active):not(:disabled) {
@@ -562,22 +558,20 @@
     }
   
     .content-area label {
-      /* Уже есть выше, но на всякий случай, если нужно переопределить */
       margin-bottom: 5px;
     }
   
     .preview-box {
-      min-height: 150px; /* Чтобы было похоже на textarea */
+      min-height: 150px;
       padding: 10px;
       border: 1px solid #ccc;
       border-radius: var(--spacing-border-radius-small);
       background-color: #f9f9f9;
-      overflow-y: auto; /* Если контент будет очень большим */
+      overflow-y: auto;
     }
     .non-markdown-preview p {
       margin: 0 0 0.5em 0;
-      white-space: pre-wrap; /* Сохранять пробелы и переносы */
+      white-space: pre-wrap;
       word-break: break-word;
     }
-    /* Стили для .markdown-content уже есть в TextItemDisplay */
   </style>

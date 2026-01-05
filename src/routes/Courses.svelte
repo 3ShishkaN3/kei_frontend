@@ -31,7 +31,8 @@
     let isModalOpen = false;
     let editingCourse = null;
     let pageVisible = false;
-    let isCarouselReady = false; 
+    let isCarouselReady = false;
+    let currentSortOrder = '-created_at';
 
     const unsubscribeUser = user.subscribe(value => {
         if (value.isAuthenticated) {
@@ -122,7 +123,11 @@
     async function fetchCoursesBasedOnViewMode() {
         let url = `${API_BASE_URL}/courses/`;
         const params = new URLSearchParams();
-        params.append('ordering', 'title'); 
+        
+        if (currentSortOrder && currentUserRole !== 'student' && currentUserRole !== 'assistant') {
+            params.append('ordering', currentSortOrder);
+        }
+        
         if (params.toString()) {
             url += `?${params.toString()}`;
         }
@@ -185,6 +190,13 @@
     function handleCloseModal() {
          isModalOpen = false;
          editingCourse = null;
+    }
+
+    async function handleSortChange(newSortOrder) {
+        if (currentSortOrder !== newSortOrder) {
+            currentSortOrder = newSortOrder;
+            await fetchData();
+        }
     }
 
     async function handleSaveCourse(event) {
@@ -288,8 +300,43 @@
     };
 </script>
 
+<svelte:head>
+    <title>Курсы — Kei</title>
+    <meta name="og:title" content="Курсы — Kei" />
+    <meta name="twitter:title" content="Курсы — Kei" />
+    <meta name="description" content="Выберите курс и начните обучение на платформе Kei." />
+  </svelte:head>
+
 <div class="courses-page {pageVisible ? 'visible' : ''}" key={viewMode}>
     <h1 class="page-title entrance-animation">Курсы</h1>
+    
+    {#if courses.length > 0 && currentUserRole !== 'student' && currentUserRole !== 'assistant'}
+        <div class="sort-controls entrance-animation">
+            <span class="sort-label">Сортировать:</span>
+            <button 
+                class="sort-button {currentSortOrder === '-created_at' ? 'active' : ''}" 
+                on:click={() => handleSortChange('-created_at')}
+                title="Сначала новые курсы"
+            >
+                Сначала новые
+            </button>
+            <button 
+                class="sort-button {currentSortOrder === 'created_at' ? 'active' : ''}" 
+                on:click={() => handleSortChange('created_at')}
+                title="Сначала старые курсы"
+            >
+                Сначала старые
+            </button>
+            <button 
+                class="sort-button {currentSortOrder === 'title' ? 'active' : ''}" 
+                on:click={() => handleSortChange('title')}
+                title="По алфавиту"
+            >
+                По названию
+            </button>
+        </div>
+    {/if}
+    
     {#if isAdminOrTeacher || isAssistant}
         <div class="admin-controls entrance-animation">
              {#if isAdminOrTeacher}
@@ -464,6 +511,61 @@
         transform: translateY(0);
         filter: brightness(0.98);
     }
+    
+    .sort-controls {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: var(--spacing-gap-small);
+        margin-bottom: var(--spacing-margin-bottom-medium);
+        flex-wrap: wrap;
+    }
+    
+    .sort-label {
+        font-size: var(--font-size-small);
+        color: var(--color-text-muted);
+        font-weight: var(--font-weight-medium);
+    }
+    
+    .sort-button {
+        background-color: var(--color-bg-light);
+        color: var(--color-text-dark);
+        border: var(--border-width-button) solid var(--color-border-light);
+        border-radius: var(--spacing-border-radius-button);
+        padding: 8px 16px;
+        font-family: var(--font-family-primary);
+        font-size: var(--font-size-small);
+        font-weight: var(--font-weight-medium);
+        cursor: pointer;
+        transition: all var(--animation-duration-transition) ease;
+    }
+    
+    .sort-button:hover {
+        background-color: var(--color-bg-hover);
+        border-color: var(--color-purple-light);
+        transform: translateY(-1px);
+    }
+    
+    .sort-button.active {
+        background-color: var(--color-purple-light);
+        color: white;
+        border-color: var(--color-purple-light);
+        font-weight: var(--font-weight-semi-bold);
+    }
+    
+    .sort-button:active {
+        transform: translateY(0);
+    }
+    
+    .student-sort-info {
+        text-align: center;
+        margin-bottom: var(--spacing-margin-bottom-medium);
+        padding: 12px 20px;
+        background-color: var(--color-bg-light);
+        border: 1px solid var(--color-border-light);
+        border-radius: var(--spacing-border-radius-button);
+    }
+
     .admin-button.create-button {
         background-color: var(--color-bg-admin-button-create);
         color: var(--color-text-admin-button-create);
@@ -527,10 +629,10 @@
         width: calc(var(--font-size-dot) + 2px);
         height: calc(var(--font-size-dot) + 2px);
         transform: scale(1.2);
-        box-shadow: 0 2px 4px rgba(77, 68, 181, 0.2); /* Оставил пока так, специфичный цвет */
+        box-shadow: 0 2px 4px rgba(77, 68, 181, 0.2);
     }
     .carousel-slide {
-        padding: 10px; /* Оставил пока так */
+        padding: 10px;
         min-height: var(--min-height-slide);
         display: flex;
         align-items: stretch;
@@ -546,17 +648,17 @@
     :global(.slick-active) {
         z-index: 5;
     }
-     .carousel-slide > :global(*) { /* Применяем к CourseCard */
+     .carousel-slide > :global(*) {
         width: 100%;
         height: 100%;
-        display: block; /* Убедимся, что компонент блочный */
+        display: block;
     }
     .carousel-arrow {
         position: absolute;
-        top: calc(50% - 30px); /* Корректируем позицию с учетом высоты футера карточки */
+        top: calc(50% - 30px);
         transform: translateY(-50%);
         background: var(--color-bg-light);
-        border: var(--border-width-button) solid #ddd; /* Оставил пока так, специфичный цвет */
+        border: var(--border-width-button) solid #ddd;
         border-radius: var(--spacing-border-radius-dot);
         width: 40px;
         height: 40px;

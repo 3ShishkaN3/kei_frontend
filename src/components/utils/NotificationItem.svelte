@@ -12,10 +12,9 @@
 
     let progress = 100;
     let interval;
-    const radius = 14; // Smaller radius for a less obtrusive timer
+    const radius = 14;
     const circumference = 2 * Math.PI * radius;
 
-    // Define colors based on your global.css or fallback
     const typeStyles = {
         info: {
             bg: 'var(--color-soft-blue, #85abe6)',
@@ -25,19 +24,19 @@
         },
         success: {
             bg: 'var(--color-success, #2ecc71)',
-            border: 'var(--color-success-dark, #27ae60)', /* Define --color-success-dark or use a darker shade */
+            border: 'var(--color-success-dark, #27ae60)',
             progress: 'var(--color-success-dark, #27ae60)',
             text: 'var(--color-text-light, white)'
         },
         warning: {
-            bg: 'var(--color-pink-light, #EBC7F2)', /* Using pink as per global.css, could be yellow */
+            bg: 'var(--color-pink-light, #EBC7F2)',
             border: 'var(--color-pink-hover, #D8A8E8)',
             progress: 'var(--color-pink-hover, #D8A8E8)',
-            text: 'var(--color-text-dark, #333)' /* Dark text on light pink */
+            text: 'var(--color-text-dark, #333)'
         },
         error: {
             bg: 'var(--color-danger-red, #ff4d4d)',
-            border: 'var(--color-danger-red-dark, #c0392b)', /* Define --color-danger-red-dark */
+            border: 'var(--color-danger-red-dark, #c0392b)',
             progress: 'var(--color-danger-red-dark, #c0392b)',
             text: 'var(--color-text-light, white)'
         },

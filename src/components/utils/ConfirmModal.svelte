@@ -2,15 +2,15 @@
     import { createEventDispatcher, onMount, onDestroy } from 'svelte';
     import { fade, fly } from 'svelte/transition';
     import CloseIcon from 'svelte-material-icons/Close.svelte';
-    import AlertCircleOutlineIcon from 'svelte-material-icons/AlertCircleOutline.svelte'; // Иконка для предупреждения
+    import AlertCircleOutlineIcon from 'svelte-material-icons/AlertCircleOutline.svelte';
 
     export let isOpen = false;
     export let title = "Подтверждение";
     export let message = "Вы уверены, что хотите выполнить это действие?";
     export let confirmButtonText = "Да, удалить";
     export let cancelButtonText = "Отмена";
-    export let confirmButtonClass = "confirm-btn-danger"; // Класс для кнопки подтверждения (например, для красного цвета)
-    export let isLoading = false; // Если нужно показывать загрузку на кнопке подтверждения
+    export let confirmButtonClass = "confirm-btn-danger";
+    export let isLoading = false;
 
     const dispatch = createEventDispatcher();
 
@@ -27,8 +27,6 @@
             if (event.key === 'Escape') {
                 handleCancel();
             } else if (event.key === 'Enter' && !isLoading) {
-                // По Enter можно подтверждать, если фокус не на другой кнопке
-                // Для простоты, если активно модальное окно, Enter подтверждает
                 handleConfirm();
             }
         }
@@ -81,7 +79,7 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        z-index: 1200; /* Выше чем SimpleInputModal и NotificationsContainer */
+        z-index: 1200;
         padding: 20px;
         box-sizing: border-box;
     }
@@ -134,7 +132,7 @@
     .modal-actions {
         margin-top: 20px;
         display: flex;
-        justify-content: center; /* Центрируем кнопки */
+        justify-content: center;
         gap: 15px;
     }
     .modal-actions button {
@@ -161,9 +159,8 @@
         background-color: var(--color-danger-red, #ff4d4d);
     }
     .confirm-btn.confirm-btn-danger:hover:not(:disabled) {
-        background-color: #e63939; /* Darker red */
+        background-color: #e63939;
     }
-    /* Другие стили для confirm-btn, если нужны (например, primary) */
     .confirm-btn.confirm-btn-primary {
         background-color: var(--color-primary, #AFA4FF);
     }
@@ -184,7 +181,7 @@
         border-radius: 50%;
         border-top-color: #fff;
         animation: spin 1s ease-in-out infinite;
-        vertical-align: text-bottom; /* Или middle */
+        vertical-align: text-bottom;
         margin-right: 8px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }

@@ -20,6 +20,13 @@
 
 </script>
 
+<svelte:head>
+    <title>Главная — Kei</title>
+    <meta name="og:title" content="Главная — Kei" />
+    <meta name="twitter:title" content="Главная — Kei" />
+    <meta name="description" content="Образовательная платформа Kei — изучайте японский с удовольствием." />
+  </svelte:head>
+
 <style>
 .main-image {
     display: flex;

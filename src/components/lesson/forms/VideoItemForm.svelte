@@ -12,11 +12,10 @@
     let transcript = '';
     let video_file_original = null;
     let video_embed_url_input = '';
-    let upload_type = 'embed'; 
+    let upload_type = 'embed'; // 'embed' или 'file'
     
     let current_video_file_url = null;
-    // current_video_embed_url не нужен здесь, т.к. video_embed_url_input его заменяет
-    let previewVideoUrl = null; // Только для типа 'file'
+    let previewVideoUrl = null;
     let videoPlayerPreview;
 
 
@@ -25,15 +24,15 @@
             const cd = itemToEdit.content_details;
             title = cd.title || '';
             transcript = cd.transcript || '';
-            current_video_file_url = cd.video_file_url; // Сохраняем для восстановления превью
+            current_video_file_url = cd.video_file_url;
 
             if (cd.video_embed_url) {
                 upload_type = 'embed';
                 video_embed_url_input = cd.video_embed_url;
-                previewVideoUrl = null; // Для embed не нужен blob preview
+                previewVideoUrl = null;
             } else if (cd.video_file_url) {
                 upload_type = 'file';
-                video_embed_url_input = ''; // Очищаем, если был embed
+                video_embed_url_input = '';
                 previewVideoUrl = cd.video_file_url.startsWith('http') ? cd.video_file_url : `${API_BASE_URL}${cd.video_file_url}`;
             }
         }
@@ -49,11 +48,11 @@
             previewVideoUrl = URL.createObjectURL(file);
             if (videoPlayerPreview) videoPlayerPreview.load();
         } else {
-            video_file_original = null; // Явно сбрасываем
+            video_file_original = null;
             if (previewVideoUrl && previewVideoUrl.startsWith('blob:')) {
                  URL.revokeObjectURL(previewVideoUrl);
             }
-            if (current_video_file_url && upload_type === 'file') { // Восстанавливаем, только если тип 'file'
+            if (current_video_file_url && upload_type === 'file') {
                  previewVideoUrl = current_video_file_url.startsWith('http') ? current_video_file_url : `${API_BASE_URL}${current_video_file_url}`;
             } else {
                 previewVideoUrl = null;
@@ -79,18 +78,14 @@
 
         if (upload_type === 'embed') {
             contentDataForJson.video_embed_url = video_embed_url_input.trim();
-            // Если тип embed, убедимся, что video_file будет null (или не будет отправлен)
-            // Бэкенд должен очистить video_file_url, если пришел video_embed_url
         }
-        // Если тип 'file', то video_embed_url не добавляем в JSON.
-        // Бэкенд должен очистить video_embed_url, если пришел video_file.
 
         const payload = new FormData();
         payload.append('item_type', 'video');
         payload.append('content_data', JSON.stringify(contentDataForJson));
 
         if (upload_type === 'file' && video_file_original) {
-            payload.append('video_file', video_file_original); // Имя поля 'video_file' для VideoMaterial
+            payload.append('video_file', video_file_original);
         }
         dispatch('save', payload);
     }
@@ -148,7 +143,6 @@
 </form>
 
 <style>
-    /* Стили аналогичны ImageItemForm.svelte */
     .item-form { display: flex; flex-direction: column; gap: 15px; }
     .form-group { display: flex; flex-direction: column; }
     .form-group label { margin-bottom: 5px; font-weight: 500; color: var(--color-text-muted); }

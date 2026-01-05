@@ -1,38 +1,21 @@
 <script>
-    import { marked } from 'marked'; // Убедитесь, что marked установлен: npm install marked
+    import { marked } from 'marked';
     
     export let contentDetails; // { title: string, content: string, is_markdown: boolean }
     
-    // Рекомендуется настроить marked глобально, если это нужно, например, в main.js или App.svelte
-    // import { marked } from 'marked';
-    // marked.setOptions({
-    //   gfm: true, // Включить GitHub Flavored Markdown
-    //   breaks: true, // Преобразовывать одиночные переносы строк в <br>
-    //   // sanitize: false, // НЕ ИСПОЛЬЗУЙТЕ ЭТО В MARKED 5+, используйте DOMPurify или аналоги на выходе.
-    //                    // Для HTML, вставленного нашим редактором, мы ему доверяем.
-    // });
-    
     
     $: htmlContent = contentDetails?.is_markdown && contentDetails?.content
-      ? marked.parse(contentDetails.content) // marked.parse() для marked v4+
+      ? marked.parse(contentDetails.content)
       : contentDetails?.content;
     
-    // Функция sanitizeHtml должна быть очень осторожной, если is_markdown=true,
-    // т.к. marked.parse уже может содержать HTML (<u>, <span style="...">), который мы хотим сохранить.
-    // Если is_markdown=false, то мы просто экранируем HTML и заменяем переносы строк.
     function sanitizeHtmlForDisplay(rawHtml, isMarkdownContent) {
       if (!rawHtml) return '';
       if (isMarkdownContent) {
-        // Если это Markdown, мы доверяем выводу marked и нашему редактору.
-        // Для более строгой безопасности на выходе можно использовать DOMPurify.
-        // В данном случае, так как наш редактор вставляет только <u> и <span style="color">,
-        // и marked обрабатывает остальное, этот подход допустим.
         return rawHtml;
       }
-      // Для не-Markdown текста, экранируем HTML и заменяем переносы строк.
       const tempDiv = document.createElement('div');
-      tempDiv.textContent = rawHtml; // Экранирует <, >, & и т.д.
-      return tempDiv.innerHTML.replace(/\n/g, '<br>'); // Сохраняем переносы строк
+      tempDiv.textContent = rawHtml;
+      return tempDiv.innerHTML.replace(/\n/g, '<br>');
     }
     
     $: safeHtmlContent = sanitizeHtmlForDisplay(htmlContent, contentDetails?.is_markdown);
@@ -53,7 +36,6 @@
     </div>
     
     <style>
-    /* Ваши существующие стили из первого сообщения */
     .text-item-display {
         padding: 10px 0;
     }
@@ -67,11 +49,9 @@
         font-size: 1rem;
         line-height: 1.7;
         color: var(--color-text-muted);
-        /* Для не-markdown контента, чтобы переносы строк работали и текст переносился */
         white-space: pre-wrap;
         word-wrap: break-word;
     }
-    /* Стили для Markdown контента */
     .markdown-content :global(h1),
     .markdown-content :global(h2),
     .markdown-content :global(h3),
@@ -107,7 +87,7 @@
         border-radius: var(--spacing-border-radius-small);
         overflow-x: auto;
         font-family: 'Courier New', Courier, monospace;
-        white-space: pre; /* Для <pre> важен pre, а не pre-wrap из родителя */
+        white-space: pre;
     }
     .markdown-content :global(code) {
         background-color: #f0f0f0;
@@ -118,7 +98,6 @@
     .markdown-content :global(pre code) {
         background-color: transparent;
         padding: 0;
-        /* white-space: pre;  Наследуется от pre */
     }
     .markdown-content :global(a) {
         color: var(--color-secondary);
@@ -136,7 +115,6 @@
     .markdown-content :global(u) {
         text-decoration: underline;
     }
-    /* span[style*="color"] будет отрендерен с инлайн-стилем, обычно не требует глобального правила */
     
     .no-content-message-small {
         font-style: italic;

@@ -8,6 +8,7 @@
 	import { user } from '../stores/user.js';
 	import { API_BASE_URL } from '../config.js';
 	import * as lessonApi from '../api/lessonApi.js';
+    import * as progressApi from '../api/progressApi.js';
     import { addNotification } from '../stores/notifications.js';
 
 	import EyeOutline from 'svelte-material-icons/EyeOutline.svelte';
@@ -54,6 +55,7 @@
     let currentSectionData = null;
 
     let studentSubmissionsMap = {}; 
+    let revealAnswersMap = {};
 
 	let isMobileSidebarOpen = false;
 	let isItemModalOpen = false;
@@ -75,6 +77,10 @@
     const LAST_SECTION_STORAGE_KEY_PREFIX = 'lastActiveSection_lesson_';
 
 	const dispatch = createEventDispatcher();
+
+    let viewedItemIds = new Set();
+    let markingInFlight = new Set();
+    let itemObserver = null;
 
 	const unsubscribeUser = user.subscribe((value) => {
 		currentUserRole = value?.role;
@@ -106,6 +112,7 @@
 
     onDestroy(() => { 
         unsubscribeUser(); 
+        if (itemObserver) { itemObserver.disconnect(); itemObserver = null; }
     });
 
 	async function loadLessonData(setActiveSectionId = null, preserveSubmissions = false) {
@@ -139,7 +146,8 @@
             }
 
             if (!preserveSubmissions) {
-                studentSubmissionsMap = {}; 
+                studentSubmissionsMap = {};
+                revealAnswersMap = {};
                 newSections.forEach(section => {
                     (section.items || []).forEach(item => {
                         if (item.item_type === 'test' && item.content_details?.student_submission_details) {
@@ -147,7 +155,43 @@
                         }
                     });
                 });
-                studentSubmissionsMap = {...studentSubmissionsMap};
+
+                try {
+                    const submissionsList = await lessonApi.fetchTestSubmissions({
+                        lesson_id: lessonId,
+                        ordering: '-submitted_at'
+                    });
+
+                    const testIdToItemIdsMap = {};
+                    newSections.forEach(section => {
+                        (section.items || []).forEach(item => {
+                            if (item.item_type === 'test' && item.content_details?.id) {
+                                const testId = item.content_details.id;
+                                if (!testIdToItemIdsMap[testId]) testIdToItemIdsMap[testId] = [];
+                                testIdToItemIdsMap[testId].push(item.id);
+                            }
+                        });
+                    });
+
+                    submissionsList.forEach(sub => {
+                        const itemIds = testIdToItemIdsMap[sub.test] || [];
+                        itemIds.forEach(itemId => {
+                            if (!studentSubmissionsMap[itemId]) {
+                                studentSubmissionsMap[itemId] = {
+                                    id: sub.id,
+                                    test: sub.test,
+                                    submitted_at: sub.submitted_at,
+                                    status: sub.status,
+                                    score: sub.score,
+                                };
+                            }
+                        });
+                    });
+                } catch (e) {
+                    console.warn('Не удалось загрузить список отправок для урока, статусы пройденных тестов могут не отобразиться полностью:', e);
+                }
+
+                studentSubmissionsMap = { ...studentSubmissionsMap };
             }
 
 		} catch (err) {
@@ -162,6 +206,9 @@
             if(isSectionLoading && !preserveSubmissions) { 
                 isSectionLoading = false;
             }
+
+            await tick();
+            setupItemObserver();
 		}
 	}
 
@@ -176,6 +223,7 @@
                  if (typeof localStorage !== 'undefined' && lessonId && currentSectionId) {
                     localStorage.setItem(`${LAST_SECTION_STORAGE_KEY_PREFIX}${lessonId}`, currentSectionId.toString());
                  }
+                 tick().then(setupItemObserver);
             } else {
                  currentSectionData = null; 
                  if (sections.length > 0 && !sections.some(s => s.id === currentSectionId)) { 
@@ -192,14 +240,77 @@
         }
     }
 
+    function isSectionCompleted(section) {
+        return Boolean(section?.is_completed);
+    }
+
     function switchSection(sectionId) {
         if (currentSectionId !== sectionId) {
-            currentSectionId = sectionId; // Это вызовет реактивный блок $: {} для сохранения в localStorage
+            currentSectionId = sectionId; 
             if (isMobileSidebarOpen) isMobileSidebarOpen = false;
             const mainContentEl = document.querySelector('.lesson-main-content');
             if (mainContentEl) {
                  mainContentEl.scrollTo({ top: 0, behavior: 'auto' });
             }
+            setupItemObserver();
+        }
+    }
+
+    function setupItemObserver() {
+        if (itemObserver) {
+            itemObserver.disconnect();
+            itemObserver = null;
+        }
+        const container = document.querySelector('.section-items-list');
+        if (!container) return;
+        itemObserver = new IntersectionObserver(async (entries) => {
+            for (const entry of entries) {
+                if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+                    const el = entry.target;
+                    const itemId = parseInt(el.getAttribute('data-item-id'));
+                    const sectionId = parseInt(el.getAttribute('data-section-id'));
+                    const itemType = el.getAttribute('data-item-type');
+                    if (!itemId || !sectionId || !itemType || itemType === 'test') continue;
+                    if (viewedItemIds.has(itemId) || markingInFlight.has(itemId)) continue;
+                    markingInFlight.add(itemId);
+                    try {
+                        await lessonApi.markItemViewed(courseId, lessonId, sectionId, itemId);
+                        viewedItemIds = new Set([...viewedItemIds, itemId]);
+                        await refreshSectionProgress();
+                    } catch (e) {
+                        console.warn('Не удалось отметить просмотр материала', itemId, e);
+                    } finally {
+                        markingInFlight.delete(itemId);
+                    }
+                }
+            }
+        }, { threshold: [0, 0.25, 0.5, 0.6, 0.75, 1] });
+
+        const items = container.querySelectorAll('[data-item-id]');
+        items.forEach(el => itemObserver && itemObserver.observe(el));
+    }
+
+    async function refreshSectionProgress() {
+        try {
+            const list = await progressApi.getSectionProgress(lessonId);
+            const byId = new Map();
+            (Array.isArray(list) ? list : []).forEach(p => byId.set(p.section_id, p));
+            sections = sections.map(s => {
+                const p = byId.get(s.id);
+                if (!p) return s;
+                const completion = parseFloat(p.completion_percentage || 0);
+                const totalTests = p.total_tests || 0;
+                const isVisited = !!p.is_visited;
+                const completedAt = p.completed_at;
+                const isCompleted = completion >= 99.5 || !!completedAt || (totalTests === 0 && isVisited);
+                return { ...s, is_completed: isCompleted };
+            });
+            if (lessonData) {
+                const allDone = sections.length > 0 && sections.every(s => s.is_completed);
+                lessonData = { ...lessonData, is_completed: allDone };
+            }
+        } catch (e) {
+            console.warn('Не удалось обновить прогресс секций:', e);
         }
     }
 
@@ -248,15 +359,14 @@
             const previousSectionIdIfActive = currentSectionId === sectionId ? null : currentSectionId;
             try {
                 await lessonApi.deleteSection(courseId, lessonId, sectionId);
-                // Определяем, какая секция должна стать активной после удаления
                 const remainingSections = sections.filter(s => s.id !== sectionId);
                 let newActiveSectionId = null;
                 if (remainingSections.length > 0) {
-                    if (currentSectionId === sectionId) { // Если удалили активную
-                        newActiveSectionId = remainingSections[0].id; // Активируем первую из оставшихся
-                    } else if (remainingSections.some(s => s.id === currentSectionId)) { // Если активная не удалена
+                    if (currentSectionId === sectionId) {
+                        newActiveSectionId = remainingSections[0].id; 
+                    } else if (remainingSections.some(s => s.id === currentSectionId)) { 
                         newActiveSectionId = currentSectionId;
-                    } else { // Активная была, но ее нет среди оставшихся (не должно быть, но на всякий)
+                    } else {
                         newActiveSectionId = remainingSections[0].id;
                     }
                 }
@@ -448,17 +558,20 @@
             }
             
             const submissionResult = await lessonApi.submitTestAnswers(testId, payloadToSend);
-
-            const testTitleFromResult = submissionResult?.test?.title || `Тест #${testId}`;
-            addNotification(`Тест "${testTitleFromResult}" отправлен! Статус: ${submissionResult.status}`, 'success');
-            
+            let resultSubmission = submissionResult;
+            try {
+                resultSubmission = await lessonApi.fetchTestSubmissionDetails(submissionResult.id);
+            } catch (err) {
+                console.warn('Could not fetch submission details, using submissionResult', err);
+            }
             studentSubmissionsMap = {
                 ...studentSubmissionsMap,
-                [sectionItemId]: submissionResult 
+                [sectionItemId]: resultSubmission
             };
-            // Не вызываем loadLessonData, чтобы studentSubmissionsMap не перезаписался,
-            // если бэкенд не отдает student_submission_details с lessonData.
-            // Обновление studentSubmissionsMap должно вызвать реактивность в TestItemDisplay.
+            revealAnswersMap = {
+                ...revealAnswersMap,
+                [sectionItemId]: true
+            };
 
         } catch(err) {
              addNotification(`Ошибка отправки теста: ${err.message || 'Неизвестная ошибка'}`, 'error');
@@ -473,6 +586,13 @@
         }
     }
 
+    function handleOverlayKeydown(event) {
+        if (!isMobileSidebarOpen) return;
+        if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+            isMobileSidebarOpen = false;
+        }
+    }
+
     function handleNotifyEvent(event) {
         const { type, message } = event.detail;
         if (typeof addNotification === 'function') {
@@ -481,13 +601,55 @@
             console.warn("addNotification function is not available to handle notify event:", event.detail);
         }
     }
+
+    async function handleRefreshSubmission(event) {
+        const { submissionId } = event.detail;
+        if (!submissionId) return;
+
+        try {
+            const refreshedSubmission = await lessonApi.fetchTestSubmissionDetails(submissionId);
+            
+            let targetSectionItemId = null;
+            for (const section of sections) {
+                for (const item of section.items) {
+                    const existingSubmission = studentSubmissionsMap[item.id];
+                    if (existingSubmission && existingSubmission.id === submissionId) {
+                        targetSectionItemId = item.id;
+                        break;
+                    }
+                }
+                if (targetSectionItemId) break;
+            }
+
+            if (targetSectionItemId) {
+                studentSubmissionsMap = {
+                    ...studentSubmissionsMap,
+                    [targetSectionItemId]: refreshedSubmission
+                };
+                addNotification('Статус проверки обновлен.', 'success');
+            } else {
+                console.warn(`Could not find section item for submission ID ${submissionId} to refresh.`);
+            }
+
+        } catch (err) {
+            addNotification(`Не удалось обновить статус: ${err.message || 'Неизвестная ошибка'}`, 'error');
+        }
+    }
 </script>
-<!-- Добавляем on:click={handleOverlayClick} -->
+
+<svelte:head>
+    <title>{lessonData ? `${lessonData.title} — Kei` : 'Урок — Kei'}</title>
+    <meta name="og:title" content={lessonData ? `${lessonData.title} — Kei` : 'Урок — Kei'} />
+    <meta name="twitter:title" content={lessonData ? `${lessonData.title} — Kei` : 'Урок — Kei'} />
+  </svelte:head>
 <div 
     class="lesson-page-container {isAdminOrStaff && viewMode === 'admin' ? 'admin-view' : 'student-view'}"
     class:sidebar-mobile-active={isMobileSidebarOpen}
     in:fade="{{duration: 250}}"
     on:click={handleOverlayClick}
+    on:keydown={handleOverlayKeydown}
+    role="button"
+    tabindex="0"
 >
 	{#if isLoading && !lessonData } <LoadingIndicator message="Загрузка урока..." />
 	{:else if error && !lessonData}
@@ -528,11 +690,14 @@
 
                 {#if currentSectionData}
                     <div class="section-content-area" key={currentSectionId} in:fade="{{duration: 350, delay:50}}" out:fade="{{duration: 150}}">
-                        <h2 class="current-section-title">{currentSectionData.title}</h2>
+                        <h2 class="current-section-title" class:completed={isSectionCompleted(currentSectionData)}>{currentSectionData.title}</h2>
                         {#if currentSectionData.items && currentSectionData.items.length > 0}
                             <div class="section-items-list">
                                 {#each currentSectionData.items as item, itemIndex (item.id)}
-                                    <div class="section-item-wrapper" in:fly="{{ y: 10, duration: 300, delay: itemIndex * 60 }}">
+                                    <div class="section-item-wrapper" data-item-id={item.id} data-section-id={currentSectionData.id} data-item-type={item.item_type} in:fly="{{ y: 10, duration: 300, delay: itemIndex * 60 }}">
+                                        {#if (item.item_type === 'test' ? Boolean(studentSubmissionsMap[item.id]?.status === 'passed') : viewedItemIds.has(item.id) || item.is_completed)}
+                                            <span class="material-complete-badge" title="Материал завершён" aria-label="Материал завершён">✓</span>
+                                        {/if}
                                          {#if isAdminOrStaff && viewMode === 'admin'}
                                             <div class="item-admin-controls">
                                                 <button title="Редактировать" on:click={() => openEditItemModal(item)} class="item-admin-btn edit-btn" disabled={isSectionLoading}><PencilOutline size="16px" /></button>
@@ -551,9 +716,10 @@
                                                 testData={item.content_details} 
                                                 sectionItemId={item.id} 
                                                 on:submitTest={handleTestSubmitEvent} 
-                                                {viewMode}
-                                                studentSubmission={studentSubmissionsMap[item.id] || null}
+                                                on:refreshSubmission={handleRefreshSubmission}
                                                 on:notify={handleNotifyEvent}
+                                                studentSubmission={studentSubmissionsMap[item.id] || null}
+                                                shouldRevealAnswers={revealAnswersMap[item.id] || false}
                                             />
 										{:else} <p class="error-message">Неизвестный тип элемента: {item.item_type}</p> {/if}
                                     </div>
@@ -589,7 +755,7 @@
 					{#if sections.length > 0}
                         <ul>
                             {#each sections as section, index (section.id)}
-                                <li class="section-list-item" class:active={currentSectionId === section.id} transition:fade|local="{{duration:200}}">
+                                <li class="section-list-item" class:active={currentSectionId === section.id} class:completed={isSectionCompleted(section)} transition:fade|local="{{duration:200}}">
                                     <div class="section-link-content">
                                         <button
                                             class="section-link"
@@ -783,6 +949,17 @@
 
     .sidebar-nav ul { list-style: none; padding: 0; margin: 0; }
     .section-list-item { position: relative; }
+    .section-list-item.completed > .section-link-content {
+        background: linear-gradient(90deg, var(--color-success-bg, rgba(46, 204, 113, 0.12)) 0%, rgba(46, 204, 113, 0.06) 60%, transparent 100%);
+    }
+    .section-list-item.completed .section-link {
+        color: var(--color-success, #2ecc71);
+    }
+    .section-list-item.completed .section-icon-wrapper {
+        background-color: rgba(46, 204, 113, 0.2);
+        color: var(--color-success, #2ecc71);
+    }
+
     .section-link-content {
         display: flex;
         align-items: center;
@@ -866,12 +1043,34 @@
         border-bottom: 2px solid var(--color-primary-light);
     }
 
+    .current-section-title.completed {
+        border-bottom-color: var(--color-success, #2ecc71);
+    }
+
     .section-items-list {
         display: flex; flex-direction: column;
         gap: clamp(20px, 3vw, 30px);
     }
     .section-item-wrapper { position: relative; animation: itemFadeIn 0.4s ease-out; }
     @keyframes itemFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); }}
+
+    .material-complete-badge {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--color-success, #2ecc71);
+        color: #fff;
+        font-size: 0.8rem;
+        font-weight: var(--font-weight-bold);
+        box-shadow: 0 2px 6px rgba(46, 204, 113, 0.35);
+        z-index: 4;
+    }
 
     .no-content-message {
         text-align: center; font-size: 1rem; color: var(--color-text-muted);
@@ -973,7 +1172,7 @@
             width: clamp(280px, 75vw, 320px);
             height: 100vh; 
             background-color: var(--color-bg-light);
-            z-index: 1005; /* Сайдбар должен быть выше оверлея */
+            z-index: 1005;
             transform: translateX(-105%);
             transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
             box-shadow: 3px 0 15px rgba(0,0,0,0.15);
@@ -988,14 +1187,12 @@
         .lesson-sidebar.mobile-open { transform: translateX(0); }
         .sidebar-toggle-button { display: inline-flex; }
         .lesson-page-container {padding: clamp(30px, 8vw, 50px) var(--spacing-padding-page);}
-        /* Оверлей, который появляется, когда сайдбар открыт на мобильных */
         .lesson-page-container.sidebar-mobile-active::before {
             content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background-color: rgba(0,0,0,0.4); 
-            z-index: 1000; /* Оверлей ниже сайдбара, но выше остального контента */
+            z-index: 1000;
             opacity: 1; visibility: visible; transition: opacity 0.3s ease;
         }
-        /* Скрытие оверлея по умолчанию */
         .lesson-page-container::before {
              content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
              background-color: rgba(0,0,0,0.4); z-index: 1000;

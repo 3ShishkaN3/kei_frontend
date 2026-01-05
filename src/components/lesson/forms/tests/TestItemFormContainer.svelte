@@ -1,53 +1,55 @@
 <script>
-    import { createEventDispatcher, onMount } from 'svelte';
-    // Импортируем модели тестов для определения доступных типов
+    import { createEventDispatcher, onMount, tick } from 'svelte';
     import { 
         MCQTestModel, 
         FreeTextTestModel, 
         WordOrderTestModel,
-        MatchingTestModel,
-        PronunciationTestModel,
-        SpellingTestModel
-    } from '../../../../models/testTypes.js'; // Путь к моделям
+        DragDropTestModel,
+        // PronunciationTestModel,
+        // SpellingTestModel,
+    } from '../../../../models/testTypes.js'; 
 
-    // Позже мы создадим эти компоненты форм
     import MCQTestForm from './MCQTestForm.svelte';
+    import WordOrderTestForm from './WordOrderTestForm.svelte';
+    import DragDropTestForm from './DragDropTestForm.svelte';
+    import FreeTextTestForm from './FreeTextTestForm.svelte';
+    // import PronunciationTestForm from './PronunciationTestForm.svelte';
+    // import SpellingTestForm from './SpellingTestForm.svelte';
+    import { addNotification } from '../../../../stores/notifications.js';
 
-    
-    import { SentenceOrderTestModel, DragToMatchTestModel /* ... другие модели ... */ } from '../../../../models/testTypes.js';
-    import SentenceOrderTestForm from './SentenceOrderTestForm.svelte';
-    import DragToMatchTestForm from './DragToMatchTestForm.svelte';
-    export let itemToEdit = null; // Если редактируем существующий SectionItem с тестом
-    export let isLoading = false; // Управляется из родительской модалки
+    export let itemToEdit = null; 
+    export let isLoading = false; 
 
     const dispatch = createEventDispatcher();
 
-    let selectedTestType = 'mcq-single'; // Тип теста по умолчанию для нового
-    let testDataForForm = null; // Данные конкретного теста для передачи в его форму
+    let selectedTestType = 'mcq-single'; 
+    let testDataForForm = null; 
     let specificTestFormComponent = null;
 
-    // Определяем доступные типы тестов и их компоненты форм
     const availableTestTypes = [
         { value: 'mcq-single', label: 'MCQ (Один ответ)', component: MCQTestForm, model: MCQTestModel },
-        { value: 'mcq-multi', label: 'MCQ (Несколько ответов)', component: MCQTestForm, model: MCQTestModel }, // Использует ту же форму, но с другой логикой
-        { value: 'sentence-order', label: 'Порядок слов/фраз', component: SentenceOrderTestForm, model: SentenceOrderTestModel },
-        { value: 'drag-to-match', label: 'Соотнесение (перетаскивание)', component: DragToMatchTestForm, model: DragToMatchTestModel },
-        // Добавьте другие типы по мере их реализации
+        { value: 'mcq-multi', label: 'MCQ (Несколько ответов)', component: MCQTestForm, model: MCQTestModel },
+        { value: 'word-order', label: 'Порядок слов (из пула)', component: WordOrderTestForm, model: WordOrderTestModel },
+        { value: 'drag-and-drop', label: 'Перетаскивание (Облачка и Ячейки)', component: DragDropTestForm, model: DragDropTestModel},
+        { value: 'free-text', label: 'Свободный ответ', component: FreeTextTestForm, model: FreeTextTestModel },
+        // { value: 'pronunciation', label: 'Произношение', component: PronunciationTestForm, model: PronunciationTestModel },
+        // { value: 'spelling', label: 'Правописание', component: SpellingTestForm, model: SpellingTestModel },
     ];
 
+    function getFreshModelData(type) {
+        const testMeta = availableTestTypes.find(t => t.value === type);
+        if (testMeta && testMeta.model) {
+            return new testMeta.model({ title: '', test_type: type }).toPayload();
+        }
+        return { title: '', description: '', test_type: type };
+    }
+    
     onMount(() => {
         if (itemToEdit && itemToEdit.item_type === 'test' && itemToEdit.content_details) {
-            selectedTestType = itemToEdit.content_details.test_type; // test_type из TestSerializer
-            // testDataForForm должен содержать только данные самого теста (без id SectionItem и т.д.)
-            testDataForForm = { ...itemToEdit.content_details }; 
+            selectedTestType = itemToEdit.content_details.test_type;
+            testDataForForm = JSON.parse(JSON.stringify(itemToEdit.content_details));
         } else {
-            // Для нового теста создаем пустую модель на основе selectedTestType
-            const testMeta = availableTestTypes.find(t => t.value === selectedTestType);
-            if (testMeta && testMeta.model) {
-                // Создаем экземпляр модели с минимальными обязательными полями или пустыми значениями
-                // Это нужно, чтобы передать в форму теста ожидаемую структуру
-                testDataForForm = new testMeta.model({ title: '', test_type: selectedTestType }).toPayload();
-            }
+            testDataForForm = getFreshModelData(selectedTestType);
         }
         updateSpecificTestFormComponent();
     });
@@ -56,90 +58,93 @@
         const testMeta = availableTestTypes.find(t => t.value === selectedTestType);
         if (testMeta) {
             specificTestFormComponent = testMeta.component;
-            if (!itemToEdit || itemToEdit.content_details?.test_type !== selectedTestType) {
-                // Если создаем новый тест или меняем тип существующего (сложный случай, пока не реализуем смену типа существующего)
-                // Для нового: создаем пустую модель
-                const modelInstance = new testMeta.model({ title: '', test_type: selectedTestType });
-                testDataForForm = modelInstance.toPayload(); // Получаем структуру для формы
+            if (!itemToEdit || (itemToEdit && itemToEdit.content_details?.test_type !== selectedTestType && !isEditingOriginalItemType())) {
+                testDataForForm = getFreshModelData(selectedTestType);
+            } else if (itemToEdit && itemToEdit.content_details?.test_type === selectedTestType) {
+                 testDataForForm = JSON.parse(JSON.stringify(itemToEdit.content_details));
             }
+
         } else {
             specificTestFormComponent = null;
+            testDataForForm = null;
         }
+        testDataForForm = testDataForForm ? {...testDataForForm} : null; 
     }
 
-    function handleTestFormSave(event) {
-    const specificTestPayloadOrFormData = event.detail;
-
-    if (specificTestPayloadOrFormData instanceof FormData) {
-        // Файлы и JSON теста (под ключом 'test_definition') находятся в specificTestPayloadOrFormData
-        const finalSectionItemPayload = new FormData();
-        finalSectionItemPayload.append('item_type', 'test'); // Тип элемента для SectionItem
-
-        let testDefinitionJsonString = null;
-        const filesToForward = {};
-
-        for (const [key, value] of specificTestPayloadOrFormData.entries()) {
-            if (key === 'test_definition') { // JSON-строка с данными теста
-                testDefinitionJsonString = value; // Это уже JSON.stringify(testDefinition) из MCQTestForm
-            } else { 
-                // Это файлы (например, 'attached_image_file', 'attached_audio_file')
-                // Эти файлы должны быть обработаны TestSerializer на бэкенде
-                filesToForward[key] = value;
-            }
-        }
-
-        if (!testDefinitionJsonString) {
-            addNotification("Ошибка: данные определения теста отсутствуют в FormData.", "error");
-            // Возможно, стоит также сообщить об ошибке setLoading(false) в родительскую модалку
-            if (typeof this.$parent.setLoading === 'function') { // Эвристика, лучше через dispatch
-                 // this.$parent не рекомендуется, лучше dispatch('error') и родитель сам обработает
-            }
-            return;
-        }
-        
-        // Передаем JSON-описание теста в 'content_data' для SectionItemSerializer
-        // SectionItemSerializer.validate затем передаст это + файлы в TestSerializer
-        finalSectionItemPayload.append('content_data', testDefinitionJsonString);
-
-        // Добавляем сами файлы в FormData для SectionItem, чтобы они дошли до TestSerializer
-        for (const key in filesToForward) {
-            finalSectionItemPayload.append(key, filesToForward[key]);
-        }
-        
-        dispatch('save', finalSectionItemPayload);
-
-    } else { // Если пришел JSON (тесты без файлов)
-        const sectionItemPayload = {
-            item_type: 'test',
-            content_data: { // Это поле 'content_data' будет распарсено SectionItemSerializer.validate
-                ...specificTestPayloadOrFormData, // Это уже объект теста (title, description, mcq_options, etc.)
-                // test_type уже должен быть внутри specificTestPayloadOrFormData
-            }
-        };
-        if (specificTestPayloadOrFormData.test_type !== selectedTestType && selectedTestType) {
-             // Если тип в контейнере отличается от типа в данных формы (маловероятно, но для консистентности)
-            sectionItemPayload.content_data.test_type = selectedTestType;
-        }
-        dispatch('save', sectionItemPayload);
+    function isEditingOriginalItemType() {
+        return itemToEdit && itemToEdit.content_details && itemToEdit.content_details.test_type === selectedTestType;
     }
-}
+    async function handleTestFormSave(event) {
+        const specificTestPayloadOrFormData = event.detail;
+
+        if (specificTestPayloadOrFormData instanceof FormData) {
+            const finalPayload = new FormData();
+            finalPayload.append('item_type', 'test');
+
+            let testDefinitionValue = null;
+
+            for (const [key, value] of specificTestPayloadOrFormData.entries()) {
+                if (key === 'test_definition') {
+                    testDefinitionValue = value;
+                } else {
+                    finalPayload.append(key, value);
+                }
+            }
+
+            if (testDefinitionValue) {
+                finalPayload.append('content_data', testDefinitionValue);
+            } else {
+                addNotification("Ошибка: данные определения теста (test_definition) отсутствуют в FormData.", "error");
+                if (typeof itemFormModalRef !== 'undefined' && itemFormModalRef?.setLoading) {
+                    itemFormModalRef.setLoading(false);
+                } else {
+                    isLoading = false;
+                }
+                return;
+            }
+            
+            console.log("[TestItemFormContainer] FormData перед dispatch('save'):");
+            for (let pair of finalPayload.entries()) {
+                if (pair[1] instanceof File) {
+                    console.log(`  ${pair[0]}: File (name: ${pair[1].name})`);
+                } else {
+                    console.log(`  ${pair[0]}: ${pair[1]}`);
+                }
+            }
+
+            dispatch('save', finalPayload);
+
+        } else { 
+            const sectionItemPayload = {
+                item_type: 'test',
+                content_data: {
+                    ...specificTestPayloadOrFormData,
+                    test_type: selectedTestType 
+                }
+            };
+            if (specificTestPayloadOrFormData.test_type !== selectedTestType && selectedTestType) {
+                sectionItemPayload.content_data.test_type = selectedTestType;
+            }
+            dispatch('save', sectionItemPayload);
+        }
+    }
 
     function handleTestFormCancel() {
-        dispatch('close'); // Просто закрываем модалку
+        dispatch('close'); 
     }
-
 </script>
-
+      
 <div class="test-item-form-container">
     <div class="form-group test-type-selector-internal">
-        <label for="test-item-type">Тип теста:</label>
+        <label for="test-item-type-selector-in-container">Тип теста:</label>
         <select 
-            id="test-item-type" 
+            id="test-item-type-selector-in-container" 
             bind:value={selectedTestType} 
             on:change={updateSpecificTestFormComponent}
             disabled={isLoading || !!itemToEdit}
+            aria-label="Выберите тип создаваемого теста"
         >
-            {#each availableTestTypes as testTypeOpt}
+            {#each availableTestTypes as testTypeOpt (testTypeOpt.value)}
                 <option value={testTypeOpt.value}>{testTypeOpt.label}</option>
             {/each}
         </select>
@@ -150,12 +155,14 @@
             this={specificTestFormComponent}
             bind:isLoading={isLoading} 
             testData={testDataForForm} 
-            isEditing={!!itemToEdit}
+            isEditing={!!itemToEdit && itemToEdit.content_details?.test_type === selectedTestType}
             on:save={handleTestFormSave}
             on:cancel={handleTestFormCancel}
         />
+    {:else if !specificTestFormComponent && selectedTestType}
+        <p class="no-test-form-message">Форма для типа теста "{selectedTestType}" еще не реализована.</p>
     {:else}
-        <p class="no-test-form-message">Выберите тип теста или форма для данного типа еще не реализована.</p>
+        <p class="no-test-form-message">Пожалуйста, выберите тип теста.</p>
     {/if}
 </div>
 
@@ -187,8 +194,7 @@
         background-color: var(--color-bg-ultra-light);
         border-radius: var(--spacing-border-radius-small);
     }
-    /* Общие стили для форм можно вынести, если они повторяются в MCQTestForm и т.д. */
-    :global(.test-item-form-container .item-form) { /* Предполагая, что формы тестов будут иметь класс .item-form */
+    :global(.test-item-form-container .item-form) {
         border-top: 1px solid #eee;
         margin-top: 15px;
         padding-top: 15px;

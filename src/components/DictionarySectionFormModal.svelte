@@ -15,7 +15,6 @@
   let bannerImageFile = null;
   let naturalSize = { width: 0, height: 0 };
 
-  // Параметры кроппера
   let crop = { x: 0, y: 0 };
   let zoom = 1;
   let croppedAreaPixels = null;
@@ -30,7 +29,6 @@
       is_primary = editingSection.is_primary || false;
       initialBannerImageUrl = editingSection.banner_image;
       title = '';
-      // если есть существующий баннер, узнаем его размер
       const img = new Image();
       img.src = initialBannerImageUrl;
       img.onload = () => {
@@ -48,7 +46,6 @@
     crop = { x: 0, y: 0 };
     zoom = 1;
     croppedAreaPixels = null;
-    // узнаём натуральный размер новой картинки
     const img = new Image();
     img.src = bannerImageUrlPreview;
     img.onload = () => {

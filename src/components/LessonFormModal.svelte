@@ -2,10 +2,8 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import Close from 'svelte-material-icons/Close.svelte';
   import ImagePlus from 'svelte-material-icons/ImagePlus.svelte';
-  // Установить: npm install svelte-easy-crop
   import Cropper from 'svelte-easy-crop';
 
-  export let lessonToEdit = null;
   export let editingLesson = null;
   export let courseId;
   const dispatch = createEventDispatcher();
@@ -16,21 +14,19 @@
   let coverImageUrlPreview = null;
   let coverImageFile = null;
 
-  // Параметры кроппера
-    let crop = { x: 0, y: 0 };
+  let crop = { x: 0, y: 0 };
   let zoom = 1;
   let croppedAreaPixels = null;
-  let naturalSize = { width: 0, height: 0 };
-
+  
   let formError = null;
   let isLoading = false;
 
   onMount(() => {
-    if (lessonToEdit) {
-      initialTitle = lessonToEdit.title || '';
-      initialCoverImageUrl = lessonToEdit.cover_image;
-      coverImageUrlPreview = lessonToEdit.cover_image;
-      title = '';
+    if (editingLesson) {
+      initialTitle = editingLesson.title || '';
+      title = editingLesson.title || '';
+      initialCoverImageUrl = editingLesson.cover_image;
+      coverImageUrlPreview = editingLesson.cover_image;
     }
   });
 
@@ -38,38 +34,30 @@
     const file = event.target.files[0];
     if (!file) return;
 
-    // создаём preview
     coverImageUrlPreview = URL.createObjectURL(file);
     coverImageFile = file;
 
-    // сброс параметров кропа
     crop = { x: 0, y: 0 };
     zoom = 1;
     croppedAreaPixels = null;
 
-    // узнаём натуральный размер картинки
-    const img = new Image();
-    img.src = coverImageUrlPreview;
-    img.onload = () => {
-      naturalSize = { width: img.width, height: img.height };
-      // сразу выставляем дефолтный кроп на всю картинку
-      croppedAreaPixels = { x: 0, y: 0, width: img.width, height: img.height };
-      console.log('Default crop area:', croppedAreaPixels);
-    };
   }
 
   function onCropComplete(event) {
-  // event.detail = { percent: {...}, pixels: {...} }
-  console.log('Crop completed detail:', event.detail);
-  // берём именно пиксельные размеры обрезки
-  croppedAreaPixels = event.detail.pixels;
-}
+    // event.detail = { percent: {...}, pixels: {...} }
+    croppedAreaPixels = event.detail.pixels;
+  }
 
 
   async function getCroppedImg(imageSrc, pixelCrop) {
     const image = new Image();
     image.src = imageSrc;
-    await image.decode();
+    image.crossOrigin = 'Anonymous'; 
+    
+    await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = reject;
+    });
 
     const canvas = document.createElement('canvas');
     canvas.width  = pixelCrop.width;
@@ -83,37 +71,57 @@
 
     return new Promise(resolve => {
       canvas.toBlob(blob => {
-        resolve(new File([blob], 'cover.png', { type: blob.type }));
-      });
+        resolve(new File([blob], coverImageFile?.name || 'cover.png', { type: blob.type }));
+      }, 'image/png');
     });
   }
 
   async function handleSubmit() {
-    formError = null;
     isLoading = true;
+    formError = null;
 
+    if (!editingLesson && !title.trim()) {
+        formError = 'Название урока не может быть пустым.';
+        isLoading = false;
+        return;
+    }
+    
     const formData = new FormData();
-    // … остальные поля формы …
+    let changed = false;
 
-    // 1) гарантируем, что есть нормальный pixelCrop
-    const cropToUse = croppedAreaPixels || {
-    x: 0, y: 0,
-    width:  naturalSize.width,
-    height: naturalSize.height
-    };
-    coverImageFile = await getCroppedImg(coverImageUrlPreview, cropToUse);
-
-
-    // 2) режем всегда по cropToUse
-    if (coverImageUrlPreview) {
-      coverImageFile = await getCroppedImg(coverImageUrlPreview, cropToUse);
+    if (!editingLesson) {
+        formData.append('title', title.trim());
+        changed = true;
+    } else {
+        if (title.trim() !== initialTitle) {
+            formData.append('title', title.trim());
+            changed = true;
+        }
     }
 
-    // 3) добавляем в форму
     if (coverImageFile) {
-      formData.append('cover_image', coverImageFile, coverImageFile.name);
-    } else if (lessonToEdit && initialCoverImageUrl && !coverImageUrlPreview) {
-      formData.append('cover_image', '');
+        if (coverImageUrlPreview && croppedAreaPixels && croppedAreaPixels.width > 0) {
+            const croppedImage = await getCroppedImg(coverImageUrlPreview, croppedAreaPixels);
+            formData.append('cover_image', croppedImage, croppedImage.name);
+            changed = true;
+        } else {
+            formData.append('cover_image', coverImageFile, coverImageFile.name);
+            changed = true;
+        }
+    }
+    else if (initialCoverImageUrl && !coverImageUrlPreview) {
+        formData.append('cover_image', '');
+        changed = true;
+    }
+
+    if (editingLesson && !changed) {
+        closeModal();
+        return;
+    }
+    
+    if (!changed) {
+        closeModal();
+        return;
     }
 
     dispatch('save', formData);
@@ -141,7 +149,7 @@
 
       <div class="form-group">
         <label for="lesson-title">Название урока</label>
-        <input type="text" bind:value={title} placeholder={editingLesson ? `${editingLesson.title}` : "Введите название"} />
+        <input id="lesson-title" type="text" bind:value={title} placeholder="Введите название урока" />
       </div>
 
       <div class="form-group">
@@ -161,7 +169,7 @@
             <label title="Загрузить заново">
               <input type="file" accept="image/*" on:change={handleFileChange} style="display:none;" />
             </label>
-            <button type="button" class="remove-image-btn" on:click={() => (coverImageUrlPreview = null)}>
+            <button type="button" class="remove-image-btn" on:click={() => {coverImageUrlPreview = null; coverImageFile = null;}}>
               <Close size="18px" />
             </button>
           {:else}
@@ -175,7 +183,7 @@
 
       <div class="form-actions">
         <button type="button" class="cancel-button" on:click={closeModal} disabled={isLoading}>Отмена</button>
-        <button type="submit" class="save-button" disabled={isLoading}>{#if isLoading}Сохранение...{:else}{lessonToEdit ? 'Сохранить' : 'Создать'}{/if}</button>
+        <button type="submit" class="save-button" disabled={isLoading}>{#if isLoading}Сохранение...{:else}{editingLesson ? 'Сохранить' : 'Создать'}{/if}</button>
       </div>
     </form>
   </div>
@@ -204,7 +212,7 @@
         box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
         position: relative;
         width: 100%;
-        max-width: 550px; /* Limit modal width */
+        max-width: 550px;
         max-height: 90vh;
         overflow-y: auto;
         animation: slide-down 0.3s ease-out;
@@ -313,8 +321,8 @@
      .image-preview-container {
          position: relative;
          max-width: 100%;
-         max-height: 250px; /* Limit preview height */
-         display: inline-block; /* Fit content */
+         max-height: 250px;
+         display: inline-block;
      }
 
      .image-preview {
@@ -386,7 +394,7 @@
         background: linear-gradient(120deg, var(--color-save-btn-gradient-start, #EBC7F2), var(--color-save-btn-gradient-end, #C2B6FC));
         color: var(--color-save-btn-text, white);
         border: none;
-        box-shadow: 0 3px 8px rgba(194, 182, 252, 0.4); /* Adjusted shadow */
+        box-shadow: 0 3px 8px rgba(194, 182, 252, 0.4);
     }
     .save-button:hover:not(:disabled) {
          filter: brightness(1.1);

@@ -7,4 +7,9 @@
   });
 </script>
 
+<svelte:head>
+  <title>Страница не найдена — Kei</title>
+  <meta name="robots" content="noindex" />
+</svelte:head>
+
 <p>Страница не найдена. Перенаправление...</p>

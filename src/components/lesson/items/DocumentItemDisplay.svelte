@@ -1,422 +1,374 @@
 <script>
-    import { createEventDispatcher, onMount, afterUpdate } from 'svelte'; // afterUpdate может не понадобиться
-    import { addNotification } from '../../../stores/notifications.js';
-    // Иконки для отображения статуса ответа (опционально)
-    import CheckCircleOutline from 'svelte-material-icons/CheckCircleOutline.svelte'; // Для правильного
-    import CloseCircleOutline from 'svelte-material-icons/CloseCircleOutline.svelte'; // Для неправильного
-    import HelpCircleOutline from 'svelte-material-icons/HelpCircleOutline.svelte';   // Для "нет ответа" или "ожидает проверки"
-    import ImageItemDisplay from '../items/ImageItemDisplay.svelte'; // Предполагается, что они есть
-	import AudioItemDisplay from '../items/AudioItemDisplay.svelte';
+    import PdfViewer from 'svelte-pdf';
+    import ChevronLeft from 'svelte-material-icons/ChevronLeft.svelte';
+    import ChevronRight from 'svelte-material-icons/ChevronRight.svelte';
+    import { onMount } from 'svelte';
 
+    export let contentDetails = null; // { document_file: 'url', title: '...' }
 
-    export let testData;        // content_details объекта теста
-    export let sectionItemId;   // ID SectionItem
-    export let viewMode = 'student'; // 'student' или 'admin'
-    
-    // Новый пропс для получения деталей предыдущей отправки (если есть)
-    // Структура TestSubmissionDetailSerializer (см. lessonApi.js)
-    export let studentSubmission = null; 
+    let totalPage = 0;
+    let currentPage = 1;
+    let pdfScale = 1.5;
+    let loading = true;
+    let error = null;
 
-    const dispatch = createEventDispatcher();
+    $: isPdf = contentDetails?.document_file && 
+               contentDetails.document_file.toLowerCase().includes('.pdf');
 
-    // Состояние для MCQ
-    let selectedOptionsMap = {}; // { [optionId]: true/false } для чекбоксов (mcq-multi)
-    let selectedRadioOption = null; // optionId для радиокнопок (mcq-single)
+    $: if (totalPage > 0) {
+        loading = false;
+        error = null;
+    }
 
-    let isSubmitting = false;
-    let submissionResult = null; // Хранит { status, score, feedback, student_answers } после отправки
-    let hasSubmittedOnce = false; // Был ли тест отправлен хотя бы раз в текущей сессии просмотра
+    $: {        
+        if (!contentDetails?.document_file) {
+            error = "Файл документа не найден.";
+            loading = false;
+        } else if (!isPdf) {
+            error = "Файл не является PDF документом.";
+            loading = false;
+        } else if (isPdf) {
+            error = null;
+        }
+    }
 
-    // $: console.log("TestItemDisplay received testData:", JSON.parse(JSON.stringify(testData)));
-    // $: console.log("TestItemDisplay received studentSubmission:", JSON.parse(JSON.stringify(studentSubmission)));
+    function goToPrevPage() {
+        if (currentPage > 1) {
+            currentPage--;
+        }
+    }
 
+    function goToNextPage() {
+        if (currentPage < totalPage) {
+            currentPage++;
+        }
+    }
+
+    let fullScreenContainer;
+    let hintVisible = false;
+    let hintMessage = '';
+    let isTouch = false;
+    let touchStartX = 0;
+    let touchEndX = 0;
+    let hintTimeout;
 
     onMount(() => {
-        initializeAnswers();
+        isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+        const handleKeyDown = (e) => {
+            if (document.fullscreenElement === fullScreenContainer) {
+                if (e.key === 'ArrowLeft') goToPrevPage();
+                else if (e.key === 'ArrowRight') goToNextPage();
+            }
+        };
+
+        const handleTouchStart = (e) => { if (document.fullscreenElement === fullScreenContainer) touchStartX = e.touches[0].clientX; };
+        const handleTouchEnd = (e) => {
+            if (document.fullscreenElement !== fullScreenContainer) return;
+            touchEndX = e.changedTouches[0].clientX;
+            const diff = touchStartX - touchEndX;
+            if (diff > 50) goToNextPage();
+            else if (diff < -50) goToPrevPage();
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        fullScreenContainer.addEventListener('touchstart', handleTouchStart);
+        fullScreenContainer.addEventListener('touchend', handleTouchEnd);
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            fullScreenContainer.removeEventListener('touchstart', handleTouchStart);
+            fullScreenContainer.removeEventListener('touchend', handleTouchEnd);
+        };
     });
 
-    // Реактивность на смену testData или studentSubmission
-    $: if (testData || studentSubmission) {
-        initializeAnswers();
+    function enterFullScreen() {
+        if (!fullScreenContainer) return;
+        fullScreenContainer.requestFullscreen();
+        hintMessage = isTouch
+            ? 'Перелистните экран, чтобы перелистывать слайды'
+            : 'Листайте стрелками на клавиатуре, чтобы перелистывать слайды';
+        hintVisible = true;
+        clearTimeout(hintTimeout);
+        hintTimeout = setTimeout(() => { hintVisible = false; }, 3000);
     }
-
-    function initializeAnswers() {
-        selectedOptionsMap = {};
-        selectedRadioOption = null;
-        submissionResult = null; // Сбрасываем результат при инициализации
-        // hasSubmittedOnce не сбрасываем, если хотим блокировать повторную отправку после первой успешной
-
-        if (studentSubmission && studentSubmission.answers && studentSubmission.test === testData.id) {
-            // Если есть предыдущая отправка для этого теста, предзаполняем ответы
-            // и показываем результат
-            hasSubmittedOnce = true; // Помечаем, что есть предыдущая отправка
-            submissionResult = { // Формируем структуру для отображения результата
-                status: studentSubmission.status,
-                score: studentSubmission.score,
-                feedback: studentSubmission.feedback,
-                student_answers: studentSubmission.answers // { selected_option_ids: [...] }
-            };
-
-            if (testData.test_type === 'mcq-multi' && submissionResult.student_answers.selected_option_ids) {
-                submissionResult.student_answers.selected_option_ids.forEach(id => {
-                    selectedOptionsMap[id] = true;
-                });
-            } else if (testData.test_type === 'mcq-single' && submissionResult.student_answers.selected_option_ids && submissionResult.student_answers.selected_option_ids.length > 0) {
-                selectedRadioOption = submissionResult.student_answers.selected_option_ids[0];
-            }
-        }
-        // Обновляем Svelte
-        selectedOptionsMap = {...selectedOptionsMap};
-    }
-
-
-    function handleMcqOptionChange(optionId, event) {
-        if (testData.test_type === 'mcq-multi') {
-            selectedOptionsMap[optionId] = event.target.checked;
-            selectedOptionsMap = {...selectedOptionsMap}; // Триггер реактивности
-        } else if (testData.test_type === 'mcq-single') {
-            selectedRadioOption = optionId;
-        }
-    }
-
-    async function handleSubmitTest() {
-        if (isSubmitting || (hasSubmittedOnce && viewMode === 'student')) return; // Не отправлять повторно, если студент уже отправлял
-
-        let answersPayload = {};
-        if (testData.test_type === 'mcq-multi') {
-            const selectedIds = Object.keys(selectedOptionsMap).filter(id => selectedOptionsMap[id]).map(id => parseInt(id));
-            if (selectedIds.length === 0) {
-                addNotification("Пожалуйста, выберите хотя бы один вариант ответа.", "warning"); return;
-            }
-            answersPayload = { selected_option_ids: selectedIds };
-        } else if (testData.test_type === 'mcq-single') {
-            if (selectedRadioOption === null) {
-                addNotification("Пожалуйста, выберите вариант ответа.", "warning"); return;
-            }
-            answersPayload = { selected_option_ids: [selectedRadioOption] };
-        } else {
-            addNotification("Данный тип теста не поддерживается для отправки.", "error"); return;
-        }
-
-        isSubmitting = true;
-        try {
-            // В Lesson.svelte submitTest должен обновить studentSubmission или вызвать loadLessonData,
-            // что приведет к обновлению studentSubmission пропа и перерисовке этого компонента.
-            dispatch('submitTest', {
-                testId: testData.id,
-                sectionItemId: sectionItemId,
-                answers: answersPayload,
-                fileData: null 
-            });
-            // Уведомление об успехе/ошибке теперь полностью в Lesson.svelte
-            // hasSubmittedOnce будет установлен, когда studentSubmission обновится
-        } catch (error) {
-            // Этот catch здесь маловероятен, так как dispatch не кидает ошибку сам по себе.
-            // Ошибки API обрабатываются в Lesson.svelte.
-            addNotification(`Ошибка при отправке: ${error.message}`, "error");
-        } finally {
-            isSubmitting = false; 
-        }
-    }
-
-    // Хелперы для отображения статуса опции
-    function getOptionStatus(optionId) {
-        if (!submissionResult || !submissionResult.student_answers || !submissionResult.student_answers.selected_option_ids) {
-            return 'none'; // Нет отправки или нет данных об ответах
-        }
-
-        const isSelectedByStudent = submissionResult.student_answers.selected_option_ids.includes(optionId);
-        const isOptionActuallyCorrect = testData.mcq_options.find(opt => opt.id === optionId)?.is_correct;
-
-        if (isSelectedByStudent && isOptionActuallyCorrect) return 'correctly-selected';
-        if (isSelectedByStudent && !isOptionActuallyCorrect) return 'incorrectly-selected';
-        if (!isSelectedByStudent && isOptionActuallyCorrect) return 'missed-correct';
-        return 'correctly-ignored'; // Не выбран и не является правильным
-    }
-
 </script>
 
-<div class="test-item-display-wrapper" 
-    data-testid={`test-item-${testData?.id}`} 
-    aria-labelledby={`test-title-${testData?.id}`}>
-    
-    <h4 class="test-title" id={`test-title-${testData?.id}`}>{testData?.title || 'Тест'}</h4>
-    
-    {#if testData?.description}
-        <div class="test-description">{@html testData.description.replace(/\n/g, '<br>')}</div>
-    {/if}
-    
-    {#if testData?.attached_image_id && testData.attached_image_details}
-        <div class="test-attachment test-attached-image">
-            <ImageItemDisplay contentDetails={testData.attached_image_details} />
-        </div>
-    {/if}
-    {#if testData?.attached_audio_id && testData.attached_audio_details}
-         <div class="test-attachment test-attached-audio">
-            <AudioItemDisplay contentDetails={testData.attached_audio_details} />
-        </div>
-    {/if}
-
-    <form class="test-form-display" on:submit|preventDefault={handleSubmitTest} aria-live="polite">
-        {#if testData?.test_type === 'mcq-single' || testData?.test_type === 'mcq-multi'}
-            <fieldset class="mcq-options-group" role="group" aria-labelledby={`test-title-${testData?.id}`}>
-                <legend class="sr-only">Варианты ответа для теста "{testData?.title}"</legend>
-                {#each testData.mcq_options || [] as option (option.id)}
-                    {@const status = getOptionStatus(option.id)}
-                    <label 
-                        class="mcq-option-display" 
-                        class:is-correct={ (viewMode === 'admin' || hasSubmittedOnce) && option.is_correct }
-                        class:is-incorrect={ (viewMode === 'admin' || hasSubmittedOnce) && !option.is_correct }
-                        class:student-selected={ (viewMode === 'student' && hasSubmittedOnce) && submissionResult?.student_answers?.selected_option_ids.includes(option.id) }
-                        class:student-correctly-selected={ viewMode === 'student' && hasSubmittedOnce && status === 'correctly-selected' }
-                        class:student-incorrectly-selected={ viewMode === 'student' && hasSubmittedOnce && status === 'incorrectly-selected' }
-                        class:student-missed-correct={ viewMode === 'student' && hasSubmittedOnce && status === 'missed-correct' }
-                    >
-                        <input 
-                            type={testData.test_type === 'mcq-single' ? 'radio' : 'checkbox'}
-                            name="mcq_option_group_{sectionItemId}_{testData.id}" 
-                            value={option.id}
-                            checked={testData.test_type === 'mcq-single' ? selectedRadioOption === option.id : !!selectedOptionsMap[option.id]}
-                            on:change={(e) => handleMcqOptionChange(option.id, e)}
-                            disabled={isSubmitting || viewMode === 'admin' || (hasSubmittedOnce && viewMode === 'student')}
-                            aria-describedby={option.explanation ? `explanation-${option.id}` : null}
-                        />
-                        <span class="option-icon-status">
-                            {#if viewMode === 'student' && hasSubmittedOnce}
-                                {#if status === 'correctly-selected'} <CheckCircleOutline size="18px" class="icon-correct"/>
-                                {:else if status === 'incorrectly-selected'} <CloseCircleOutline size="18px" class="icon-incorrect"/>
-                                {:else if status === 'missed-correct'} <HelpCircleOutline size="18px" class="icon-missed"/>
-                                {/if}
-                            {/if}
-                        </span>
-                        <span class="option-text-display">{@html option.text.replace(/\n/g, '<br>')}</span>
-                        {#if option.is_correct && (viewMode === 'admin' || (hasSubmittedOnce && viewMode === 'student'))}
-                             <span class="correct-answer-indicator" title="Правильный ответ">(Верно)</span>
-                        {/if}
-                    </label>
-                    {#if option.explanation && (viewMode === 'admin' || (hasSubmittedOnce && (option.is_correct || selectedOptionsMap[option.id] || selectedRadioOption === option.id )))}
-                        <div class="option-explanation-display" id={`explanation-${option.id}`} 
-                             class:visible={viewMode === 'admin' || (hasSubmittedOnce && (option.is_correct || (testData.test_type === 'mcq-multi' ? selectedOptionsMap[option.id] : selectedRadioOption === option.id)))}
-                        >
-                            <strong>Пояснение:</strong> {@html option.explanation.replace(/\n/g, '<br>')}
-                        </div>
+<div class="document-item">
+    {#if error}
+        <div class="error-message">Ошибка: {error}</div>
+    {:else if contentDetails?.document_file && isPdf}
+        <div class="pdf-container">
+            {#if totalPage > 0}
+                <div class="page-counter">
+                    Страница {currentPage} из {totalPage}
+                </div>
+            {/if}
+            
+            <div class="pdf-viewer-wrapper">
+                <button class="nav-button nav-left" on:click={goToPrevPage} disabled={currentPage <= 1 || totalPage === 0} aria-label="Предыдущая страница">
+                    <ChevronLeft size="24px"/>
+                </button>
+                
+                <div class="pdf-content"
+                     on:click={enterFullScreen}
+                     on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') enterFullScreen(); }}
+                     bind:this={fullScreenContainer}
+                     role="button"
+                     tabindex="0"
+                     aria-label="Открыть слайды в полноэкранном режиме"
+                >
+                    {#if loading && totalPage === 0}
+                        <div class="loading-placeholder">Загрузка документа...</div>
                     {/if}
-                {/each}
-            </fieldset>
-        {/if}
-
-        {#if viewMode === 'student' && !hasSubmittedOnce}
-            <div class="test-actions-display">
-                <button type="submit" class="btn-submit-test-display" disabled={isSubmitting}>
-                    {isSubmitting ? 'Отправка...' : 'Отправить ответ'}
+                    
+                    <PdfViewer
+                        url={contentDetails.document_file}
+                        bind:pageNum={currentPage}
+                        bind:totalPage
+                        bind:scale={pdfScale}
+                        showButtons={[]}
+                    />
+                </div>
+                
+                <button class="nav-button nav-right" on:click={goToNextPage} disabled={currentPage >= totalPage || totalPage === 0} aria-label="Следующая страница">
+                    <ChevronRight size="24px"/>
                 </button>
             </div>
-        {/if}
-
-        {#if viewMode === 'student' && hasSubmittedOnce && submissionResult}
-            <div class="submission-result-display">
-                <h4>Результаты вашего ответа:</h4>
-                <p>Статус: 
-                    <strong class:status-graded={submissionResult.status === 'graded'}
-                              class:status-pending={submissionResult.status === 'grading_pending' || submissionResult.status === 'submitted'}
-                              class:status-passed={submissionResult.status === 'auto_passed'}
-                              class:status-failed={submissionResult.status === 'auto_failed'}>
-                        {submissionResult.status === 'graded' ? 'Оценено' : 
-                         submissionResult.status === 'auto_passed' ? 'Зачтено (авто)' :
-                         submissionResult.status === 'auto_failed' ? 'Не зачтено (авто)' :
-                         'Отправлено (ожидает проверки)'}
-                    </strong>
-                </p>
-                {#if submissionResult.score !== null && submissionResult.score !== undefined}
-                    <p>Оценка: <strong>{submissionResult.score}</strong></p>
-                {/if}
-                {#if submissionResult.feedback}
-                    <p>Комментарий преподавателя: <strong>{@html submissionResult.feedback.replace(/\n/g, '<br>')}</strong></p>
-                {/if}
-            </div>
-        {/if}
-    </form>
+        </div>
+    {:else}
+        <div class="no-file-message">
+            <p>Файл документа не найден.</p>
+        </div>
+    {/if}
 </div>
+<div class="fullscreen-hint" class:visible={hintVisible}>{hintMessage}</div>
 
 <style>
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
-.test-item-display-wrapper {
-    background-color: #fff;
-    border: 1px solid var(--color-border-light, #e7eaf3);
-    border-radius: var(--spacing-border-radius-block, 12px);
-    padding: clamp(15px, 3vw, 20px);
-    margin-bottom: 25px;
-    box-shadow: 0 3px 8px rgba(var(--color-primary-rgb, 175, 164, 255), 0.05);
-}
-.test-title {
-    font-size: clamp(1.2em, 2.8vw, 1.5em);
-    font-weight: var(--font-weight-bold);
-    color: var(--color-text-dark);
-    margin-top: 0;
-    margin-bottom: 8px;
-}
-.test-description {
-    font-size: clamp(0.9em, 2vw, 1em);
-    color: var(--color-text-muted);
-    margin-bottom: 18px;
-    line-height: 1.65;
-}
-.test-attachment { margin-bottom: 18px; }
-.test-attachment :global(.image-item-display),
-.test-attachment :global(.audio-item-display-enhanced) {
-    border: 1px solid var(--color-border-light, #eef0f5); /* Немного другая рамка для вложений */
-    box-shadow: none;
-    margin-bottom: 0;
-    border-radius: var(--spacing-border-radius-small);
-}
+    .document-item {
+        margin-bottom: var(--spacing-margin-bottom-medium, 20px);
+        border-radius: var(--spacing-border-radius-large, 12px);
+        background-color: var(--color-bg-card, #ffffff);
+        box-shadow: var(--color-card-shadow, 0 2px 8px rgba(0, 0, 0, 0.1));
+        overflow: hidden;
+    }
 
-.test-form-display { margin-top: 10px; }
-.mcq-options-group {
-    border: none; padding: 0; margin: 0;
-    display: flex; flex-direction: column;
-    gap: 12px;
-}
-.mcq-option-display {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 12px 15px;
-    border: 1px solid var(--color-border-admin-button, #d1c9ff); /* Используем цвет админ кнопки для границ */
-    border-radius: var(--spacing-border-radius-small, 8px);
-    cursor: pointer;
-    transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
-    background-color: var(--color-bg-light, #fff);
-    position: relative; /* Для индикаторов */
-}
-.mcq-option-display:hover {
-    border-color: var(--color-primary, #AFA4FF);
-    background-color: var(--color-bg-ultra-light, #f8f6ff);
-}
-.mcq-option-display input[type="radio"], 
-.mcq-option-display input[type="checkbox"] {
-    margin-top: 4px; /* Выравнивание */
-    flex-shrink: 0;
-    accent-color: var(--color-secondary, #6D7FC9); /* Акцентный цвет для галочки */
-    width: 16px; height: 16px;
-    cursor: pointer;
-}
-.mcq-option-display input:disabled { cursor: not-allowed; }
-.mcq-option-display input:disabled + .option-icon-status + .option-text-display {
-    opacity: 0.7;
-}
+    .pdf-container {
+        background-color: var(--color-bg-card, #ffffff);
+    }
 
-.option-icon-status {
-    display: inline-flex;
-    align-items: center;
-    margin-right: -2px; /* Небольшая коррекция отступа */
-    margin-top: 2px;
-    width: 18px; /* Зарезервировать место */
-}
-.icon-correct { color: var(--color-success, #27ae60); }
-.icon-incorrect { color: var(--color-danger-red, #e74c3c); }
-.icon-missed { color: var(--color-primary, #AFA4FF); }
+    .page-counter {
+        background: linear-gradient(135deg, var(--color-primary, #667eea) 0%, var(--color-primary-dark, #764ba2) 100%);
+        color: white;
+        text-align: center;
+        padding: var(--spacing-padding-medium, 12px);
+        font-weight: 600;
+        font-size: var(--font-size-medium, 16px);
+        letter-spacing: 0.5px;
+    }
 
+    .pdf-viewer-wrapper {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-gap-medium, 16px);
+        padding: var(--spacing-padding-large, 20px);
+        background: var(--color-bg-light, #f8fafc);
+    }
 
-.option-text-display {
-    flex-grow: 1;
-    line-height: 1.55;
-    font-size: 0.95em;
-    word-break: break-word;
-}
+    .nav-button {
+        background: var(--color-bg-card, #ffffff);
+        border: 2px solid var(--color-border-light, #e2e8f0);
+        border-radius: 50%;
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: var(--color-button-shadow, 0 2px 8px rgba(0, 0, 0, 0.1));
+        flex-shrink: 0;
+    }
 
-.correct-answer-indicator {
-    font-size: 0.8em;
-    font-weight: bold;
-    color: var(--color-success, #27ae60);
-    margin-left: 10px;
-    white-space: nowrap;
-}
+    .nav-button:hover:not(:disabled) {
+        background: var(--color-primary, #667eea);
+        border-color: var(--color-primary, #667eea);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
 
-/* Стили для отображения правильных/неправильных ответов после отправки или в админке */
-.mcq-option-display.is-correct { /* Если это правильный ответ (показывается админу или студенту после) */
-    border-left: 4px solid var(--color-success, #27ae60);
-    /* background-color: #e6f7f0; */ /* Легкий фон для правильного */
-}
-.mcq-option-display.is-incorrect { /* Если это неправильный ответ (показывается админу) */
-    /* Можно добавить стиль, если нужно визуально отличать неверные от неотмеченных */
-}
-.mcq-option-display.student-selected.is-correct { /* Студент выбрал правильный */
-    background-color: rgba(var(--color-success-rgb, 46, 204, 113), 0.1);
-    border-color: var(--color-success, #27ae60);
-}
-.mcq-option-display.student-selected:not(.is-correct) { /* Студент выбрал неправильный */
-    background-color: rgba(var(--color-danger-red-rgb, 255, 77, 77), 0.1);
-    border-color: var(--color-danger-red, #e74c3c);
-    border-left-width: 4px;
-}
-.mcq-option-display:not(.student-selected).is-correct { /* Студент не выбрал, но это был правильный */
-    /* Можно подсветить, что это был правильный, но не выбранный */
-    /* border-left: 4px solid var(--color-primary-light); */
-}
+    .nav-button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        transform: none;
+    }
 
+    .pdf-content {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 500px;
+        background: var(--color-bg-card, #ffffff);
+        border-radius: var(--spacing-border-radius-medium, 8px);
+        box-shadow: var(--color-card-shadow-large, 0 8px 24px rgba(0, 0, 0, 0.12));
+        overflow: hidden;
+    }
 
-.option-explanation-display {
-    font-size: 0.88em;
-    color: #444;
-    margin-top: 8px;
-    padding: 8px 10px;
-    background-color: #f7f7f9;
-    border-radius: var(--spacing-border-radius-small);
-    border-left: 3px solid var(--color-secondary-light, #c9d1f7); /* Добавить --color-secondary-light */
-    line-height: 1.6;
-    display: none; /* Скрыт по умолчанию */
-}
-.option-explanation-display.visible {
-    display: block;
-}
+    .pdf-content :global(.svelte-pdf-container) {
+        max-width: 100%;
+        max-height: 100%;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
 
-.test-actions-display {
-    margin-top: 25px;
-    text-align: right;
-}
-.btn-submit-test-display {
-    background-color: var(--color-primary, #AFA4FF);
+    .pdf-content :global(canvas) {
+        max-width: 100%;
+        max-height: 80vh;
+        object-fit: contain;
+        border-radius: var(--spacing-border-radius-medium, 8px);
+        background: white;
+    }
+
+    .pdf-content :global(.pdf-controls),
+    .pdf-content :global(.page-info),
+    .pdf-content :global(.button-control) {
+        display: none !important;
+    }
+
+    .pdf-mock {
+        width: 100%;
+        max-width: 600px;
+        background: white;
+        border-radius: var(--spacing-border-radius-medium, 8px);
+        box-shadow: var(--color-card-shadow, 0 4px 12px rgba(0, 0, 0, 0.1));
+        overflow: hidden;
+    }
+
+    .pdf-page {
+        padding: var(--spacing-padding-xl, 32px);
+        text-align: center;
+    }
+
+    .pdf-page h3 {
+        color: var(--color-primary, #6D7FC9);
+        margin-bottom: var(--spacing-margin-bottom-medium, 16px);
+        font-size: 1.5rem;
+        font-weight: var(--font-weight-bold, 700);
+    }
+
+    .pdf-page p {
+        margin-bottom: var(--spacing-margin-bottom-small, 12px);
+        color: var(--color-text-primary, #333);
+        line-height: 1.6;
+    }
+
+    .mock-content {
+        background: var(--color-bg-light, #f9fafb);
+        border-radius: var(--spacing-border-radius-small, 6px);
+        padding: var(--spacing-padding-large, 24px);
+        margin-top: var(--spacing-margin-top-large, 24px);
+        border-left: 4px solid var(--color-primary, #6D7FC9);
+    }
+
+    .mock-content p {
+        margin-bottom: var(--spacing-margin-bottom-small, 8px);
+        font-size: 0.95rem;
+    }
+
+    .loading-placeholder, 
+    .error-message, 
+    .no-file-message, 
+    .non-pdf-message {
+        text-align: center;
+        padding: var(--spacing-padding-xl, 40px) var(--spacing-padding-large, 20px);
+        color: var(--color-text-secondary, #64748b);
+        font-size: var(--font-size-medium, 16px);
+        border-radius: var(--spacing-border-radius-medium, 8px);
+        margin: var(--spacing-margin-medium, 16px);
+    }
+
+    .error-message {
+        background: var(--color-error-bg, #fee2e2);
+        color: var(--color-error, #dc2626);
+        border: 1px solid var(--color-error-border, #fecaca);
+    }
+
+    .loading-placeholder {
+        background: var(--color-info-bg, #f0f9ff);
+        color: var(--color-info, #0369a1);
+        border: 1px solid var(--color-info-border, #bae6fd);
+    }
+
+    .no-file-message, 
+    .non-pdf-message {
+        background: var(--color-bg-light, #f9fafb);
+        color: var(--color-text-secondary, #6b7280);
+        border: 1px solid var(--color-border-light, #e5e7eb);
+    }
+
+    @media (max-width: 768px) {
+        .pdf-viewer-wrapper {
+            flex-direction: column;
+            gap: var(--spacing-gap-small, 12px);
+            padding: var(--spacing-padding-medium, 16px);
+        }
+
+        .nav-button {
+            width: 40px;
+            height: 40px;
+        }
+
+        .page-counter {
+            font-size: var(--font-size-small, 14px);
+            padding: var(--spacing-padding-small, 10px);
+        }
+
+        .pdf-content {
+            min-height: 400px;
+            width: 100%;
+        }
+
+        .pdf-content :global(canvas) {
+            max-height: 60vh;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .document-item {
+            margin-bottom: var(--spacing-margin-bottom-small, 16px);
+            border-radius: var(--spacing-border-radius-medium, 8px);
+        }
+
+        .pdf-viewer-wrapper {
+            padding: var(--spacing-padding-small, 12px);
+        }
+
+        .pdf-content {
+            min-height: 300px;
+        }
+
+        .pdf-content :global(canvas) {
+            max-height: 50vh;
+        }
+    }
+.fullscreen-hint {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
     color: white;
-    padding: 10px 22px;
-    border: none;
-    border-radius: var(--spacing-border-radius-button);
-    font-weight: var(--font-weight-medium);
-    cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.1s ease;
-    font-size: 0.95rem;
+    padding: 10px 16px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+    z-index: 1000;
 }
-.btn-submit-test-display:hover:not(:disabled) {
-    background-color: var(--color-primary-dark, #8679f0);
+.fullscreen-hint.visible {
+    opacity: 1;
 }
-.btn-submit-test-display:active:not(:disabled) {
-    transform: translateY(1px);
-}
-.btn-submit-test-display:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-    opacity: 0.8;
-}
-
-.submission-result-display {
-    margin-top: 25px;
-    padding: 15px 20px;
-    background-color: var(--color-bg-ultra-light, #f8f6ff);
-    border: 1px solid var(--color-border-admin-button, #d1c9ff);
-    border-radius: var(--spacing-border-radius-block);
-}
-.submission-result-display h4 {
-    margin-top: 0;
-    margin-bottom: 12px;
-    color: var(--color-primary-dark);
-    font-size: 1.1em;
-}
-.submission-result-display p {
-    margin-bottom: 8px;
-    font-size: 0.95em;
-}
-.submission-result-display strong.status-graded,
-.submission-result-display strong.status-passed { color: var(--color-success, #27ae60); }
-.submission-result-display strong.status-failed { color: var(--color-danger-red, #e74c3c); }
-.submission-result-display strong.status-pending { color: var(--color-secondary, #6D7FC9); }
-
 </style>

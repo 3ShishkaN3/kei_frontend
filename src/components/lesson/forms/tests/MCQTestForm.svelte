@@ -253,7 +253,7 @@
           }),
           attached_image_id: finalCroppedImageFile ? null : currentServerImageId,
           attached_audio_id: attachedAudioFile ? null : currentServerAudioId,
-          // aspect_ratio_for_test_image: imageAspectRatio, // Если нужно сохранять на бэке
+          // aspect_ratio_for_test_image: imageAspectRatio,
       };
       
       if (finalCroppedImageFile || attachedAudioFile) {
@@ -439,7 +439,6 @@
 </div>
 
 <style>
-/* Общие стили для item-form, form-group, btn-save, btn-cancel и т.д. */
 .item-form { display: flex; flex-direction: column; gap: 20px; }
 .form-group { display: flex; flex-direction: column; }
 .form-group label:not(.custom-checkbox-label):not(.file-upload-label):not(.option-correct-toggle-label) { 
@@ -465,13 +464,12 @@
 .spinner { border: 3px solid rgba(var(--color-primary-rgb), 0.2); border-left-color: var(--color-primary); border-radius: 50%; width: 24px; height: 24px; animation: form-spin 1s linear infinite; margin-right: 10px; }
 @keyframes form-spin { to { transform: rotate(360deg); } }
 
-/* Кастомные чекбоксы */
 .form-group-custom-checkbox { display: flex; align-items: center; margin: 5px 0; }
 .custom-checkbox-input { opacity: 0; position: absolute; width: 0; height: 0; }
 .custom-checkbox-label { display: inline-flex; align-items: center; cursor: pointer; font-size: 0.95rem; color: var(--color-text-dark); user-select: none; }
 .checkbox-visual { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-right: 10px; border: 2px solid var(--color-border-admin-button, #c5bfff); border-radius: var(--spacing-border-radius-small, 6px); transition: background-color 0.2s, border-color 0.2s; color: var(--color-primary, #AFA4FF); }
 .custom-checkbox-input:checked + .custom-checkbox-label .checkbox-visual,
-.custom-checkbox-input:checked ~ .checkbox-visual /* Для опций */ {
+.custom-checkbox-input:checked ~ .checkbox-visual {
   background-color: var(--color-primary, #AFA4FF);
   border-color: var(--color-primary, #AFA4FF);
   color: white;
@@ -483,7 +481,6 @@
 .custom-checkbox-input:disabled + .custom-checkbox-label,
 .custom-checkbox-input:disabled ~ .checkbox-visual { opacity: 0.6; cursor: not-allowed; }
 
-/* Секция аттачментов */
 .attachments-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--color-border-light, #eee); }
 .attachments-header { margin-top: 0; margin-bottom: 15px; font-size: 1.1em; font-weight: var(--font-weight-semi-bold); color: var(--color-text-dark); }
 .form-row { display: flex; gap: 20px; margin-bottom:10px;}
@@ -513,7 +510,6 @@
 .form-hint { font-size: 0.8em; color: var(--color-text-muted); margin-top: 5px; }
 .form-hint.removed-hint { color: var(--color-danger-red); }
 
-/* MCQ Опции */
 .options-header { margin-top: 20px; margin-bottom: 12px; font-size: 1.1em; font-weight: var(--font-weight-semi-bold); color: var(--color-text-dark); border-bottom: 1px solid #eee; padding-bottom: 8px; }
 .mcq-option-item { display: flex; align-items: flex-start; gap: 12px; padding: 15px; border: 1px solid var(--color-border-light, #e0e0e0); border-radius: var(--spacing-border-radius-block, 10px); margin-bottom: 12px; background-color: #fff; transition: box-shadow 0.2s, border-color 0.2s; }
 .mcq-option-item:focus-within, .mcq-option-item:hover { border-color: var(--color-primary-light, #d1c9ff); box-shadow: 0 3px 8px rgba(var(--color-primary-rgb, 175, 164, 255), 0.12); }
@@ -528,7 +524,6 @@
 .add-option-btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; font-size: 0.9rem; color: var(--color-primary, #AFA4FF); background-color: transparent; border: 1px dashed var(--color-primary, #AFA4FF); border-radius: var(--spacing-border-radius-button); cursor: pointer; transition: background-color 0.2s, color 0.2s, border-style 0.2s; margin-top: 8px; }
 .add-option-btn:hover:not(:disabled) { background-color: rgba(var(--color-primary-rgb, 175, 164, 255), 0.1); border-style: solid; }
 
-/* Действия формы */
 .form-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--color-border-light, #eee); }
 .btn-save, .btn-cancel { font-size: 0.95rem; padding: 10px 20px; font-weight: 500; }
 .btn-save { background-color: var(--color-primary); color: white; border: none; border-radius: var(--spacing-border-radius-button); cursor: pointer; transition: background-color 0.2s; }
@@ -541,7 +536,7 @@
   .form-row { flex-direction: column; gap: 15px; }
   .mcq-option-item { flex-wrap: wrap; }
   .option-delete-btn { align-self: flex-end; margin-top: 5px;}
-  .option-correct-toggle-label { margin-top: 0; margin-bottom: 10px; /* Чекбокс опции сверху на мобильных */}
+  .option-correct-toggle-label { margin-top: 0; margin-bottom: 10px; }
   .mcq-option-item { flex-direction: column; align-items: stretch; }
   .option-inputs { width: 100%; }
 }

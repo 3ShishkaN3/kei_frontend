@@ -53,11 +53,9 @@
         overflow: hidden;
         cursor: pointer;
 
-        /* Бордер и тень для объемности */
         border: 2px solid rgb(0, 0, 0);
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
         filter: brightness(0.9); 
-        /* Плавные переходы */
         transition:
             transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
             background-size 0.6s cubic-bezier(0.22, 1, 0.36, 1),
@@ -67,14 +65,14 @@
 
     .dictionary-card:hover {
         transform: translateY(-6px);
-        background-size: 115%; /* масштабируем фон */
+        background-size: 115%;
         box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
-        filter: brightness(0.95); /* подсветка */
+        filter: brightness(0.95);
     }
 
     .dictionary-card:active {
         border: 2px solid var(--color-purple-active, #8E8BE0);
-        background-size: 110%; /* активная чуть увеличивает фон */
+        background-size: 110%;
         transform: translateY(-4px) scale(1.015);
         box-shadow:
             0 0 0 3px rgba(142, 139, 224, 0.4),

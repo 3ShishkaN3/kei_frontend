@@ -9,22 +9,18 @@
 
     export let course;
     export let isEnrolled = false;
-    export let currentUserRole = 'student'; // Переименовал с userRole для соответствия родительскому компоненту
+    export let currentUserRole = 'student';
     export let viewMode = 'student';
-
-    // <!-- Проверка получения userRole -->
-    // console.log('CourseCard received userRole:', currentUserRole);
 
     const dispatch = createEventDispatcher();
 
     let isHovering = false;
     let showDescriptionMobile = false;
-    let textColor = "white"; // Цвет текста по умолчанию
+    let textColor = "white";
 
     $: isAdmin = currentUserRole === 'admin';
     $: isTeacher = currentUserRole === 'teacher';
     $: isAssistant = currentUserRole === 'assistant';
-    // <!-- Проверяем userRole перед использованием -->
     $: canEdit = currentUserRole && (isAdmin || isTeacher || (isAssistant && course.is_assistant_assigned)) && viewMode === 'admin';
     $: canDelete = currentUserRole && (isAdmin || isTeacher) && viewMode === 'admin';
     $: canEnroll = course.status === 'free' && !isEnrolled && viewMode === 'student';
@@ -32,7 +28,7 @@
     $: isPaid = course.status === 'published' && !isEnrolled && viewMode === 'student';
     $: isDraft = course.status === 'draft';
 
-    const defaultBanner = '/default_banner.jpg'; // Убедитесь, что этот файл есть в /public
+    const defaultBanner = '/default_banner.jpg';
     $: bannerImage = course.cover_image || defaultBanner;
 
     function handleEnrollClick(event) {
@@ -70,15 +66,12 @@
     }
 
     function handleCardTap() {
-        // Проверяем на "мобильность" перед переключением описания
         if (typeof window !== 'undefined' && window.innerWidth < 768) {
             showDescriptionMobile = !showDescriptionMobile;
         }
     }
 
-    // Функция для определения цвета текста в зависимости от цвета баннера
     onMount(() => {
-        // Если баннер загружен, проверим его цвет
         if (typeof window !== 'undefined') {
             setTimeout(() => {
                 try {
@@ -92,12 +85,10 @@
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0);
                         
-                        // Проверяем цвет верхней части изображения, где будет текст
                         const imageData = ctx.getImageData(0, 0, canvas.width, Math.min(50, canvas.height)).data;
                         let totalBrightness = 0;
                         
                         for (let i = 0; i < imageData.length; i += 4) {
-                            // Вычисляем яркость (0-255)
                             const brightness = (imageData[i] * 0.299 + imageData[i+1] * 0.587 + imageData[i+2] * 0.114);
                             totalBrightness += brightness;
                         }
@@ -106,7 +97,7 @@
                         textColor = avgBrightness > 140 ? "black" : "white";
                     };
                     img.onerror = () => {
-                        textColor = "white"; // По умолчанию белый, если не удалось загрузить картинку
+                        textColor = "white";
                     };
                 } catch (e) {
                     console.warn("Не удалось определить цвет баннера:", e);
@@ -185,7 +176,6 @@
 </div>
 
 <style>
-    /* Общие стили */
     :root {
         --pink-light: #EBC7F2;
         --pink-hover: #D8A8E8;
@@ -195,9 +185,9 @@
         --purple-active: #8E8BE0;
         --soft-blue: rgb(133, 171, 230);
         --muted-indigo: rgb(114, 113, 160);
-        --text-dark: #333; /* Темно-серый для основного текста */
+        --text-dark: #333;
         --text-light: #fff;
-        --text-muted: #667; /* Серый для второстепенного */
+        --text-muted: #667;
         --bg-light: #fff;
         --bg-very-light: #f9f9f9;
         --border-light: #eee;
@@ -219,7 +209,6 @@
         flex-direction: column;
         border: 1px solid var(--border-light);
     }
-    /* Убираем курсор pointer по умолчанию, добавляем при :focus-visible для доступности */
     .course-card:focus-visible {
         outline: 2px solid var(--purple-light);
         outline-offset: 2px;
@@ -227,17 +216,17 @@
     @media (hover: hover) {
       .course-card:hover {
           transform: translateY(-5px);
-          box-shadow: 0 10px 25px rgba(194, 182, 252, 0.2); /* Фиолетовая тень */
+          box-shadow: 0 10px 25px rgba(194, 182, 252, 0.2);
       }
     }
 
     .banner {
         position: relative;
         width: 100%;
-        padding-top: 56.25%; /* 16:9 aspect ratio */
+        padding-top: 56.25%;
         overflow: hidden;
         flex-grow: 1;
-        background-color: #eee; /* Фон для случая отсутствия картинки */
+        background-color: #eee;
     }
 
     .banner img {
@@ -259,10 +248,9 @@
         position: absolute;
         top: 20px;
         left: 20px;
-        /* <!-- Используем переменную для цвета текста --> */
-        z-index: 2; /* Над картинкой, под оверлеем описания */
-        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7); /* Усиленная тень */
-        pointer-events: none; /* Чтобы не мешать ховеру на карточку */
+        z-index: 2;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+        pointer-events: none;
         transition: color 0.3s ease;
     }
 
@@ -287,27 +275,26 @@
         left: 0;
         right: 0;
         height: 35%;
-        background: rgba(0, 0, 0, 0.3); /* Темный фон */
-        backdrop-filter: blur(10px); /* Более сильный блюр */
-        color: var(--text-light); /* Белый текст */
+        background: rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+        color: var(--text-light);
         padding: 15px 20px;
         opacity: 0;
         transform: translateY(100%);
         transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.3s;
-        /* z-index выше текста баннера */
         z-index: 3;
         overflow-y: auto;
         display: flex;
         align-items: center;
-        pointer-events: none; /* По умолчанию не перехватывает события */
-        visibility: hidden; /* Скрываем полностью */
+        pointer-events: none;
+        visibility: hidden;
         line-height: 1.5;
     }
 
     .description-overlay.visible {
         opacity: 1;
         transform: translateY(0);
-        pointer-events: auto; /* Разрешаем события при видимости */
+        pointer-events: auto;
         visibility: visible;
     }
 
@@ -334,7 +321,6 @@
         gap: 10px;
     }
 
-    /* Стилизация кнопок действий */
     .action-button {
         border: none;
         border-radius: 25px;
@@ -348,7 +334,7 @@
         align-items: center;
         gap: 8px;
         font-size: 0.9rem;
-        color: var(--text-light); /* Белый текст на кнопках */
+        color: var(--text-light);
     }
     
     .action-button.enroll {
@@ -367,50 +353,48 @@
 
     .action-button.view-lessons, 
     .action-button.view-as-admin {
-        /* Используем мягкий синий */
         background-color: var(--soft-blue);
-        /* Можно добавить градиент, если есть второй похожий цвет */
     }
     .action-button.view-lessons:hover,
     .action-button.view-as-admin:hover {
-        background-color: hsl(214, 64%, 65%); /* Чуть темнее */
+        background-color: hsl(214, 64%, 65%);
         transform: scale(1.05);
         box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
     }
     .action-button.view-lessons:active,
     .action-button.view-as-admin:active {
-        background-color: hsl(214, 64%, 60%); /* Еще темнее */
+        background-color: hsl(214, 64%, 60%);
         transform: scale(0.98);
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
     }
 
     .status-info {
         font-size: 0.9rem;
-        color: var(--text-muted); /* Серый */
+        color: var(--text-muted);
         font-weight: 500;
     }
     
     .status-info.paid {
-        color: #fc8a15; /* Оранжевый для платных курсов */
+        color: #fc8a15;
         font-weight: 600;
     }
     
     .status-info.admin-view {
-        color: var(--muted-indigo); /* Приглушенный индиго */
+        color: var(--muted-indigo);
         font-weight: 600;
     }
 
     .draft-indicator {
         position: absolute;
         top: 10px;
-        left: 10px; /* Переносим влево */
+        left: 10px;
         background-color: var(--orange-draft);
-        color: var(--text-light); /* Белый текст */
+        color: var(--text-light);
         padding: 3px 8px;
         border-radius: 5px;
         font-size: 0.75rem;
         font-weight: bold;
-        z-index: 4; /* Выше оверлея */
+        z-index: 4;
         backdrop-filter: blur(2px);
     }
 
@@ -418,14 +402,14 @@
         position: absolute;
         top: 10px;
         right: 10px;
-        z-index: 5; /* Выше всех остальных элементов */
+        z-index: 5;
         display: flex;
         gap: 5px;
-        background: rgba(255, 255, 255, 0.8); /* Увеличили непрозрачность */
+        background: rgba(255, 255, 255, 0.8);
         padding: 5px;
         border-radius: 8px;
         backdrop-filter: blur(3px);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Добавили тень для заметности */
+        box-shadow: 0 2px 5px rgba(0, 0, 255, 0.2);
     }
     
     .admin-actions button {
@@ -433,7 +417,7 @@
         border: 1px solid rgba(114, 113, 160, 0.3);
         cursor: pointer;
         padding: 6px;
-        color: var(--muted-indigo); /* Приглушенный индиго */
+        color: var(--muted-indigo);
         border-radius: 50%;
         transition: all 0.3s ease;
         display: flex;
@@ -444,11 +428,10 @@
     }
     
     .admin-actions button:hover {
-        background-color: rgba(114, 113, 160, 0.1); /* Фон цвета иконки */
+        background-color: rgba(114, 113, 160, 0.1);
         transform: scale(1.1);
     }
     
-    /* Стили для кнопки удаления */
     .admin-actions button.delete-button {
         color: var(--danger-red);
         border-color: rgba(220, 53, 69, 0.3);
@@ -460,7 +443,6 @@
         border-color: var(--danger-red);
     }
 
-    /* Адаптивность */
     @media (max-width: 768px) {
         .banner-text {
             top: 15px;
@@ -479,14 +461,11 @@
             font-size: 0.85rem;
         }
         .course-card {
-            /* Делаем кликабельной на мобильных для показа описания */
             cursor: pointer;
         }
-        /* Убираем ховер-эффект для описания на тач-устройствах */
         @media (hover: none) {
             .description-overlay {
-                /* Показывается только через .visible */
-                transition: opacity 0.4s ease, transform 0.4s ease; /* Сохраняем анимацию для тач */
+                transition: opacity 0.4s ease, transform 0.4s ease;
             }
         }
         

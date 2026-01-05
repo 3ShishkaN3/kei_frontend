@@ -13,7 +13,7 @@
     export let isLoading = false;
 
     let value = '';
-    let inputElement; // Ссылка на DOM-элемент input
+    let inputElement;
 
     const dispatch = createEventDispatcher();
     function handleKeydown(event) {
@@ -27,21 +27,17 @@
         }
     }
     function autoFocus(node) {
-    // Эта функция будет вызвана, когда элемент <input> смонтирован
-    if (node) { // Убедимся, что узел существует
+    if (node) {
         node.focus();
     }
 
     return {
-        // update(newParameters) { /* если нужно реагировать на изменения параметров */ },
         destroy() {
-            // Код при демонтировании элемента (если нужно)
         }
     };
 }
-    // Реактивный блок для управления фокусом и значением при открытии
     $: if (isOpen) {
-        value = initialValue; // Устанавливаем начальное значение
+        value = initialValue;
        
         window.addEventListener('keydown', handleGlobalKeydown);
     } else {
@@ -53,7 +49,6 @@
     });
 
 
-    // Убедимся, что обработчик удаляется при уничтожении компонента
     onDestroy(() => {
         window.removeEventListener('keydown', handleKeydown);
     });
@@ -169,7 +164,7 @@
     .cancel-btn { background-color: #f0f0f0; color: #333; }
     .cancel-btn:hover { background-color: #e0e0e0; }
     .save-btn { background-color: var(--color-primary); color: white; min-width: 100px; }
-    .save-btn:hover { background-color: var(--color-primary-dark, #9d92f7); } /* Добавил --color-primary-dark */
+    .save-btn:hover { background-color: var(--color-primary-dark, #9d92f7); }
     .save-btn:disabled { background-color: #cccccc; cursor: not-allowed; }
 
     .spinner {

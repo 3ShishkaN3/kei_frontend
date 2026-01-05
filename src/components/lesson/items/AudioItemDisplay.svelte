@@ -1,11 +1,11 @@
 <script>
 	import { onMount, onDestroy, tick } from 'svelte';
-    import { fly, slide, fade } from 'svelte/transition'; // Добавляем slide и fade
+    import { fly, slide, fade } from 'svelte/transition';
 
 	import Play from 'svelte-material-icons/Play.svelte';
 	import Pause from 'svelte-material-icons/Pause.svelte';
 	import VolumeHigh from 'svelte-material-icons/VolumeHigh.svelte';
-	import VolumeMute from 'svelte-material-icons/VolumeOff.svelte'; // Или VolumeMute, если VolumeOff нет
+	import VolumeMute from 'svelte-material-icons/VolumeOff.svelte';
     import FileDocumentOutline from 'svelte-material-icons/FileDocumentOutline.svelte';
     import ChevronDown from 'svelte-material-icons/ChevronDown.svelte';
     import ChevronUp from 'svelte-material-icons/ChevronUp.svelte';
@@ -21,7 +21,7 @@
 	let progressPercent = 0;
     let showTranscript = false;
     let isMuted = false;
-    let previousVolume = 0.75; // Для восстановления громкости после mute
+    let previousVolume = 0.75;
 
 	$: finalFullAudioUrl = contentDetails?.audio_file;
 
@@ -58,13 +58,12 @@
 		duration = audioPlayer.duration;
         if (!isFinite(duration)) duration = 0;
         
-        // Устанавливаем сохраненную громкость или дефолтную
         audioPlayer.volume = volume; 
         isMuted = audioPlayer.muted || audioPlayer.volume === 0;
-        if (isMuted && volume > 0) previousVolume = volume; // Сохраняем, если не 0
-        else if (isMuted && volume === 0) previousVolume = 0.5; // Если изначально 0, ставим дефолт
+        if (isMuted && volume > 0) previousVolume = volume;
+        else if (isMuted && volume === 0) previousVolume = 0.5;
 
-        updateProgress(); // Обновить отображение времени сразу
+        updateProgress();
 	}
 
 	function handleSeek(event) {
@@ -75,35 +74,34 @@
         const newTime = clickPosition * duration;
         if (isFinite(newTime)) {
 		    audioPlayer.currentTime = newTime;
-            updateProgress(); // Сразу обновить UI
+            updateProgress();
         }
 	}
 
-	function handleVolumeChange(event) { // Для слайдера
+	function handleVolumeChange(event) {
 		if (!audioPlayer) return;
         const newVolume = parseFloat(event.target.value);
 		audioPlayer.volume = newVolume;
         volume = newVolume;
         isMuted = newVolume === 0;
-        if (!isMuted) previousVolume = newVolume; // Сохраняем, если не mute
+        if (!isMuted) previousVolume = newVolume;
 	}
 
     function toggleMute() {
         if (!audioPlayer) return;
         if (audioPlayer.muted || audioPlayer.volume === 0) {
             audioPlayer.muted = false;
-            audioPlayer.volume = previousVolume > 0.01 ? previousVolume : 0.5; // Восстанавливаем или ставим 0.5
+            audioPlayer.volume = previousVolume > 0.01 ? previousVolume : 0.5;
             volume = audioPlayer.volume;
             isMuted = false;
         } else {
-            previousVolume = audioPlayer.volume; // Сохраняем текущую громкость
-            audioPlayer.muted = true; // Mute через свойство, не меняя volume
-            // volume остается прежним, но UI должен отразить mute
+            previousVolume = audioPlayer.volume;
+            audioPlayer.muted = true;
             isMuted = true;
         }
     }
 
-    let srcObserver; // Для MutationObserver
+    let srcObserver;
 
     onMount(() => {
         if (audioPlayer) {
@@ -111,12 +109,10 @@
             const onPause = () => isPlaying = false;
             const onEnded = () => { 
                 isPlaying = false; 
-                // currentTime = 0; // Не сбрасываем, пусть остается на конце
                 progressPercent = 0;
-                // Для "перемотки" на начало при ended, если нужно:
                 audioPlayer.currentTime = 0; 
             };
-            const onVolumeChangeInternal = () => { // Внутренний обработчик
+            const onVolumeChangeInternal = () => {
                 if (!audioPlayer) return;
                 volume = audioPlayer.volume;
                 isMuted = audioPlayer.muted || audioPlayer.volume === 0;
@@ -152,14 +148,14 @@
 
             return () => {
                 if (srcObserver) srcObserver.disconnect();
-                if (audioPlayer) { // Проверяем, существует ли еще audioPlayer
+                if (audioPlayer) {
                     audioPlayer.removeEventListener('play', onPlay);
                     audioPlayer.removeEventListener('pause', onPause);
                     audioPlayer.removeEventListener('ended', onEnded);
                     audioPlayer.removeEventListener('timeupdate', handleTimeUpdate);
                     audioPlayer.removeEventListener('loadedmetadata', handleLoadedMetadata);
                     audioPlayer.removeEventListener('volumechange', onVolumeChangeInternal);
-                    // audioPlayer.removeEventListener('error', ...); // Если добавляли
+                    // audioPlayer.removeEventListener('error', ...);
                 }
             };
         }
@@ -251,10 +247,9 @@
 </div>
 
 <style>
-/* Общие стили для блока */
 .audio-item-display-enhanced {
     background-color: var(--color-bg-ultra-light, #f8f6ff);
-    padding: clamp(15px, 3vw, 20px); /* Адаптивный padding */
+    padding: clamp(15px, 3vw, 20px);
     border-radius: var(--spacing-border-radius-block, 12px);
     box-shadow: 0 4px 12px rgba(var(--color-primary-rgb, 175, 164, 255), 0.1);
     margin-bottom: 20px;
@@ -268,36 +263,34 @@
     word-break: break-word;
 }
 
-/* Стили самого плеера */
 .custom-audio-player-enhanced {
     display: flex;
     align-items: center;
-    gap: clamp(10px, 2vw, 15px); /* Адаптивный gap */
+    gap: clamp(10px, 2vw, 15px);
     background-color: var(--color-bg-light, #fff);
     padding: clamp(10px, 2vw, 15px);
     border-radius: var(--spacing-border-radius-card, 24px);
     box-shadow: var(--color-shadow, rgba(0,0,0,0.08)); 
     transition: box-shadow 0.3s ease;
-    flex-wrap: nowrap; /* По умолчанию не переносить */
+    flex-wrap: nowrap;
 }
 .custom-audio-player-enhanced.playing {
     box-shadow: 0 0 15px rgba(var(--color-secondary-rgb, 109, 127, 201), 0.3);
 }
 
-/* Кнопка Play/Pause */
 .play-pause-btn-enhanced {
     background-color: var(--color-primary, #AFA4FF);
     color: white;
     border: none;
     border-radius: 50%;
-    width: clamp(40px, 8vw, 48px); /* Адаптивный размер */
+    width: clamp(40px, 8vw, 48px);
     height: clamp(40px, 8vw, 48px);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: background-color 0.2s ease, transform 0.1s ease;
-    flex-shrink: 0; /* Не сжимать кнопку */
+    flex-shrink: 0;
 }
 .play-pause-btn-enhanced:hover:not(:disabled) {
     background-color: var(--color-primary-dark, #8679f0);
@@ -311,66 +304,63 @@
     opacity: 0.7;
 }
 
-/* Контейнер таймлайна */
 .timeline-wrapper {
     display: flex;
     align-items: center;
-    flex-grow: 1; /* Занимает все доступное место */
+    flex-grow: 1;
     gap: clamp(8px, 1.5vw, 12px);
-    min-width: 0; /* Важно для flex-grow в контейнерах с неизвестной шириной */
+    min-width: 0;
 }
 .time-display {
     font-size: clamp(0.8em, 2vw, 0.9em);
     color: var(--color-text-muted, #555);
-    white-space: nowrap; /* Не переносить время */
+    white-space: nowrap;
     font-variant-numeric: tabular-nums;
 }
 .time-display.current { text-align: right; }
 .time-display.duration { text-align: left; }
 
-/* Интерактивная область прогресс-бара */
 .progress-bar-interactive-area {
     flex-grow: 1;
-    height: 20px; /* Увеличиваем высоту для удобства клика/перетаскивания */
+    height: 20px;
     position: relative;
     cursor: pointer;
     display: flex;
     align-items: center;
-    min-width: 80px; /* Минимальная ширина для отображения */
+    min-width: 80px;
 }
-.progress-slider-input { /* Скрытый input range для доступности и управления */
+.progress-slider-input {
     position: absolute;
     top: 0; left: 0;
     width: 100%; height: 100%;
     margin: 0;
-    opacity: 0; /* Полностью прозрачный, но перехватывает события */
+    opacity: 0;
     cursor: pointer;
     z-index: 2;
 }
-.progress-track { /* Видимый трек */
+.progress-track {
     width: 100%;
     height: 6px;
     background-color: var(--color-purple-light, #e0d8ff);
     border-radius: 3px;
-    position: relative; /* Для позиционирования .progress-filled */
+    position: relative;
     overflow: hidden;
 }
-.progress-filled { /* Заполненная часть трека */
+.progress-filled {
     height: 100%;
     background-color: var(--color-secondary, #6D7FC9);
     border-radius: 3px;
-    transition: width 0.05s linear; /* Плавное обновление */
+    transition: width 0.05s linear;
     position: absolute;
     left: 0;
     top: 0;
 }
 
-/* Секция громкости */
 .volume-section {
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-shrink: 0; /* Не сжимать */
+    flex-shrink: 0;
 }
 .mute-btn-enhanced {
     background: none; border: none;
@@ -384,8 +374,8 @@
     background-color: rgba(var(--color-primary-rgb), 0.1);
 }
 .volume-slider-wrapper {
-    width: clamp(60px, 12vw, 80px); /* Адаптивная ширина слайдера громкости */
-    height: 20px; /* Область для взаимодействия */
+    width: clamp(60px, 12vw, 80px);
+    height: 20px;
     display: flex;
     align-items: center;
 }
@@ -397,12 +387,12 @@
     border-radius: 3px;
     cursor: pointer;
     transition: opacity 0.2s ease;
-    margin: 0; /* Убрать дефолтные отступы */
+    margin: 0;
 }
 .volume-slider-input:disabled { opacity: 0.5; cursor: not-allowed; }
 .volume-slider-input::-webkit-slider-thumb {
     -webkit-appearance: none; appearance: none;
-    width: 14px; height: 14px; /* Чуть больше */
+    width: 14px; height: 14px;
     background: var(--color-secondary, #6D7FC9);
     border-radius: 50%; cursor: pointer;
     box-shadow: 0 0 2px rgba(0,0,0,0.2);
@@ -414,7 +404,6 @@
     box-shadow: 0 0 2px rgba(0,0,0,0.2);
 }
 
-/* Транскрипция - стили из предыдущего ответа должны быть ОК */
 .transcript-section-enhanced { margin-top: 20px; }
 .transcript-toggle-enhanced {
     display: inline-flex; align-items: center; gap: 8px;
@@ -451,32 +440,31 @@
     text-align: center; padding: 10px;
 }
 
-/* Адаптивность плеера */
-@media (max-width: 680px) { /* Точка перелома, когда плеер становится вертикальным */
+@media (max-width: 680px) {
     .custom-audio-player-enhanced {
         flex-direction: column;
-        align-items: stretch; /* Элементы растягиваются по ширине */
-        gap: 12px; /* Промежуток между блоками */
+        align-items: stretch;
+        gap: 12px;
     }
     .play-pause-btn-enhanced {
-        align-self: center; /* Кнопка Play по центру */
+        align-self: center;
         margin-bottom: 5px;
     }
     .timeline-wrapper {
         width: 100%;
-        order: 1; /* Таймлайн после кнопки Play */
+        order: 1;
     }
     .volume-section {
         width: 100%;
-        justify-content: center; /* Центрировать громкость */
-        order: 2; /* Громкость в самом низу */
+        justify-content: center;
+        order: 2;
     }
     .volume-slider-wrapper {
-        flex-grow: 1; /* Слайдер громкости занимает доступное место */
-        max-width: 200px; /* Ограничиваем максимальную ширину */
+        flex-grow: 1;
+        max-width: 200px;
     }
 }
-@media (max-width: 400px) { /* Очень маленькие экраны */
+@media (max-width: 400px) {
     .item-title-enhanced.audio-title { font-size: 1em; }
     .play-pause-btn-enhanced { width: 38px; height: 38px; }
     .play-pause-btn-enhanced :global(svg) { transform: scale(0.9); }

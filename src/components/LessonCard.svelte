@@ -32,7 +32,6 @@
     }
 
     function handleAction() {
-        // TODO: Implement navigation or action for starting/continuing lesson
         console.log(`Action clicked for lesson ${lesson.id}`);
         // Example: navigate(`/lessons/${lesson.id}`);
         dispatch('action', { lessonId: lesson.id });
@@ -41,6 +40,7 @@
 </script>
 
 <div class="lesson-card" style="animation-delay: {animationDelay};" class:admin-view={isAdminView}>
+    <slot name="dragHandle"></slot>
     {#if isAdminView}
         <div class="admin-controls">
             <button class="admin-icon-button edit" on:click|stopPropagation={handleEdit} title="Редактировать">
@@ -106,14 +106,13 @@
         transition: box-shadow 0.3s ease, transform 0.3s ease;
         position: relative;
         border: 1px solid var(--color-border-light, #f0f0f0);
-        /* Animation */
         opacity: 0;
         transform: translateY(20px);
         animation: card-enter 0.5s ease-out forwards;
     }
     .lesson-card:hover {
         box-shadow: var(--color-block-shadow-hover, 0 6px 18px rgba(0,0,0,0.1));
-        transform: translateY(-5px); /* More pronounced hover */
+        transform: translateY(-5px);
     }
 
     .admin-controls {
@@ -129,7 +128,7 @@
         backdrop-filter: blur(2px);
     }
     .admin-icon-button {
-        background: none; border: none; padding: 5px; /* Increased padding */
+        background: none; border: none; padding: 5px;
         cursor: pointer; border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
         color: var(--color-text-muted);
@@ -139,7 +138,7 @@
     .admin-icon-button.delete:hover { background-color: rgba(255, 77, 77, 0.2); color: var(--color-danger-red); }
 
     .card-content {
-        padding: 20px; /* Increased padding */
+        padding: 20px;
         display: flex;
         flex-direction: column;
         flex-grow: 1;
@@ -148,15 +147,15 @@
     .top-section {
         display: flex;
         align-items: flex-start;
-        gap: 15px; /* Increased gap */
-        margin-bottom: 15px; /* Increased margin */
+        gap: 15px;
+        margin-bottom: 15px;
     }
 
     .icon-container {
-        width: 85px; /* Increased size */
-        height: 85px; /* Increased size */
+        width: 85px;
+        height: 85px;
         flex-shrink: 0;
-        border-radius: 12px; /* Slightly larger radius */
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -167,28 +166,29 @@
     .lesson-card:hover .icon-container {
          transform: scale(1.05);
      }
+    .icon-container :global(svg) { color: var(--color-purple-active); }
     .default-icon { color: var(--color-purple-active); }
 
     .info-wrapper {
         flex-grow: 1;
         min-width: 0;
         display: flex;
-        justify-content: space-between; /* Space out title/prog from sections */
-        min-height: 70px; /* Match icon height */
+        justify-content: space-between;
+        min-height: 70px;
     }
 
     .title-progress-group {
         display: flex;
         flex-direction: column;
         gap: 20px;
-        margin-bottom: 8px; /* Space between title/progress and sections count */
+        margin-bottom: 8px;
     }
 
     .title {
-        font-size: 1.5rem; /* Increased size */
+        font-size: 1.5rem;
         font-weight: var(--font-weight-bold, 700);
         color: var(--color-text-dark, #333);
-        margin: 0 0 6px 0; /* Increased margin */
+        margin: 0 0 6px 0;
         line-height: 1.35;
         display: -webkit-box;
         -webkit-line-clamp: 2;
@@ -198,7 +198,7 @@
     }
 
     .progress-text {
-        font-size: 0.9rem; /* Increased size */
+        font-size: 0.9rem;
         color: var(--color-text-muted, #555);
         margin: 0;
         line-height: 1.4;
@@ -208,11 +208,11 @@
         font-size: 0.9rem;
         font-weight: var(--font-weight-medium);
         color: var(--color-text-muted);
-        background-color: #f7f7f7; /* Softer background */
+        background-color: #f7f7f7;
         padding: 5px 10px;
         border-radius: 6px;
         align-self: flex-start;
-        display: inline-flex; /* Keep label and number together */
+        display: inline-flex;
         align-items: baseline;
         gap: 5px;
         border: 1px solid #eee;
@@ -223,24 +223,23 @@
     }
     .section-number {
          font-weight: var(--font-weight-bold);
-         color: var(--color-secondary); /* Use secondary color */
+         color: var(--color-secondary);
          font-size: 1rem;
     }
 
     .progress-bar-container {
-        height: 8px; /* Slightly thicker */
-        background-color: var(--color-border-light, #f0f0f0); /* Lighter background */
+        height: 8px;
+        background-color: var(--color-border-light, #f0f0f0);
         border-radius: 4px;
         overflow: hidden;
-        margin: 20px 0 20px 0; /* Increased bottom margin */
+        margin: 20px 0 20px 0;
     }
 
     .progress-bar {
         height: 100%;
-         /* Updated Vertical Gradient */
-        background: linear-gradient(to bottom, var(--color-soft-blue, #a1c4fd), var(--color-purple-hover, #c2e9fb)); /* Softer vertical gradient */
+        background: linear-gradient(to bottom, var(--color-soft-blue, #a1c4fd), var(--color-purple-hover, #c2e9fb));
         border-radius: 4px;
-        transition: width 0.6s cubic-bezier(0.25, 1, 0.5, 1); /* Smoother transition */
+        transition: width 0.6s cubic-bezier(0.25, 1, 0.5, 1);
     }
 
     .bottom-section {
@@ -250,14 +249,13 @@
 
     .action-button {
         width: 100%;
-        padding: 12px 20px; /* Increased padding */
+        padding: 12px 20px;
         border: none;
         border-radius: var(--spacing-border-radius-button, 20px);
-         /* Updated Vertical Gradient */
         background: linear-gradient(to bottom, rgb(161, 132, 194), rgb(164, 182, 216));
         color: var(--color-text-light, #fff);
         font-weight: var(--font-weight-semi-bold, 600);
-        font-size: 1rem; /* Increased size */
+        font-size: 1rem;
         cursor: pointer;
         transition: all 0.3s ease;
         box-shadow: 0 2px 5px rgba(160, 160, 200, 0.2);

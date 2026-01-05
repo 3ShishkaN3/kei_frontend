@@ -1,9 +1,12 @@
 <script>
-  import { onMount } from 'svelte';
-  import { gsap } from 'gsap';
-  import { ScrollTrigger } from 'gsap/dist/ScrollTrigger';
-  import { API_BASE_URL } from '../config.js';
-  import { apiFetch } from '../api/api.js';
+  import { onMount } from "svelte";
+  import { gsap } from "gsap";
+  import { ScrollTrigger } from "gsap/dist/ScrollTrigger";
+  import { API_BASE_URL } from "../config.js";
+  import { apiFetch } from "../api/api.js";
+  import { user } from "../stores/user.js";
+  import { navigate } from "svelte-routing";
+  import { fetchCsrfToken } from "../api/csrf.js";
 
   gsap.registerPlugin(ScrollTrigger);
 
@@ -12,80 +15,96 @@
   let bannerElement;
   let formElements;
 
-  let username = '';
-  let email = '';
-  let password = '';
-  let password2 = '';
+  let username = "";
+  let email = "";
+  let password = "";
+  let password2 = "";
 
-  let confirmCode = '';
+  let confirmCode = "";
 
-  let registrationError = '';
-  let confirmationError = '';
-  let registrationSuccess = '';
-  let confirmationSuccess = '';
+  let registrationError = "";
+  let confirmationError = "";
+  let registrationSuccess = "";
+  let confirmationSuccess = "";
 
   let isRegistered = false;
 
   let resendCooldown = 0;
   let resendInterval;
 
-  let consultationUsername = '';
-  let consultationEmail = '';
-  let consultationSubject = '';
-  let consultationError = '';
-  let consultationSuccess = '';
+  let consultationUsername = "";
+  let consultationEmail = "";
+  let consultationSubject = "";
+  let consultationError = "";
+  let consultationSuccess = "";
 
   onMount(() => {
-    formElements = gsap.utils.toArray('form input, form button, form h1');
+    formElements = gsap.utils.toArray("form input, form button, form h1");
 
     const registrationTimeline = gsap.timeline({
       scrollTrigger: {
         trigger: registrationContainer,
-        start: 'bottom 97%',
-        end: 'bottom top',
+        start: "bottom 97%",
+        end: "bottom top",
         scrub: 1.5,
         anticipatePin: 1,
       },
     });
 
     registrationTimeline
-      .to(formElements, { opacity: 0, y: -30, stagger: 0.2, duration: 1, ease: 'power2.inOut' })
-      .to(registrationContainer, { opacity: 0, scale: 0.7, duration: 1.2, ease: 'power2.inOut' }, '-=1')
-      .to(bannerElement, { scale: 1.3, rotation: '3deg', duration: 1.5, ease: 'power3.inOut' }, 0);
+      .to(formElements, {
+        opacity: 0,
+        y: -30,
+        stagger: 0.2,
+        duration: 1,
+        ease: "power2.inOut",
+      })
+      .to(
+        registrationContainer,
+        { opacity: 0, scale: 0.7, duration: 1.2, ease: "power2.inOut" },
+        "-=1",
+      )
+      .to(
+        bannerElement,
+        { scale: 1.3, rotation: "3deg", duration: 1.5, ease: "power3.inOut" },
+        0,
+      );
 
     const consultationTimeline = gsap.timeline({
       scrollTrigger: {
         trigger: consultationContainer,
-        start: 'top 85%',
-        end: 'top 50%',
+        start: "top 85%",
+        end: "top 50%",
         scrub: 1.2,
-        toggleActions: 'play none none reverse',
+        toggleActions: "play none none reverse",
       },
     });
 
     consultationTimeline.fromTo(
       consultationContainer,
       { opacity: 0, y: 150, scale: 0.8 },
-      { opacity: 1, y: 0, scale: 1, duration: 1.5, ease: 'power2.out' }
+      { opacity: 1, y: 0, scale: 1, duration: 1.5, ease: "power2.out" },
     );
 
-    gsap.utils.toArray('.parallax-element').forEach((element, index) => {
-      gsap.timeline({
-        scrollTrigger: {
-          trigger: element,
-          start: 'top 90%',
-          end: 'top 75%',
-          scrub: 1.5,
-          toggleActions: 'play none none reverse',
-        },
-      }).fromTo(
-        element,
-        { y: 40 + index * 10, opacity: 0, scale: 1 },
-        { y: 0, opacity: 1, scale: 1, duration: 1.5, ease: 'power2.out' }
-      );
+    gsap.utils.toArray(".parallax-element").forEach((element, index) => {
+      gsap
+        .timeline({
+          scrollTrigger: {
+            trigger: element,
+            start: "top 90%",
+            end: "top 75%",
+            scrub: 1.5,
+            toggleActions: "play none none reverse",
+          },
+        })
+        .fromTo(
+          element,
+          { y: 40 + index * 10, opacity: 0, scale: 1 },
+          { y: 0, opacity: 1, scale: 1, duration: 1.5, ease: "power2.out" },
+        );
     });
 
-    const storedEmail = localStorage.getItem('registrationEmail');
+    const storedEmail = localStorage.getItem("registrationEmail");
     if (storedEmail) {
       email = storedEmail;
       isRegistered = true;
@@ -94,90 +113,97 @@
 
   async function handleRegistrationSubmit(event) {
     event.preventDefault();
-    registrationError = '';
-    registrationSuccess = '';
+    registrationError = "";
+    registrationSuccess = "";
 
     const registrationData = {
       username: username,
       email: email,
       password: password,
-      password2: password2
+      password2: password2,
     };
 
     try {
       const response = await apiFetch(`${API_BASE_URL}/auth/register/`, {
-        method: 'POST',
-        body: JSON.stringify(registrationData)
+        method: "POST",
+        body: JSON.stringify(registrationData),
       });
       const data = await response.json();
 
       if (response.ok) {
         registrationSuccess = data.message;
         isRegistered = true;
-        localStorage.setItem('registrationEmail', email);
+        localStorage.setItem("registrationEmail", email);
       } else {
         registrationError = parseErrors(data);
       }
     } catch (err) {
-      registrationError = 'Ошибка соединения';
+      registrationError = "Ошибка соединения";
       console.error(err);
     }
   }
 
   async function handleConfirmSubmit(event) {
     event.preventDefault();
-    confirmationError = '';
-    confirmationSuccess = '';
+    confirmationError = "";
+    confirmationSuccess = "";
 
-    const storedEmail = localStorage.getItem('registrationEmail') || email;
+    const storedEmail = localStorage.getItem("registrationEmail") || email;
     const confirmData = {
       email: storedEmail,
-      code: confirmCode
+      code: confirmCode,
     };
 
     try {
-      const response = await apiFetch(`${API_BASE_URL}/auth/register/confirm/`, {
-        method: 'POST',
-        body: JSON.stringify(confirmData)
-      });
+      const response = await apiFetch(
+        `${API_BASE_URL}/auth/register/confirm/`,
+        {
+          method: "POST",
+          body: JSON.stringify(confirmData),
+        },
+      );
       const data = await response.json();
 
       if (response.ok) {
         confirmationSuccess = data.message;
-        localStorage.removeItem('registrationEmail');
+        localStorage.removeItem("registrationEmail");
+
+        await fetchCsrfToken();
+        user.set({ isAuthenticated: true });
+        navigate("/");
       } else {
         confirmationError = parseErrors(data);
       }
     } catch (err) {
-      confirmationError = 'Ошибка соединения';
+      confirmationError = "Ошибка соединения";
       console.error(err);
     }
   }
 
   async function resendConfirmationCode() {
-    confirmationError = '';
-    confirmationSuccess = '';
+    confirmationError = "";
+    confirmationSuccess = "";
 
     if (resendCooldown > 0) return;
 
-    const storedEmail = localStorage.getItem('registrationEmail') || email;
+    const storedEmail = localStorage.getItem("registrationEmail") || email;
     const resendData = { email: storedEmail };
 
     try {
       const response = await apiFetch(`${API_BASE_URL}/auth/register/resend/`, {
-        method: 'POST',
-        body: JSON.stringify(resendData)
+        method: "POST",
+        body: JSON.stringify(resendData),
       });
       const data = await response.json();
 
       if (response.ok) {
-        confirmationSuccess = data.message || 'Код выслан повторно.';
+        confirmationSuccess = data.message || "Код выслан повторно.";
         startResendCooldown();
       } else {
         confirmationError = parseErrors(data);
       }
     } catch (err) {
-      confirmationError = 'Ошибка соединения';
+      confirmationError = "Ошибка соединения";
       console.error(err);
     }
   }
@@ -195,62 +221,220 @@
 
   function returnToRegistration() {
     isRegistered = false;
-    registrationError = '';
-    confirmationError = '';
-    confirmationSuccess = '';
-    confirmCode = '';
-    localStorage.removeItem('registrationEmail');
+    registrationError = "";
+    confirmationError = "";
+    confirmationSuccess = "";
+    confirmCode = "";
+    localStorage.removeItem("registrationEmail");
   }
 
   function parseErrors(errors) {
-    let errorText = '';
+    let errorText = "";
     for (const key in errors) {
       if (errors.hasOwnProperty(key)) {
-        errorText += errors[key].join(' ') + ' ';
+        errorText += errors[key].join(" ") + " ";
       }
     }
     return errorText.trim();
   }
 
-    async function handleConsultationSubmit(event) {
+  async function handleConsultationSubmit(event) {
     event.preventDefault();
-    consultationError = '';
-    consultationSuccess = '';
+    consultationError = "";
+    consultationSuccess = "";
 
     const consultationData = {
       username: consultationUsername,
       email: consultationEmail,
-      subject: consultationSubject
+      subject: consultationSubject,
     };
 
     try {
-      const response = await apiFetch(`${API_BASE_URL}/telegram/consultation/`, {
-        method: 'POST',
-        body: JSON.stringify(consultationData)
-      });
+      const response = await apiFetch(
+        `${API_BASE_URL}/telegram/consultation/`,
+        {
+          method: "POST",
+          body: JSON.stringify(consultationData),
+        },
+      );
       const data = await response.json();
 
       if (response.ok) {
-        consultationSuccess = data.message || 'Запрос успешно отправлен.';
-        consultationUsername = '';
-        consultationEmail = '';
-        consultationSubject = '';
+        consultationSuccess = data.message || "Запрос успешно отправлен.";
+        consultationUsername = "";
+        consultationEmail = "";
+        consultationSubject = "";
       } else {
         consultationError = parseErrors(data);
       }
     } catch (err) {
-      consultationError = 'Ошибка соединения';
+      consultationError = "Ошибка соединения";
       console.error(err);
     }
   }
 </script>
 
+<svelte:head>
+  <title>Регистрация — Kei</title>
+  <meta name="og:title" content="Регистрация — Kei" />
+  <meta name="twitter:title" content="Регистрация — Kei" />
+  <meta
+    name="description"
+    content="Создайте аккаунт на платформе Kei для доступа к курсам."
+  />
+</svelte:head>
+
+<div class="registration-container" bind:this={registrationContainer}>
+  <div class="form-container">
+    <h1 class="parallax-element">Добро пожаловать!</h1>
+
+    {#if !isRegistered}
+      <form on:submit={handleRegistrationSubmit}>
+        <input
+          type="text"
+          placeholder="Как вас называть?"
+          bind:value={username}
+          required
+        />
+        <input
+          type="email"
+          placeholder="Электронная почта"
+          bind:value={email}
+          required
+        />
+        <input
+          type="password"
+          placeholder="Пароль"
+          bind:value={password}
+          required
+        />
+        <input
+          type="password"
+          placeholder="Подтвердить пароль"
+          bind:value={password2}
+          required
+        />
+        <button type="submit" class="confirm-email-button"
+          >Зарегистрироваться</button
+        >
+      </form>
+      {#if registrationError}
+        <div class="error">{registrationError}</div>
+      {/if}
+      {#if registrationSuccess}
+        <div class="success">{registrationSuccess}</div>
+      {/if}
+    {:else}
+      <div class="confirmation-container">
+        <p>
+          Введите код подтверждения, отправленный на {localStorage.getItem(
+            "registrationEmail",
+          ) || email}
+        </p>
+        <form on:submit={handleConfirmSubmit}>
+          <input
+            type="text"
+            placeholder="Код подтверждения"
+            bind:value={confirmCode}
+            required
+          />
+          <button type="submit" class="confirm-email-button"
+            >Подтвердить email</button
+          >
+        </form>
+        <div class="confirmation-links">
+          <a
+            href="#"
+            on:click|preventDefault={resendConfirmationCode}
+            class="resend-link"
+            class:disabled={resendCooldown > 0}
+          >
+            {#if resendCooldown > 0}
+              Повторно выслать код ({resendCooldown})
+            {:else}
+              Выслать код повторно
+            {/if}
+          </a>
+          <a
+            href="#"
+            on:click|preventDefault={returnToRegistration}
+            class="back-link"
+          >
+            Вернуться к регистрации
+          </a>
+        </div>
+        {#if confirmationError}
+          <div class="error">{confirmationError}</div>
+        {/if}
+        {#if confirmationSuccess}
+          <div class="success">{confirmationSuccess}</div>
+        {/if}
+      </div>
+    {/if}
+
+    <div class="contact-text">СВЯЗЬ С ПРЕПОДАВАТЕЛЕМ</div>
+    <div class="contact-buttons">
+      <button
+        class="telegram-button"
+        on:click={() => window.open("https://t.me/keisenpai", "_blank")}
+      >
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M21.5,2.5c-0.2,0-0.4,0.1-0.5,0.2l-18,8c-0.3,0.1-0.3,0.6,0,0.7l4.3,1.8l1.7,5.1c0.1,0.3,0.5,0.4,0.7,0.2l2.5-2.2l4.2,3.1c0.3,0.2,0.7,0.1,0.8-0.3l2.5-9C22,2.8,21.8,2.5,21.5,2.5z M9.8,13.2L9,12l7.4-3.7L9.8,13.2z"
+          />
+        </svg>
+        TELEGRAM
+      </button>
+    </div>
+  </div>
+  <div class="banner parallax-element"></div>
+</div>
+
+<div class="consultation-container" bind:this={consultationContainer}>
+  <h1 class="parallax-element">Бесплатная консультация</h1>
+  <div class="consultation-text parallax-element">
+    Отправьте заявку или напишите нам в Telegram:
+    <a href="https://t.me/KeiSenpai" target="_blank">@KeiSenpai</a>
+  </div>
+  <div class="consultation-form">
+    <div class="consultation-inputs parallax-element">
+      <input
+        type="text"
+        placeholder="Имя"
+        bind:value={consultationUsername}
+        required
+      />
+      <input
+        type="email"
+        placeholder="Почта"
+        bind:value={consultationEmail}
+        required
+      />
+      <input
+        type="text"
+        placeholder="Тема"
+        bind:value={consultationSubject}
+        required
+      />
+    </div>
+    <button
+      class="consultation-button parallax-element"
+      on:click={handleConsultationSubmit}>Отправить заявку</button
+    >
+    {#if consultationError}
+      <div class="error">{consultationError}</div>
+    {/if}
+    {#if consultationSuccess}
+      <div class="success">{consultationSuccess}</div>
+    {/if}
+  </div>
+</div>
 
 <style>
-    .consultation-container {
-        will-change: transform, opacity;
-        transition: all 0.5s ease;
-    }
+  .consultation-container {
+    will-change: transform, opacity;
+    transition: all 0.5s ease;
+  }
 
   @keyframes fadeInUp {
     0% {
@@ -263,21 +447,32 @@
     }
   }
   @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.03); }
-    100% { transform: scale(1); }
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.03);
+    }
+    100% {
+      transform: scale(1);
+    }
   }
 
   @keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); }
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-3px);
+    }
   }
 
   .registration-container {
     display: flex;
     width: 100%;
     overflow: hidden;
-    background-color: #F8F9FB;
+    background-color: #f8f9fb;
     min-height: 100vh;
   }
   .form-container {
@@ -317,7 +512,7 @@
     animation: fadeInUp 0.8s ease-out both;
   }
   form input:focus {
-    box-shadow: 0 0 10px #A8A1F5;
+    box-shadow: 0 0 10px #a8a1f5;
     outline: none;
   }
   .confirm-email-button {
@@ -325,8 +520,8 @@
     padding: 25px 15px;
     border: none;
     border-radius: 20px;
-    background-image: linear-gradient(to bottom, #C2B6FC, #EBC7F2);
-    color: #FFF;
+    background-image: linear-gradient(to bottom, #c2b6fc, #ebc7f2);
+    color: #fff;
     font-size: 22px;
     font-weight: 400;
     cursor: pointer;
@@ -336,7 +531,7 @@
     animation: pulse 2s infinite;
   }
   .confirm-email-button:hover {
-    background-image: linear-gradient(to bottom, #D8A8E8, #A8A1F5);
+    background-image: linear-gradient(to bottom, #d8a8e8, #a8a1f5);
     transform: scale(1.05);
   }
   .confirm-email-button:active {
@@ -345,7 +540,7 @@
   .contact-text {
     margin-top: 40px;
     font-weight: bold;
-    color: #BDB4FE;
+    color: #bdb4fe;
     text-transform: uppercase;
     font-size: 20px;
     text-align: center;
@@ -361,7 +556,7 @@
     gap: 12px;
     padding: 15px 30px;
     background: #333;
-    color: #FFF;
+    color: #fff;
     border: none;
     border-radius: 12px;
     cursor: pointer;
@@ -391,7 +586,7 @@
   }
   .banner {
     width: 57%;
-    background: url('/banner.jpg') no-repeat right center;
+    background: url("/banner.jpg") no-repeat right center;
     background-size: cover;
     transition: transform 1.5s ease;
   }
@@ -450,12 +645,12 @@
     margin-bottom: 20px;
   }
   .consultation-text a {
-    color: #BDB4FE;
+    color: #bdb4fe;
     text-decoration: none;
     font-weight: bold;
   }
   .consultation-text a:hover {
-    color: #9E94F5;
+    color: #9e94f5;
   }
   .consultation-form {
     width: 100%;
@@ -480,15 +675,15 @@
     transition: all 0.3s ease;
   }
   .consultation-inputs input:focus {
-    box-shadow: 0 0 10px #A8A1F5;
+    box-shadow: 0 0 10px #a8a1f5;
     outline: none;
   }
   .consultation-button {
     padding: 18px 25px;
     border: none;
     border-radius: 20px;
-    background-image: linear-gradient(to bottom, #C2B6FC, #EBC7F2);
-    color: #FFF;
+    background-image: linear-gradient(to bottom, #c2b6fc, #ebc7f2);
+    color: #fff;
     font-size: 20px;
     font-weight: 400;
     cursor: pointer;
@@ -497,7 +692,7 @@
     width: 100%;
   }
   .consultation-button:hover {
-    background-image: linear-gradient(to bottom, #D8A8E8, #A8A1F5);
+    background-image: linear-gradient(to bottom, #d8a8e8, #a8a1f5);
     transform: scale(1.05);
   }
   .consultation-button:active {
@@ -513,114 +708,28 @@
     }
   }
 
-    .confirmation-links {
+  .confirmation-links {
     display: flex;
     justify-content: space-between;
     width: 100%;
     font-size: 16px;
-    color: #BDB4FE;
+    color: #bdb4fe;
     margin-top: 10px;
   }
-  
+
   .confirmation-links a {
     text-decoration: none;
     color: inherit;
     transition: all 0.3s ease;
   }
-  
+
   .confirmation-links a:hover {
-    color: #8F7EE3;
+    color: #8f7ee3;
     opacity: 0.8;
   }
-  
+
   .confirmation-links a.disabled {
     opacity: 0.5;
     pointer-events: none;
   }
 </style>
-
-<div class="registration-container" bind:this={registrationContainer}>
-  <div class="form-container">
-    <h1 class="parallax-element">Добро пожаловать!</h1>
-
-    {#if !isRegistered}
-      <!-- Форма регистрации -->
-      <form on:submit={handleRegistrationSubmit}>
-        <input type="text" placeholder="Как вас называть?" bind:value={username} required />
-        <input type="email" placeholder="Электронная почта" bind:value={email} required />
-        <input type="password" placeholder="Пароль" bind:value={password} required />
-        <input type="password" placeholder="Подтвердить пароль" bind:value={password2} required />
-        <button type="submit" class="confirm-email-button">Зарегистрироваться</button>
-      </form>
-      {#if registrationError}
-        <div class="error">{registrationError}</div>
-      {/if}
-      {#if registrationSuccess}
-        <div class="success">{registrationSuccess}</div>
-      {/if}
-    {:else}
-      <!-- Форма подтверждения email -->
-      <div class="confirmation-container">
-        <p>
-          Введите код подтверждения, отправленный на {localStorage.getItem('registrationEmail') || email}
-        </p>
-        <form on:submit={handleConfirmSubmit}>
-          <input type="text" placeholder="Код подтверждения" bind:value={confirmCode} required />
-          <button type="submit" class="confirm-email-button">Подтвердить email</button>
-        </form>
-        <div class="confirmation-links">
-          <a href="#" on:click|preventDefault={resendConfirmationCode} class="resend-link" class:disabled={resendCooldown > 0}>
-            {#if resendCooldown > 0}
-              Повторно выслать код ({resendCooldown})
-            {:else}
-              Выслать код повторно
-            {/if}
-          </a>
-          <a href="#" on:click|preventDefault={returnToRegistration} class="back-link">
-            Вернуться к регистрации
-          </a>
-        </div>
-        {#if confirmationError}
-          <div class="error">{confirmationError}</div>
-        {/if}
-        {#if confirmationSuccess}
-          <div class="success">{confirmationSuccess}</div>
-        {/if}
-      </div>
-    {/if}
-
-    <div class="contact-text">СВЯЗЬ С ПРЕПОДАВАТЕЛЕМ</div>
-    <div class="contact-buttons">
-      <button class="telegram-button" on:click={() => window.open('https://t.me/keisenpai', '_blank')}>
-        <svg viewBox="0 0 24 24">
-          <path d="M21.5,2.5c-0.2,0-0.4,0.1-0.5,0.2l-18,8c-0.3,0.1-0.3,0.6,0,0.7l4.3,1.8l1.7,5.1c0.1,0.3,0.5,0.4,0.7,0.2l2.5-2.2l4.2,3.1c0.3,0.2,0.7,0.1,0.8-0.3l2.5-9C22,2.8,21.8,2.5,21.5,2.5z M9.8,13.2L9,12l7.4-3.7L9.8,13.2z"/>
-        </svg>
-        TELEGRAM
-      </button>
-    </div>
-  </div>
-  <div class="banner parallax-element"></div>
-</div>
-
-
-<div class="consultation-container" bind:this={consultationContainer}>
-  <h1 class="parallax-element">Бесплатная консультация</h1>
-  <div class="consultation-text parallax-element">
-    Отправьте заявку или напишите нам в Telegram:
-    <a href="https://t.me/KeiSenpai" target="_blank">@KeiSenpai</a>
-  </div>
-  <div class="consultation-form">
-    <div class="consultation-inputs parallax-element">
-      <input type="text" placeholder="Имя" bind:value={consultationUsername} required />
-      <input type="email" placeholder="Почта" bind:value={consultationEmail} required />
-      <input type="text" placeholder="Тема" bind:value={consultationSubject} required />
-    </div>
-    <button class="consultation-button parallax-element" on:click={handleConsultationSubmit}>Отправить заявку</button>
-    {#if consultationError}
-      <div class="error">{consultationError}</div>
-    {/if}
-    {#if consultationSuccess}
-      <div class="success">{consultationSuccess}</div>
-    {/if}
-  </div>
-</div>

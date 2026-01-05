@@ -24,17 +24,24 @@ export async function apiFetch(url, options = {}) {
     if (!(fetchOptions.body instanceof FormData)) {
         fetchOptions.headers['Content-Type'] = 'application/json';
         if (typeof fetchOptions.body === 'object' && fetchOptions.body !== null) {
-             try {
-                 fetchOptions.body = JSON.stringify(fetchOptions.body);
-             } catch (e) {
-                 console.error("Ошибка при преобразовании тела запроса в JSON:", e);
-                 return Promise.reject(new Error("Invalid request body"));
-             }
+            try {
+                fetchOptions.body = JSON.stringify(fetchOptions.body);
+            } catch (e) {
+                console.error("Ошибка при преобразовании тела запроса в JSON:", e);
+                return Promise.reject(new Error("Invalid request body"));
+            }
         }
     } else {
-
         delete fetchOptions.headers['Content-Type'];
     }
 
     return fetch(url, fetchOptions);
 }
+
+export const api = {
+    get: (url, options) => apiFetch(url, { ...options, method: 'GET' }),
+    post: (url, body, options) => apiFetch(url, { ...options, method: 'POST', body }),
+    put: (url, body, options) => apiFetch(url, { ...options, method: 'PUT', body }),
+    delete: (url, options) => apiFetch(url, { ...options, method: 'DELETE' }),
+    patch: (url, body, options) => apiFetch(url, { ...options, method: 'PATCH', body }),
+};
