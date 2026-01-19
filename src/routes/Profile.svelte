@@ -1321,7 +1321,7 @@ textarea {
 
   <section class="block">
     <h2>Настройки</h2>
-    <div class="settings-item">
+    <!-- <div class="settings-item">
       <label class="switch-label" for="darkModeToggle">
         <input
           id="darkModeToggle"
@@ -1332,7 +1332,7 @@ textarea {
         <span class="switch-slider"></span>
         Тёмная/Светлая тема
       </label>
-    </div>
+    </div> -->
     <div class="settings-item">
       <label class="switch-label" for="showAnswersToggle">
         <input

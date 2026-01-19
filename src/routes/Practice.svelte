@@ -638,11 +638,12 @@
     .view-mode-toggle {
         display: flex;
         justify-content: center;
+        align-items: center;
         margin-bottom: 2rem;
         background: rgba(255, 255, 255, 0.8);
         backdrop-filter: blur(10px);
         border-radius: var(--spacing-border-radius-large, 16px);
-        padding: 8px;
+        padding: 6px; 
         border: 1px solid rgba(194, 182, 252, 0.3);
         width: fit-content;
         margin-left: auto;
@@ -660,9 +661,12 @@
         border-radius: var(--spacing-border-radius-button);
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 0.5rem;
         color: var(--color-text-muted);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        line-height: 1;
+        margin: 0;
     }
 
     .view-mode-toggle button.active {

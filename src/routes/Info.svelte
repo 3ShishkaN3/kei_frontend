@@ -1,4 +1,3 @@
-
 <script>
   import { onMount } from 'svelte';
   import gsap from 'gsap';
@@ -11,15 +10,10 @@
 
   onMount(() => {
     createDecorativeElements();
-    
     animateHeadings();
-    
     animateAboutSection();
-    
     animateInfoBlocks();
-    
     animateJapaneseText();
-    
     animateDisclaimer();
   });
 
@@ -244,15 +238,17 @@
         );
       }
       
-      const button = block.querySelector('.telegram-button');
-      if (button) {
+      // Анимация кнопок контактов (обновлено для поддержки нескольких кнопок)
+      const buttons = block.querySelectorAll('.contact-button');
+      if (buttons.length > 0) {
         gsap.fromTo(
-          button,
+          buttons,
           { opacity: 0, y: 20 },
           {
             opacity: 1,
             y: 0,
             duration: 0.8,
+            stagger: 0.15, // Кнопки будут появляться по очереди
             delay: 0.5 + i * 0.2,
             ease: "back.out(1.7)",
             scrollTrigger: {
@@ -262,13 +258,18 @@
           }
         );
         
-        gsap.to(button, {
-          boxShadow: '0 0 0 0 rgba(0, 136, 204, 0.4)',
-          repeat: -1,
-          duration: 2,
-          ease: "none",
-          yoyo: true,
-          delay: 2
+        // Пульсация только для телеграм кнопок, чтобы не перегружать
+        buttons.forEach(btn => {
+           if(btn.classList.contains('btn-telegram')) {
+             gsap.to(btn, {
+                boxShadow: '0 0 0 0 rgba(0, 136, 204, 0.4)',
+                repeat: -1,
+                duration: 2,
+                ease: "none",
+                yoyo: true,
+                delay: 2
+             });
+           }
         });
       }
     });
@@ -300,7 +301,6 @@
   }
 
   function animateDisclaimer() {
-    // Анимация для дисклеймера
     gsap.fromTo(
       '.disclaimer',
       { opacity: 0, y: 10 },
@@ -444,7 +444,7 @@ h2 {
 
 .simple-block {
     height: auto;
-    min-height: 350px; 
+    /* min-height: 350px;  */
     border-radius: var(--spacing-border-radius-block);
     background-color: var(--color-bg-light);
     box-shadow: var(--color-shadow);
@@ -467,7 +467,7 @@ h2 {
     font-weight: var(--font-weight-extra-bold);
     font-size: clamp(1.2rem, 3vw, 1.5rem); 
     text-align: center;
-    margin: 1rem 0 1.5rem; 
+    margin: 1rem 0 0.5rem; /* Уменьшен нижний отступ, было 1.5rem */
     position: relative;
     padding-bottom: 0.5rem; 
 }
@@ -515,31 +515,52 @@ h2 {
     margin: 1rem 0 2rem; 
 }
 
-.telegram-button {
-    margin-top: var(--spacing-margin-top-large);
+/* Контейнер для кнопок */
+.contact-buttons-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    align-items: center;
+    padding-bottom: 1rem;
+}
+
+/* Общий стиль для кнопок контактов */
+.contact-button {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--spacing-gap-telegram-button);
-    padding: var(--spacing-padding-telegram-button);
-    background: linear-gradient(to right, var(--color-telegram-gradient-start), var(--color-telegram-gradient-end));
-    color: var(--color-telegram-text);
+    padding: 12px 24px;
     border: none;
     border-radius: 12px; 
     cursor: pointer;
-    font-size: clamp(0.9rem, 2vw, 1.1rem); 
+    font-size: clamp(0.9rem, 1.5vw, 1rem); 
     font-weight: var(--font-weight-semi-bold);
     transition: all var(--animation-duration-transition) ease;
-    width: 80%; 
-    max-width: 250px; 
+    width: 85%; 
+    max-width: 300px; 
     box-shadow: 0 4px 6px var(--color-shadow); 
     position: relative;
     overflow: hidden;
     opacity: 0;
     transform: translateY(20px);
+    color: #fff;
 }
 
-.telegram-button:before {
+/* Стили для Telegram кнопок */
+.btn-telegram {
+    background: linear-gradient(to right, var(--color-telegram-gradient-start), var(--color-telegram-gradient-end));
+    color: var(--color-telegram-text);
+}
+
+/* Стили для Gmail кнопки (красный) */
+.btn-email {
+    background: linear-gradient(to right, #ff8a8a, var(--color-danger-red));
+    color: white;
+}
+
+.contact-button:before {
     content: "";
     position: absolute;
     top: 0;
@@ -550,31 +571,37 @@ h2 {
     transition: 0.5s; 
 }
 
-.telegram-button:hover:before {
+.contact-button:hover:before {
     left: 100%;
 }
 
-.telegram-button:hover {
+.contact-button:hover {
     transform: translateY(-5px); 
     box-shadow: 0 8px 15px var(--color-shadow-hover); 
 }
 
-.telegram-button:active {
+.contact-button:active {
     transform: translateY(1px); 
     box-shadow: 0 2px 3px var(--color-shadow); 
 }
 
-.telegram-button svg {
+.contact-button svg {
     width: 24px; 
     height: 24px; 
-    fill: var(--color-bg-light);
-    background: var(--color-telegram);
+    fill: currentColor;
     border-radius: var(--spacing-border-radius-dot);
-    padding: 5px; 
+    padding: 0; 
     transition: transform var(--animation-duration-transition) ease;
 }
 
-.telegram-button:hover svg {
+/* Специфика иконки телеграм */
+.btn-telegram svg {
+    fill: var(--color-bg-light);
+    background: var(--color-telegram);
+    padding: 4px;
+}
+
+.contact-button:hover svg {
     animation: bounce 0.6s ease-in-out infinite; 
 }
 
@@ -593,30 +620,6 @@ h2 {
     }
     50% {
         transform: translateY(-10px);
-    }
-}
-
-@keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(111, 66, 193, 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 15px rgba(111, 66, 193, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(111, 66, 193, 0);
-    }
-}
-
-@keyframes gradientMove {
-    0% {
-        background-position: 0% 50%;
-    }
-    50% {
-        background-position: 100% 50%;
-    }
-    100% {
-        background-position: 0% 50%;
     }
 }
 
@@ -683,7 +686,7 @@ h2 {
         padding: 1.2rem;
     }
 
-    .telegram-button {
+    .contact-button {
         width: 100%;
     }
 }
@@ -706,23 +709,48 @@ h2 {
     <h1>Информация</h1>
     <div class="info">
         <div class="simple-block">
-            <h6>Факты о преподавателе</h6>
+            <!-- Отступ снизу уменьшен в CSS -->
+            <h6>Факты о преподавателе</h6> 
             <ul>
                 <li>Закончила Ростовский Государственный Экономический Университет в 2023 году по специальности «Зарубежное регионоведение» (Восточная Азия)</li>
                 <li>Опыт преподавания более 5 лет, начиная с 2018 года</li>
-                <li>На данный момент проживает в Японии</li>
+                <!-- Пункт про проживание в Японии удален -->
                 <li>Прошла стажировку в г. Кофу (преф. Яманаси)</li>
             </ul>
         </div>
 
         <div class="simple-block">
-            <h2> <Cog size="20px" /> Связь с преподавателем</h2>
-            <button class="telegram-button" on:click={() => window.open('https://t.me/keisenpai', '_blank')}>
-                <svg viewBox="0 0 24 24">
-                    <path d="M21.5,2.5c-0.2,0-0.4,0.1-0.5,0.2l-18,8c-0.3,0.1-0.3,0.6,0,0.7l4.3,1.8l1.7,5.1c0.1,0.3,0.5,0.4,0.7,0.2l2.5-2.2l4.2,3.1c0.3,0.2,0.7,0.1,0.8-0.3l2.5-9C22,2.8,21.8,2.5,21.5,2.5z M9.8,13.2L9,12l7.4-3.7L9.8,13.2z"/>
-                </svg>
-                TELEGRAM
-            </button>
+            <!-- Заголовок изменен на Контакты -->
+            <h2> <Cog size="20px" /> Контакты</h2>
+            
+            <div class="contact-buttons-container">
+                <!-- 1. Telegram Группа -->
+                <button class="contact-button btn-telegram" on:click={() => window.open('https://t.me/keisenpai', '_blank')}>
+                    <svg viewBox="0 0 24 24">
+                        <path d="M21.5,2.5c-0.2,0-0.4,0.1-0.5,0.2l-18,8c-0.3,0.1-0.3,0.6,0,0.7l4.3,1.8l1.7,5.1c0.1,0.3,0.5,0.4,0.7,0.2l2.5-2.2l4.2,3.1c0.3,0.2,0.7,0.1,0.8-0.3l2.5-9C22,2.8,21.8,2.5,21.5,2.5z M9.8,13.2L9,12l7.4-3.7L9.8,13.2z"/>
+                    </svg>
+                    TELEGRAM (ГРУППА)
+                </button>
+
+                <!-- 2. Telegram Личный -->
+                <!-- ВСТАВЬТЕ СЮДА ВАШУ ЛИЧНУЮ ССЫЛКУ -->
+                <button class="contact-button btn-telegram" on:click={() => window.open('https://t.me/ВАШ_ЮЗЕРНЕЙМ', '_blank')}>
+                    <svg viewBox="0 0 24 24">
+                        <path d="M21.5,2.5c-0.2,0-0.4,0.1-0.5,0.2l-18,8c-0.3,0.1-0.3,0.6,0,0.7l4.3,1.8l1.7,5.1c0.1,0.3,0.5,0.4,0.7,0.2l2.5-2.2l4.2,3.1c0.3,0.2,0.7,0.1,0.8-0.3l2.5-9C22,2.8,21.8,2.5,21.5,2.5z M9.8,13.2L9,12l7.4-3.7L9.8,13.2z"/>
+                    </svg>
+                    TELEGRAM (ЛИЧНЫЙ)
+                </button>
+
+                <!-- 3. Gmail Почта -->
+                <!-- ВСТАВЬТЕ СЮДА ВАШУ ПОЧТУ (mailto:) -->
+                <button class="contact-button btn-email" on:click={() => window.location.href = 'mailto:your.email@gmail.com'}>
+                    <svg viewBox="0 0 24 24">
+                        <path d="M20,4H4C2.9,4,2,4.9,2,6v12c0,1.1,0.9,2,2,2h16c1.1,0,2-0.9,2-2V6C22,4.9,21.1,4,20,4z M20,8l-8,5L4,8V6l8,5l8-5V8z"/>
+                    </svg>
+                    GMAIL ПОЧТА
+                </button>
+            </div>
+
         </div>
     </div>
     <p class="disclaimer">Информация, размещённая на сайте, не является публичной офертой</p>

@@ -6,6 +6,7 @@
   import { apiFetch } from "../api/api.js";
   import { csrfToken } from "../api/csrf.js";
   import { avatar } from "../stores/avatar.js";
+  import NotificationBell from "./NotificationBell.svelte";
 
   let mobileMenuOpen = false;
   let isAuthenticated = false;
@@ -102,7 +103,9 @@
   <div class="nav-buttons">
     {#if isAuthenticated}
       <div class="navigation-buttons">
-        <button class="simple-button" on:click={handleLessons}>Уроки</button>
+        <button class="simple-button" on:click={handleLessons}
+          >Образование</button
+        >
         <button class="simple-button" on:click={handleBonuses}>Бонусы</button>
         <button class="simple-button" on:click={handleSettings}
           >Настройки</button
@@ -112,7 +115,9 @@
       <div class="divider"></div>
 
       <div class="user-controls">
-        <button class="simple-button" on:click={handleInfo}>Информация</button>
+        <NotificationBell />
+        <button class="simple-button" on:click={handleInfo}>Блог</button>
+        <button class="simple-button" on:click={handleInfo}>О нас</button>
         <div
           class="avatar-container"
           on:click={handleProfile}
@@ -458,9 +463,7 @@
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
-    padding: var(
-      --spacing-mobile-menu-padding
-    );
+    padding: var(--spacing-mobile-menu-padding);
   }
 
   .navigation-buttons {

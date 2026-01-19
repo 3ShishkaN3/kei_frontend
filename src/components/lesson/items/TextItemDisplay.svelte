@@ -15,7 +15,7 @@
       }
       const tempDiv = document.createElement('div');
       tempDiv.textContent = rawHtml;
-      return tempDiv.innerHTML.replace(/\n/g, '<br>');
+      return tempDiv.innerHTML;
     }
     
     $: safeHtmlContent = sanitizeHtmlForDisplay(htmlContent, contentDetails?.is_markdown);

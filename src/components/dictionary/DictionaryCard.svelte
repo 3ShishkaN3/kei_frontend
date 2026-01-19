@@ -236,7 +236,7 @@
         min-width: 0;
         position: relative;
         z-index: 1;
-        padding-top: 60px;
+        /* padding-top: 60px; */
         padding-left: 60px;
         padding-right: 60px;
     }
@@ -556,7 +556,7 @@
         }
 
         .main-content {
-            padding-top: 55px;
+            /* padding-top: 55px; */
             padding-left: 55px;
             padding-right: 55px;
         }
@@ -599,7 +599,7 @@
             width: 100%;
             min-width: 0;
             overflow-wrap: break-word;
-            padding-top: 50px;
+            /* padding-top: 50px; */
             padding-left: 50px;
             padding-right: 50px;
         }
