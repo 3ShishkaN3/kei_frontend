@@ -21,6 +21,7 @@
     import { gsap } from "gsap";
     import { ScrollTrigger } from "gsap/dist/ScrollTrigger";
     import { checkAuthStatus, user } from "./stores/user.js";
+    import { subscribeToPush } from "./lib/webpush.js";
 
     gsap.registerPlugin(ScrollTrigger);
 
@@ -33,6 +34,9 @@
     user.subscribe((value) => {
         isAuthenticated = value.isAuthenticated;
         userRole = value.role;
+        if (isAuthenticated) {
+            subscribeToPush();
+        }
     });
 </script>
 

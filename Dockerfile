@@ -27,18 +27,16 @@ FROM node:18-slim as production
 
 WORKDIR /app
 
-COPY package*.json ./
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+COPY --chown=appuser:appuser package*.json ./
 
 RUN npm ci --only=production --legacy-peer-deps
 
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/rollup.config.js ./rollup.config.js
-
-RUN groupadd -r appuser && useradd -r -g appuser appuser && \
-    chown -R appuser:appuser /app
+COPY --from=builder --chown=appuser:appuser /app/public ./public
+COPY --from=builder --chown=appuser:appuser /app/rollup.config.js ./rollup.config.js
 
 USER appuser
 
 EXPOSE 5000
-
 CMD ["npx", "sirv", "public", "--single", "--port", "5000", "--host", "0.0.0.0"]

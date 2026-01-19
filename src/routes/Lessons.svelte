@@ -183,18 +183,22 @@
     }
 
     async function fetchLessonsInternal(clearProgress = false) {
-        if (clearProgress) {
-            lessonProgress = new Map();
-        }
+        if (clearProgress) lessonProgress = new Map();
+
         const effectivePage = isAdminView ? 1 : currentPage;
         const effectivePageSize = isAdminView ? ADMIN_LESSON_FETCH_LIMIT : pageSize;
-        const url = new URL(`${API_BASE_URL}/courses/${courseId}/lessons/`);
-        url.searchParams.append('page', effectivePage); 
-        url.searchParams.append('page_size', effectivePageSize);
-        if (searchTerm) url.searchParams.append('search', searchTerm);
+
+        let url = `${API_BASE_URL}/courses/${courseId}/lessons/`;
+        
+        const params = new URLSearchParams();
+        params.append('page', effectivePage);
+        params.append('page_size', effectivePageSize);
+        if (searchTerm) params.append('search', searchTerm);
+        
+        url += `?${params.toString()}`;
 
         try {
-            const response = await apiFetch(url.toString());
+            const response = await apiFetch(url);
             if (!response.ok) throw new Error(`Ошибка загрузки уроков: ${response.statusText || response.status}`);
             const data = await response.json(); 
             lessons = data.results || []; 
@@ -530,11 +534,9 @@
                     on:finalize={handleLessonsDndFinalize}
                 >
                     {#each lessons as lesson (lesson.id)}
-                        <!-- Обертка карточки -->
                         <div class="lesson-card-wrapper" class:draggable={isAdminView}>
                             {#if isAdminView}
                                 <button type="button" class="drag-handle">
-                                    <!-- Твой SVG -->
                                 </button>
                             {/if}
                             <LessonCard 
