@@ -1,53 +1,95 @@
 <script>
-    import { createEventDispatcher, onMount, tick } from 'svelte';
-    import { 
-        MCQTestModel, 
-        FreeTextTestModel, 
+    import { createEventDispatcher, onMount, tick } from "svelte";
+    import {
+        MCQTestModel,
+        FreeTextTestModel,
         WordOrderTestModel,
         DragDropTestModel,
+        AiConversationTestModel,
         // PronunciationTestModel,
         // SpellingTestModel,
-    } from '../../../../models/testTypes.js'; 
+    } from "../../../../models/testTypes.js";
 
-    import MCQTestForm from './MCQTestForm.svelte';
-    import WordOrderTestForm from './WordOrderTestForm.svelte';
-    import DragDropTestForm from './DragDropTestForm.svelte';
-    import FreeTextTestForm from './FreeTextTestForm.svelte';
+    import MCQTestForm from "./MCQTestForm.svelte";
+    import WordOrderTestForm from "./WordOrderTestForm.svelte";
+    import DragDropTestForm from "./DragDropTestForm.svelte";
+    import FreeTextTestForm from "./FreeTextTestForm.svelte";
+    import AiConversationTestForm from "./AiConversationTestForm.svelte";
     // import PronunciationTestForm from './PronunciationTestForm.svelte';
     // import SpellingTestForm from './SpellingTestForm.svelte';
-    import { addNotification } from '../../../../stores/notifications.js';
+    import { addNotification } from "../../../../stores/notifications.js";
 
-    export let itemToEdit = null; 
-    export let isLoading = false; 
+    export let itemToEdit = null;
+    export let isLoading = false;
 
     const dispatch = createEventDispatcher();
 
-    let selectedTestType = 'mcq-single'; 
-    let testDataForForm = null; 
+    let selectedTestType = "mcq-single";
+    let testDataForForm = null;
     let specificTestFormComponent = null;
 
     const availableTestTypes = [
-        { value: 'mcq-single', label: 'MCQ (Один ответ)', component: MCQTestForm, model: MCQTestModel },
-        { value: 'mcq-multi', label: 'MCQ (Несколько ответов)', component: MCQTestForm, model: MCQTestModel },
-        { value: 'word-order', label: 'Порядок слов (из пула)', component: WordOrderTestForm, model: WordOrderTestModel },
-        { value: 'drag-and-drop', label: 'Перетаскивание (Облачка и Ячейки)', component: DragDropTestForm, model: DragDropTestModel},
-        { value: 'free-text', label: 'Свободный ответ', component: FreeTextTestForm, model: FreeTextTestModel },
+        {
+            value: "mcq-single",
+            label: "MCQ (Один ответ)",
+            component: MCQTestForm,
+            model: MCQTestModel,
+        },
+        {
+            value: "mcq-multi",
+            label: "MCQ (Несколько ответов)",
+            component: MCQTestForm,
+            model: MCQTestModel,
+        },
+        {
+            value: "word-order",
+            label: "Порядок слов (из пула)",
+            component: WordOrderTestForm,
+            model: WordOrderTestModel,
+        },
+        {
+            value: "drag-and-drop",
+            label: "Перетаскивание (Облачка и Ячейки)",
+            component: DragDropTestForm,
+            model: DragDropTestModel,
+        },
+        {
+            value: "free-text",
+            label: "Свободный ответ",
+            component: FreeTextTestForm,
+            model: FreeTextTestModel,
+        },
+        {
+            value: "ai-conversation",
+            label: "AI Разговор (Кайва с сенсеем)",
+            component: AiConversationTestForm,
+            model: AiConversationTestModel,
+        },
         // { value: 'pronunciation', label: 'Произношение', component: PronunciationTestForm, model: PronunciationTestModel },
         // { value: 'spelling', label: 'Правописание', component: SpellingTestForm, model: SpellingTestModel },
     ];
 
     function getFreshModelData(type) {
-        const testMeta = availableTestTypes.find(t => t.value === type);
+        const testMeta = availableTestTypes.find((t) => t.value === type);
         if (testMeta && testMeta.model) {
-            return new testMeta.model({ title: '', test_type: type }).toPayload();
+            return new testMeta.model({
+                title: "",
+                test_type: type,
+            }).toPayload();
         }
-        return { title: '', description: '', test_type: type };
+        return { title: "", description: "", test_type: type };
     }
-    
+
     onMount(() => {
-        if (itemToEdit && itemToEdit.item_type === 'test' && itemToEdit.content_details) {
+        if (
+            itemToEdit &&
+            itemToEdit.item_type === "test" &&
+            itemToEdit.content_details
+        ) {
             selectedTestType = itemToEdit.content_details.test_type;
-            testDataForForm = JSON.parse(JSON.stringify(itemToEdit.content_details));
+            testDataForForm = JSON.parse(
+                JSON.stringify(itemToEdit.content_details),
+            );
         } else {
             testDataForForm = getFreshModelData(selectedTestType);
         }
@@ -55,36 +97,55 @@
     });
 
     function updateSpecificTestFormComponent() {
-        const testMeta = availableTestTypes.find(t => t.value === selectedTestType);
+        const testMeta = availableTestTypes.find(
+            (t) => t.value === selectedTestType,
+        );
         if (testMeta) {
             specificTestFormComponent = testMeta.component;
-            if (!itemToEdit || (itemToEdit && itemToEdit.content_details?.test_type !== selectedTestType && !isEditingOriginalItemType())) {
+            if (
+                !itemToEdit ||
+                (itemToEdit &&
+                    itemToEdit.content_details?.test_type !==
+                        selectedTestType &&
+                    !isEditingOriginalItemType())
+            ) {
                 testDataForForm = getFreshModelData(selectedTestType);
-            } else if (itemToEdit && itemToEdit.content_details?.test_type === selectedTestType) {
-                 testDataForForm = JSON.parse(JSON.stringify(itemToEdit.content_details));
+            } else if (
+                itemToEdit &&
+                itemToEdit.content_details?.test_type === selectedTestType
+            ) {
+                testDataForForm = JSON.parse(
+                    JSON.stringify(itemToEdit.content_details),
+                );
             }
-
         } else {
             specificTestFormComponent = null;
             testDataForForm = null;
         }
-        testDataForForm = testDataForForm ? {...testDataForForm} : null; 
+        testDataForForm = testDataForForm ? { ...testDataForForm } : null;
     }
 
     function isEditingOriginalItemType() {
-        return itemToEdit && itemToEdit.content_details && itemToEdit.content_details.test_type === selectedTestType;
+        return (
+            itemToEdit &&
+            itemToEdit.content_details &&
+            itemToEdit.content_details.test_type === selectedTestType
+        );
     }
     async function handleTestFormSave(event) {
         const specificTestPayloadOrFormData = event.detail;
 
         if (specificTestPayloadOrFormData instanceof FormData) {
             const finalPayload = new FormData();
-            finalPayload.append('item_type', 'test');
+            finalPayload.append("item_type", "test");
 
             let testDefinitionValue = null;
 
-            for (const [key, value] of specificTestPayloadOrFormData.entries()) {
-                if (key === 'test_definition') {
+            for (const [
+                key,
+                value,
+            ] of specificTestPayloadOrFormData.entries()) {
+                if (key === "test_definition") {
                     testDefinitionValue = value;
                 } else {
                     finalPayload.append(key, value);
@@ -92,18 +153,26 @@
             }
 
             if (testDefinitionValue) {
-                finalPayload.append('content_data', testDefinitionValue);
+                finalPayload.append("content_data", testDefinitionValue);
             } else {
-                addNotification("Ошибка: данные определения теста (test_definition) отсутствуют в FormData.", "error");
-                if (typeof itemFormModalRef !== 'undefined' && itemFormModalRef?.setLoading) {
+                addNotification(
+                    "Ошибка: данные определения теста (test_definition) отсутствуют в FormData.",
+                    "error",
+                );
+                if (
+                    typeof itemFormModalRef !== "undefined" &&
+                    itemFormModalRef?.setLoading
+                ) {
                     itemFormModalRef.setLoading(false);
                 } else {
                     isLoading = false;
                 }
                 return;
             }
-            
-            console.log("[TestItemFormContainer] FormData перед dispatch('save'):");
+
+            console.log(
+                "[TestItemFormContainer] FormData перед dispatch('save'):",
+            );
             for (let pair of finalPayload.entries()) {
                 if (pair[1] instanceof File) {
                     console.log(`  ${pair[0]}: File (name: ${pair[1].name})`);
@@ -112,34 +181,36 @@
                 }
             }
 
-            dispatch('save', finalPayload);
-
-        } else { 
+            dispatch("save", finalPayload);
+        } else {
             const sectionItemPayload = {
-                item_type: 'test',
+                item_type: "test",
                 content_data: {
                     ...specificTestPayloadOrFormData,
-                    test_type: selectedTestType 
-                }
+                    test_type: selectedTestType,
+                },
             };
-            if (specificTestPayloadOrFormData.test_type !== selectedTestType && selectedTestType) {
+            if (
+                specificTestPayloadOrFormData.test_type !== selectedTestType &&
+                selectedTestType
+            ) {
                 sectionItemPayload.content_data.test_type = selectedTestType;
             }
-            dispatch('save', sectionItemPayload);
+            dispatch("save", sectionItemPayload);
         }
     }
 
     function handleTestFormCancel() {
-        dispatch('close'); 
+        dispatch("close");
     }
 </script>
-      
+
 <div class="test-item-form-container">
     <div class="form-group test-type-selector-internal">
         <label for="test-item-type-selector-in-container">Тип теста:</label>
-        <select 
-            id="test-item-type-selector-in-container" 
-            bind:value={selectedTestType} 
+        <select
+            id="test-item-type-selector-in-container"
+            bind:value={selectedTestType}
             on:change={updateSpecificTestFormComponent}
             disabled={isLoading || !!itemToEdit}
             aria-label="Выберите тип создаваемого теста"
@@ -151,16 +222,19 @@
     </div>
 
     {#if specificTestFormComponent && testDataForForm}
-        <svelte:component 
+        <svelte:component
             this={specificTestFormComponent}
-            bind:isLoading={isLoading} 
-            testData={testDataForForm} 
-            isEditing={!!itemToEdit && itemToEdit.content_details?.test_type === selectedTestType}
+            bind:isLoading
+            testData={testDataForForm}
+            isEditing={!!itemToEdit &&
+                itemToEdit.content_details?.test_type === selectedTestType}
             on:save={handleTestFormSave}
             on:cancel={handleTestFormCancel}
         />
     {:else if !specificTestFormComponent && selectedTestType}
-        <p class="no-test-form-message">Форма для типа теста "{selectedTestType}" еще не реализована.</p>
+        <p class="no-test-form-message">
+            Форма для типа теста "{selectedTestType}" еще не реализована.
+        </p>
     {:else}
         <p class="no-test-form-message">Пожалуйста, выберите тип теста.</p>
     {/if}

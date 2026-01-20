@@ -27,7 +27,7 @@ export class BaseTestModel {
             title: this.title,
             description: this.description,
             test_type: this.test_type,
-            attached_image: this.attached_image_id, 
+            attached_image: this.attached_image_id,
             attached_audio: this.attached_audio_id,
             // aspect_ratio_for_test_image: this.aspect_ratio_for_test_image,
         };
@@ -40,7 +40,7 @@ export class BaseTestModel {
  */
 export class MCQOptionModel {
     constructor({ id = null, text = "", is_correct = false, explanation = "", order = 0 }) {
-        this.id = id; 
+        this.id = id;
         this.text = text;
         this.is_correct = is_correct;
         this.explanation = explanation;
@@ -55,7 +55,7 @@ export class MCQOptionModel {
             order: this.order,
         };
         if (this.id && typeof this.id !== 'string' || (typeof this.id === 'string' && !this.id.startsWith('temp_'))) {
-            payload.id = this.id; 
+            payload.id = this.id;
         }
         return payload;
     }
@@ -66,7 +66,7 @@ export class MCQOptionModel {
  */
 export class MCQTestModel extends BaseTestModel {
     constructor({ mcq_options = [], ...baseData }) {
-        super(baseData); 
+        super(baseData);
         this.mcq_options = mcq_options.map(opt => opt instanceof MCQOptionModel ? opt : new MCQOptionModel(opt));
     }
 
@@ -89,16 +89,16 @@ export class MCQTestModel extends BaseTestModel {
  * Модель для теста со свободным текстовым ответом.
  */
 export class FreeTextTestModel extends BaseTestModel {
-    constructor({ 
-        reference_answer = "", 
-        explanation = "", 
+    constructor({
+        reference_answer = "",
+        explanation = "",
         prompt_text = "",
         prompt_image_file = null,
         prompt_audio_file = null,
-        ...baseData 
+        ...baseData
     }) {
         super({ ...baseData, test_type: 'free-text' });
-        this.free_text_question = { 
+        this.free_text_question = {
             reference_answer: reference_answer,
             explanation: explanation,
             prompt_text: prompt_text,
@@ -118,14 +118,14 @@ export class FreeTextTestModel extends BaseTestModel {
  * Модель для слота/ячейки в Drag-and-Drop тесте
  */
 export class DragDropSlotModel {
-    constructor({ 
-        id = null, 
-        prompt_text = "", 
-        prompt_image_file = null, 
-        prompt_audio_file = null, 
-        correct_answer_text = "", 
-        explanation = "", 
-        order = 0 
+    constructor({
+        id = null,
+        prompt_text = "",
+        prompt_image_file = null,
+        prompt_audio_file = null,
+        correct_answer_text = "",
+        explanation = "",
+        order = 0
     }) {
         this.id = id;
         this.prompt_text = prompt_text;
@@ -156,10 +156,10 @@ export class DragDropSlotModel {
  * Модель для Drag-and-Drop теста.
  */
 export class DragDropTestModel extends BaseTestModel {
-    constructor({ 
+    constructor({
         draggable_options_pool = [],
         drag_drop_slots = [],
-        ...baseData 
+        ...baseData
     }) {
         super({ ...baseData, test_type: 'drag-and-drop' });
         this.draggable_options_pool = Array.isArray(draggable_options_pool) ? [...draggable_options_pool] : [];
@@ -199,12 +199,12 @@ export class DragDropTestModel extends BaseTestModel {
  * Модель для теста на порядок слов
  */
 export class WordOrderTestModel extends BaseTestModel {
-    constructor({ 
+    constructor({
         correct_ordered_texts = [],
-        display_prompt = "", 
+        display_prompt = "",
         explanation = "",
-        draggable_options_pool = [],  
-        ...baseData 
+        draggable_options_pool = [],
+        ...baseData
     }) {
         super({ ...baseData, test_type: 'word-order' });
         this.word_order_sentence = {
@@ -212,7 +212,7 @@ export class WordOrderTestModel extends BaseTestModel {
             display_prompt: display_prompt,
             explanation: explanation,
         };
-        this.draggable_options_pool = Array.isArray(draggable_options_pool) ? [...draggable_options_pool] : []; 
+        this.draggable_options_pool = Array.isArray(draggable_options_pool) ? [...draggable_options_pool] : [];
     }
 
     addOptionToPool(optionText) {
@@ -228,7 +228,7 @@ export class WordOrderTestModel extends BaseTestModel {
 
     toPayload() {
         const payload = super.toPayload();
-        payload.word_order_sentence = { ...this.word_order_sentence }; 
+        payload.word_order_sentence = { ...this.word_order_sentence };
         payload.draggable_options_pool = [...this.draggable_options_pool];
         return payload;
     }
@@ -267,6 +267,39 @@ export class SpellingTestModel extends BaseTestModel {
     toPayload() {
         const payload = super.toPayload();
         payload.spelling_question = this.spelling_question;
+        return payload;
+    }
+}
+
+/**
+ * Модель для AI Conversation теста ("Кайва с сенсеем")
+ */
+export class AiConversationTestModel extends BaseTestModel {
+    constructor(data = {}) {
+        const { ai_conversation_question = {}, ...baseData } = data;
+        super({ ...baseData, test_type: 'ai-conversation' });
+
+        // Handle flattened or nested input
+        this.ai_conversation_question = {
+            context: ai_conversation_question.context || data.context || "",
+            personality: ai_conversation_question.personality || data.personality || "",
+            goodbye_condition: ai_conversation_question.goodbye_condition || data.goodbye_condition || "",
+            background_image: ai_conversation_question.background_image || data.background_image || null,
+            background_image_details: ai_conversation_question.background_image_details || data.background_image_details || null,
+        };
+    }
+
+    toPayload() {
+        const payload = super.toPayload();
+        // Remove internal details before sending payload if necessary, 
+        // but typically the backend serializer handles it or we send just IDs.
+        // For the creation payload, we send what the backend expects in 'ai_conversation_question'
+        payload.ai_conversation_question = {
+            context: this.ai_conversation_question.context,
+            personality: this.ai_conversation_question.personality,
+            goodbye_condition: this.ai_conversation_question.goodbye_condition,
+            background_image: this.ai_conversation_question.background_image
+        };
         return payload;
     }
 }

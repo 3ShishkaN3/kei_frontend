@@ -65,7 +65,7 @@ export default {
 
 	output: {
 
-		sourcemap: true,
+		sourcemap: false,
 
 		format: 'iife',
 
@@ -89,12 +89,12 @@ export default {
 	},
 	plugins: [
 
-	replace({
-		preventAssignment: true,
-		'import.meta.env.VITE_API_BASE_URL': JSON.stringify(apiBase),
-    	'process.env.VITE_API_BASE_URL': JSON.stringify(apiBase),
-		'process.env.SENTRY_DSN': JSON.stringify('https://0b5f39fd7c79eed36e50fdfb148be5c2@o4510416287236096.ingest.de.sentry.io/4510416321642576')
-	}),
+		replace({
+			preventAssignment: true,
+			'import.meta.env.VITE_API_BASE_URL': JSON.stringify(apiBase),
+			'process.env.VITE_API_BASE_URL': JSON.stringify(apiBase),
+			'process.env.SENTRY_DSN': JSON.stringify('https://0b5f39fd7c79eed36e50fdfb148be5c2@o4510416287236096.ingest.de.sentry.io/4510416321642576')
+		}),
 
 		svelte({
 
@@ -111,7 +111,7 @@ export default {
 
 		resolve({
 			browser: true,
-			dedupe: ['svelte'],
+			dedupe: ['svelte', 'three', '@pixiv/three-vrm'],
 			exportConditions: ['svelte', 'import', 'module', 'browser', 'default'],
 			extensions: ['.mjs', '.js', '.json', '.node', '.svelte'],
 			preferBuiltins: false
