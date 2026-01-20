@@ -279,7 +279,6 @@ export class AiConversationTestModel extends BaseTestModel {
         const { ai_conversation_question = {}, ...baseData } = data;
         super({ ...baseData, test_type: 'ai-conversation' });
 
-        // Handle flattened or nested input
         this.ai_conversation_question = {
             context: ai_conversation_question.context || data.context || "",
             personality: ai_conversation_question.personality || data.personality || "",
@@ -291,9 +290,6 @@ export class AiConversationTestModel extends BaseTestModel {
 
     toPayload() {
         const payload = super.toPayload();
-        // Remove internal details before sending payload if necessary, 
-        // but typically the backend serializer handles it or we send just IDs.
-        // For the creation payload, we send what the backend expects in 'ai_conversation_question'
         payload.ai_conversation_question = {
             context: this.ai_conversation_question.context,
             personality: this.ai_conversation_question.personality,

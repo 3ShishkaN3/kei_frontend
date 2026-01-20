@@ -5,11 +5,22 @@
     import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
     import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
     import { WS_BASE_URL } from "../../../../config.js";
+    import { addNotification } from "../../../../stores/notifications.js";
 
     export let testData = null;
     export let sectionItemId = null;
     export let viewMode = "student";
     export let canStudentInteract = true;
+
+    export function startConversation() {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            addNotification("Подключение не установлено", "error");
+            return false;
+        }
+        isConversationActive = true;
+        addNotification("Разговор начат. Говорите с сенсеем!", "info");
+        return true;
+    }
 
     const dispatch = createEventDispatcher();
 
@@ -18,11 +29,11 @@
     let currentVrm = null;
     let mixer = null;
     let socket = null;
-    let userMessage = "";
     let subtitles = "";
     let chatLog = [];
     let isConnecting = true;
-    let currentVrmAnimation = "idle";
+    let isConversationActive = false;
+    let isListening = false;
 
     let lastBlinkTime = 0;
     let blinkInterval = 3.0;
@@ -116,12 +127,32 @@
         const elapsed = clock.getElapsedTime();
 
         if (currentVrm) {
+            const breathingCycle = Math.sin(elapsed * 0.8) * 0.015;
+            currentVrm.humanoid.getNormalizedBoneNode("chest").rotation.x =
+                breathingCycle;
+            currentVrm.humanoid.getNormalizedBoneNode("spine").rotation.x =
+                breathingCycle * 0.5;
+
             currentVrm.humanoid.getNormalizedBoneNode("head").rotation.y =
-                Math.sin(elapsed * 0.5) * 0.05;
+                Math.sin(elapsed * 0.3) * 0.1 + Math.sin(elapsed * 0.15) * 0.05;
+            currentVrm.humanoid.getNormalizedBoneNode("head").rotation.x =
+                Math.sin(elapsed * 0.25) * 0.03;
+
             currentVrm.humanoid.getNormalizedBoneNode("neck").rotation.y =
-                Math.sin(elapsed * 0.5) * 0.02;
+                Math.sin(elapsed * 0.3) * 0.05;
+
             currentVrm.humanoid.getNormalizedBoneNode("chest").rotation.z =
-                Math.sin(elapsed * 0.3) * 0.01;
+                Math.sin(elapsed * 0.4) * 0.02;
+            currentVrm.humanoid.getNormalizedBoneNode("spine").rotation.z =
+                Math.sin(elapsed * 0.35) * 0.015;
+
+            const shoulderMove = Math.sin(elapsed * 0.2) * 0.01;
+            const leftShoulder =
+                currentVrm.humanoid.getNormalizedBoneNode("leftShoulder");
+            const rightShoulder =
+                currentVrm.humanoid.getNormalizedBoneNode("rightShoulder");
+            if (leftShoulder) leftShoulder.rotation.z = shoulderMove;
+            if (rightShoulder) rightShoulder.rotation.z = -shoulderMove;
 
             if (elapsed - lastBlinkTime > blinkInterval) {
                 const blinkValue = Math.min(
@@ -138,6 +169,8 @@
                 }
             }
 
+            currentVrm.expressionManager.setValue("happy", 0.15);
+
             currentVrm.update(delta);
         }
 
@@ -146,7 +179,7 @@
 
     function connectWebSocket() {
         const token = localStorage.getItem("access_token");
-        const url = `${WS_BASE_URL}ws/conversation/${testData.id}/?token=${token}`;
+        const url = `${WS_BASE_URL}/ws/conversation/${testData.id}/?token=${token}`;
 
         socket = new WebSocket(url);
         socket.onopen = () => {
@@ -165,6 +198,11 @@
             isConnecting = true;
             console.log("Disconnected from AI Conversation");
         };
+
+        socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+            addNotification("Ошибка подключения к сенсею", "error");
+        };
     }
 
     function processAiResponse(data) {
@@ -178,7 +216,13 @@
         }
 
         if (data.is_finished) {
+            isConversationActive = false;
             canStudentInteract = false;
+            addNotification(
+                "Разговор завершён. Отправьте ответ на оценку.",
+                "info",
+            );
+            dispatch("conversationEnded", { chatLog });
         }
     }
 
@@ -199,17 +243,10 @@
 
     function applyLipsync(lipsyncData) {}
 
-    function sendMessage() {
-        if (
-            !userMessage.trim() ||
-            !socket ||
-            socket.readyState !== WebSocket.OPEN
-        )
-            return;
-
-        chatLog = [...chatLog, { role: "user", text: userMessage }];
-        socket.send(JSON.stringify({ message: userMessage }));
-        userMessage = "";
+    function stopConversation() {
+        isConversationActive = false;
+        isListening = false;
+        addNotification("Разговор приостановлен", "info");
     }
 </script>
 
@@ -238,23 +275,23 @@
         </div>
 
         <div class="bottom-controls">
-            <div class="input-group">
-                <input
-                    type="text"
-                    bind:value={userMessage}
-                    placeholder="Напишите сенсею..."
-                    disabled={!canStudentInteract || isConnecting}
-                    on:keydown={(e) => e.key === "Enter" && sendMessage()}
-                />
+            {#if isConversationActive}
                 <button
-                    on:click={sendMessage}
-                    disabled={!canStudentInteract ||
-                        isConnecting ||
-                        !userMessage.trim()}
+                    class="control-btn stop-btn"
+                    on:click={stopConversation}
                 >
-                    Отправить
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                    >
+                        <rect x="6" y="6" width="12" height="12" />
+                    </svg>
+                    Остановить
                 </button>
-            </div>
+            {/if}
         </div>
     </div>
 </div>
@@ -340,50 +377,54 @@
         width: 100%;
         max-width: 600px;
         margin: 0 auto;
-    }
-
-    .input-group {
         display: flex;
-        gap: 10px;
-        background: rgba(0, 0, 0, 0.4);
-        padding: 10px;
-        border-radius: 30px;
-        backdrop-filter: blur(5px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        justify-content: center;
     }
 
-    input {
-        flex-grow: 1;
-        background: rgba(0, 0, 0, 0.3);
+    .control-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(10px);
+        color: #fff;
         border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 20px;
-        padding: 8px 15px;
-        color: #fff;
-        outline: none;
-    }
-
-    input:focus {
-        border-color: #afa4ff;
-    }
-
-    button {
-        background: #afa4ff;
-        color: #fff;
-        border: none;
-        border-radius: 20px;
-        padding: 8px 20px;
+        border-radius: 25px;
+        padding: 12px 24px;
         cursor: pointer;
-        font-weight: 500;
-        transition: 0.2s;
+        font-weight: 600;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     }
 
-    button:hover:not(:disabled) {
-        background: #8679f0;
+    .control-btn svg {
+        transition: transform 0.2s ease;
     }
 
-    button:disabled {
-        opacity: 0.5;
+    .stop-btn {
+        background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+        border-color: rgba(248, 113, 113, 0.5);
+    }
+
+    .stop-btn:hover:not(:disabled) {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(248, 113, 113, 0.4);
+    }
+
+    .control-btn:active:not(:disabled) {
+        transform: translateY(0);
+    }
+
+    .control-btn:disabled {
+        opacity: 0.4;
         cursor: not-allowed;
+        transform: none;
+    }
+
+    .control-btn:hover:not(:disabled) svg {
+        transform: scale(1.1);
     }
 
     @keyframes fadeIn {

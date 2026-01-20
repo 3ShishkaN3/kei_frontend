@@ -34,6 +34,9 @@
     let wordOrderAvailableOptionsInPool = [];
     let selectedDraggableOptionForSlot = null;
 
+    // Reference to AI Conversation component
+    let aiConversationComponent = null;
+
     function generateUiId() {
         return `ui_${Math.random().toString(36).substr(2, 9)}`;
     }
@@ -456,6 +459,12 @@
 
     async function handleSubmitTest() {
         if (!canStudentInteract) return;
+
+        // AI conversation tests don't use this submit flow
+        if (testData.test_type === "ai-conversation") {
+            return;
+        }
+
         let answersPayload = {};
         let formIsValid = true;
 
@@ -627,23 +636,51 @@
             />
         {:else if testData?.test_type === "ai-conversation"}
             <AiConversationTestDisplay
+                bind:this={aiConversationComponent}
                 {testData}
                 {sectionItemId}
                 {viewMode}
                 {canStudentInteract}
+                on:conversationEnded={(e) => {
+                    // AI ended the conversation - parent can handle this if needed
+                    console.log("Conversation ended by AI", e.detail);
+                }}
             />
         {/if}
 
         {#if canStudentInteract}
-            <div class="test-actions-display">
-                <button
-                    type="submit"
-                    class="btn-submit-test-display"
-                    disabled={isSubmitting}
-                >
-                    {isSubmitting ? "Отправка..." : "Отправить ответ"}
-                </button>
-            </div>
+            {#if testData?.test_type === "ai-conversation"}
+                <div class="test-actions-display">
+                    <button
+                        type="button"
+                        class="btn-start-conversation"
+                        on:click={() =>
+                            aiConversationComponent?.startConversation()}
+                        disabled={isSubmitting}
+                        title="Начать разговор с сенсеем"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                        >
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                    </button>
+                </div>
+            {:else}
+                <div class="test-actions-display">
+                    <button
+                        type="submit"
+                        class="btn-submit-test-display"
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting ? "Отправка..." : "Отправить ответ"}
+                    </button>
+                </div>
+            {/if}
         {/if}
 
         {#if viewMode === "student" && studentSubmission}
@@ -790,6 +827,37 @@
         background-color: #ccc;
         cursor: not-allowed;
         opacity: 0.8;
+    }
+
+    .btn-start-conversation {
+        background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+        color: white;
+        width: 56px;
+        height: 56px;
+        border: none;
+        border-radius: 50%;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3);
+    }
+    .btn-start-conversation:hover:not(:disabled) {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(74, 222, 128, 0.4);
+    }
+    .btn-start-conversation:active:not(:disabled) {
+        transform: translateY(0);
+    }
+    .btn-start-conversation:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        opacity: 0.6;
+        box-shadow: none;
     }
 
     .submission-result-display {

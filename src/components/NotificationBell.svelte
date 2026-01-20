@@ -83,7 +83,7 @@
 
     const setupWebSocket = () => {
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const wsUrl = `${WS_BASE_URL}/notifications/`;
+        const wsUrl = `${WS_BASE_URL}/ws/notifications/`;
 
         socket = new WebSocket(wsUrl);
 
