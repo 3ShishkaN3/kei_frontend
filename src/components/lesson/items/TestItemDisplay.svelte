@@ -34,7 +34,6 @@
     let wordOrderAvailableOptionsInPool = [];
     let selectedDraggableOptionForSlot = null;
 
-    // Reference to AI Conversation component
     let aiConversationComponent = null;
 
     function generateUiId() {
@@ -460,7 +459,6 @@
     async function handleSubmitTest() {
         if (!canStudentInteract) return;
 
-        // AI conversation tests don't use this submit flow
         if (testData.test_type === "ai-conversation") {
             return;
         }
@@ -642,35 +640,13 @@
                 {viewMode}
                 {canStudentInteract}
                 on:conversationEnded={(e) => {
-                    // AI ended the conversation - parent can handle this if needed
                     console.log("Conversation ended by AI", e.detail);
                 }}
             />
         {/if}
 
         {#if canStudentInteract}
-            {#if testData?.test_type === "ai-conversation"}
-                <div class="test-actions-display">
-                    <button
-                        type="button"
-                        class="btn-start-conversation"
-                        on:click={() =>
-                            aiConversationComponent?.startConversation()}
-                        disabled={isSubmitting}
-                        title="Начать разговор с сенсеем"
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                        >
-                            <path d="M8 5v14l11-7z" />
-                        </svg>
-                    </button>
-                </div>
-            {:else}
+            {#if testData?.test_type !== "ai-conversation"}
                 <div class="test-actions-display">
                     <button
                         type="submit"
