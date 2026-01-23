@@ -1,6 +1,6 @@
 <script>
     import { onMount, onDestroy } from "svelte";
-    import { API_BASE_URL, WS_BASE_URL } from "../config.js";
+    import { API_BASE_URL, WS_NOTIFICATIONS_BASE_URL } from "../config.js";
     import { apiFetch } from "../api/api.js";
     import { addNotification as showToast } from "../stores/notifications.js";
 
@@ -83,7 +83,7 @@
 
     const setupWebSocket = () => {
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const wsUrl = `${WS_BASE_URL}/ws/notifications/`;
+        const wsUrl = `${WS_NOTIFICATIONS_BASE_URL}/ws/notifications/`;
 
         socket = new WebSocket(wsUrl);
 

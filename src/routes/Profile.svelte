@@ -426,16 +426,21 @@
       });
       
       if (response.ok) {
-        const result = await response.json();
-        
-        // profileData.avatar = `${result.avatar || '/avatar.png'}?t=${Date.now()}`;
-        profileData.avatar = `${result.avatar || '/avatar.png'}`;
-        avatar.set(profileData.avatar);
-        
-        avatarSuccess = "Аватар успешно обновлен";
+        try {
+          const result = await response.json();
+          profileData.avatar = `${result.avatar || '/avatar.png'}`;
+          avatar.set(profileData.avatar);
+          avatarSuccess = "Аватар успешно обновлен";
+        } catch (e) {
+          avatarError = "Ошибка сервера при загрузке аватара";
+        }
       } else {
-        const data = await response.json();
-        avatarError = data.detail || "Ошибка загрузки аватара";
+        try {
+          const data = await response.json();
+          avatarError = data.detail || "Ошибка загрузки аватара";
+        } catch (e) {
+          avatarError = "Ошибка сервера при загрузке аватара";
+        }
       }
     } catch (err) {
       console.error(err);
@@ -467,8 +472,12 @@
         avatar.set(profileData.avatar);
         avatarSuccess = "Аватар успешно удален";
       } else {
-        const data = await response.json();
-        avatarError = data.detail || "Ошибка удаления аватара";
+        try {
+          const data = await response.json();
+          avatarError = data.detail || "Ошибка удаления аватара";
+        } catch (e) {
+          avatarError = "Ошибка сервера при удалении аватара";
+        }
       }
     } catch (err) {
       console.error(err);

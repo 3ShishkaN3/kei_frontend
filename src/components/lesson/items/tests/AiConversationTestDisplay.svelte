@@ -4,7 +4,7 @@
     import * as THREE from "three";
     import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
     import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
-    import { WS_BASE_URL, API_BASE_URL } from "../../../../config.js";
+    import { WS_CONVERSATION_BASE_URL, API_BASE_URL } from "../../../../config.js";
     import { addNotification } from "../../../../stores/notifications.js";
     import { apiFetch } from "../../../../api/api.js";
 
@@ -139,7 +139,7 @@
 
     function connectWebSocket() {
         const token = localStorage.getItem("access") || localStorage.getItem("access_token");
-        const url = `${WS_BASE_URL}/ws/conversation/${testData.id}/${token ? `?token=${token}` : ""}`;
+        const url = `${WS_CONVERSATION_BASE_URL}/ws/conversation/${testData.id}/${token ? `?token=${token}` : ""}`;
         socket = new WebSocket(url);
 
         socket.onopen = () => {
@@ -311,7 +311,7 @@
         renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
         renderer.setSize(canvas.clientWidth, canvas.clientHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
 
         const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
         dirLight.position.set(0.5, 1.5, 1.5);
