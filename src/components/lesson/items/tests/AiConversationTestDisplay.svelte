@@ -1,6 +1,6 @@
 <script>
     import { onMount, onDestroy, createEventDispatcher } from "svelte";
-    import { fade } from "svelte/transition";
+    import { fade, slide, scale } from "svelte/transition";
     import * as THREE from "three";
     import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
     import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
@@ -8,180 +8,54 @@
     import { addNotification } from "../../../../stores/notifications.js";
     import { apiFetch } from "../../../../api/api.js";
 
+    // Props
     export let testData = null;
     export let sectionItemId = null;
     export let viewMode = "student";
     export let canStudentInteract = true;
 
+    // State Variables
+    const dispatch = createEventDispatcher();
+    
+    // UI State
+    let isInteractionLocked = viewMode !== "student" || !canStudentInteract;
+    let isConnecting = false;
+    let isModelLoading = true;
+    let isConversationActive = false;
+    let isSpeaking = false; // Sensei is speaking
+    let subtitlesVisible = true;
+    let conversationStopped = false;
+    let hasConversationRecording = false;
+    let isAwaitingGrading = false;
+    
+    // Data State
+    let socket = null;
+    let username = "Ученик";
+    let subtitlesHistory = []; 
+    let lastSubmission = null;
+
+    // Audio Contexts
     let audioContext;
     let micStream;
     let processor;
     let playbackContext;
     let nextStartTime = 0;
 
-    $: bgImageUrl = testData?.ai_conversation_question?.background_image_details
-        ?.image
-        ? `url('${testData.ai_conversation_question.background_image_details.image}')`
-        : testData?.attached_image_details?.image
-          ? `url('${testData.attached_image_details.image}')`
-          : "none";
-
-    export async function startConversation() {
-        chatLog = [];
-        subtitles = "Подключение к сенсею...";
-        isConversationActive = true;
-
-        try {
-            await startMicCapture();
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ action: "start" }));
-            } else {
-                connectWebSocket();
-            }
-            addNotification("Разговор начат. Сенсей слушает!", "info");
-        } catch (e) {
-            console.error("Failed to start conversation:", e);
-            addNotification("Ошибка доступа к микрофону", "error");
-        }
-        return true;
-    }
-
-    async function startMicCapture() {
-        if (!audioContext) {
-            audioContext = new (window.AudioContext ||
-                window.webkitAudioContext)();
-        }
-
-        if (audioContext.state === "suspended") {
-            await audioContext.resume();
-        }
-
-        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const source = audioContext.createMediaStreamSource(micStream);
-
-        processor = audioContext.createScriptProcessor(4096, 1, 1);
-        source.connect(processor);
-
-        processor.onaudioprocess = (e) => {
-            if (
-                !isConversationActive ||
-                !socket ||
-                socket.readyState !== WebSocket.OPEN ||
-                isSpeaking
-            )
-                return;
-
-            const inputData = e.inputBuffer.getChannelData(0);
-            const nativeRate = audioContext.sampleRate;
-
-            let pcm16;
-            if (nativeRate !== 16000) {
-                pcm16 = downsampleBuffer(inputData, nativeRate, 16000);
-            } else {
-                pcm16 = floatTo16BitPCM(inputData);
-            }
-
-            socket.send(pcm16);
-        };
-    }
-
-    function downsampleBuffer(buffer, sampleRate, outSampleRate) {
-        if (outSampleRate === sampleRate) {
-            return floatTo16BitPCM(buffer);
-        }
-        if (outSampleRate > sampleRate) {
-            throw "downsampling rate show be smaller than original sample rate";
-        }
-        var sampleRateRatio = sampleRate / outSampleRate;
-        var newLength = Math.round(buffer.length / sampleRateRatio);
-        var result = new Int16Array(newLength);
-        var offsetResult = 0;
-        var offsetBuffer = 0;
-
-        while (offsetResult < result.length) {
-            var nextOffsetBuffer = Math.round(
-                (offsetResult + 1) * sampleRateRatio,
-            );
-            var accum = 0,
-                count = 0;
-            for (
-                var i = offsetBuffer;
-                i < nextOffsetBuffer && i < buffer.length;
-                i++
-            ) {
-                accum += buffer[i];
-                count++;
-            }
-
-            let s = Math.max(-1, Math.min(1, accum / count));
-            result[offsetResult] = s < 0 ? s * 0x8000 : s * 0x7fff;
-
-            offsetResult++;
-            offsetBuffer = nextOffsetBuffer;
-        }
-        return result.buffer;
-    }
-
-    function floatTo16BitPCM(input) {
-        let output = new Int16Array(input.length);
-        for (let i = 0; i < input.length; i++) {
-            let s = Math.max(-1, Math.min(1, input[i]));
-            output[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-        }
-        return output.buffer;
-    }
-
-    function stopMicCapture() {
-        if (processor) {
-            processor.disconnect();
-            processor = null;
-        }
-        if (micStream) {
-            micStream.getTracks().forEach((t) => t.stop());
-            micStream = null;
-        }
-    }
-
-    const dispatch = createEventDispatcher();
-
+    // Three.js Globals
     let canvas;
     let scene, camera, renderer, clock;
     let currentVrm = null;
-    let mixer = null;
-    let socket = null;
-    let subtitles = "";
-    let chatLog = [];
-    let isConnecting = true;
-    let isConversationActive = false;
-    let isListening = false;
-    let isSpeaking = false;
-    let isThinking = false;
-    let currentSubtitleEntry = { speaker: "", text: "", translated: "" };
-    let username = "Ученик";
-    let subtitlesVisible = false;
-    let modelLoaded = false;
     
-    function isModelReflection(text) {
-        if (!text) return true;
-        const lowerText = text.toLowerCase();
-        const reflectionPatterns = [
-            "focusing on",
-            "i've crafted",
-            "i'm integrating",
-            "the goal is",
-            "aiming for",
-            "sticking to",
-            "maintaining",
-            "solidify",
-            "beginner-friendly",
-            "contextually relevant",
-            "initiating",
-            "i am now",
-            "my plan is",
-            "my greeting"
-        ];
-        return text.trim().startsWith("**") || reflectionPatterns.some(pattern => lowerText.includes(pattern));
-    }
+    // Animation Vars
+    let lastBlinkTime = 0;
+    let blinkInterval = 3.0;
+
+    // Computed
+    $: bgImageUrl = testData?.ai_conversation_question?.background_image_details?.image
+        ? `url('${testData.ai_conversation_question.background_image_details.image}')`
+        : "none";
+
+    // Lifecycle
 
     onMount(async () => {
         try {
@@ -191,140 +65,344 @@
                 username = userData.username || "Ученик";
             }
         } catch (err) {
-            console.error("Ошибка загрузки username:", err);
+            console.error("User load error:", err);
         }
-        
+
         initThree();
-        loadVrm("/Khirano.vrm").catch((err) =>
-            console.error("Failed to load VRM:", err),
-        );
+        setTimeout(() => loadModel("/Khirano.vrm"), 200);
         animate();
-        connectWebSocket();
     });
 
     onDestroy(() => {
-        if (socket) socket.close();
-        if (renderer) renderer.dispose();
         stopMicCapture();
+        if (socket) socket.close();
+        if (currentVrm) {
+            VRMUtils.deepDispose(currentVrm.scene);
+            scene.remove(currentVrm.scene);
+        }
+        if (renderer) renderer.dispose();
+        if (audioContext && audioContext.state !== 'closed') audioContext.close();
+        if (playbackContext && playbackContext.state !== 'closed') playbackContext.close();
     });
+
+    // Subtitle Logic
+    function updateSubtitle(speaker, text, translated = null, isFinal = false) {
+        const lastMsg = subtitlesHistory[0];
+        if (lastMsg && lastMsg.speaker === speaker && !lastMsg.isFinal) {
+            lastMsg.text = text;
+            if (translated) lastMsg.translated = translated;
+            lastMsg.isFinal = isFinal;
+            subtitlesHistory = [...subtitlesHistory];
+        } else {
+            const newMsg = {
+                id: Date.now(),
+                speaker,
+                text,
+                translated: translated || null,
+                isFinal
+            };
+            subtitlesHistory = [newMsg, ...subtitlesHistory];
+        }
+
+        if (speaker === username) {
+            hasConversationRecording = true;
+            emitState();
+        }
+    }
+
+    function updateTranslationOnly(textKey, translatedText) {
+        const target = subtitlesHistory.find(s => s.text === textKey || s.text.includes(textKey));
+        if (target) {
+            target.translated = translatedText;
+            subtitlesHistory = [...subtitlesHistory];
+        }
+    }
+
+    // WebSocket Logic
+    async function startConversation() {
+        if (isInteractionLocked) return;
+        resetState();
+        isConversationActive = true;
+        isConnecting = true;
+        try {
+            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioContext.state === "suspended") await audioContext.resume();
+            await startMicCapture();
+            connectWebSocket();
+        } catch (e) {
+            console.error("Start Error:", e);
+            addNotification("Ошибка аудио: " + e.message, "error");
+            isConnecting = false;
+            isConversationActive = false;
+        }
+    }
+
+    function connectWebSocket() {
+        const token = localStorage.getItem("access") || localStorage.getItem("access_token");
+        const url = `${WS_BASE_URL}/ws/conversation/${testData.id}/${token ? `?token=${token}` : ""}`;
+        socket = new WebSocket(url);
+
+        socket.onopen = () => {
+            console.log("WS Connected");
+            socket.send(JSON.stringify({ action: "start" }));
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            switch (data.type) {
+                case "ready":
+                    isConnecting = false;
+                    addNotification("Сенсей готов!", "success");
+                    break;
+                case "audio_chunk":
+                    playAudioChunk(data.data);
+                    break;
+                case "ai_text_chunk":
+                    updateSubtitle("Сенсей", data.text, null, false);
+                    break;
+                case "ai_text_translated":
+                    updateTranslationOnly(data.text, data.translated);
+                    break;
+                case "user_text_transcript":
+                    updateSubtitle(username, data.text, null, data.is_final);
+                    break;
+                case "user_text_translated":
+                    updateTranslationOnly(data.text, data.translated);
+                    break;
+                case "turn_complete":
+                    if (subtitlesHistory.length > 0 && subtitlesHistory[0].speaker === "Сенсей") {
+                        subtitlesHistory[0].isFinal = true;
+                        subtitlesHistory = [...subtitlesHistory];
+                    }
+                    setTimeout(() => { isSpeaking = false; }, 200);
+                    break;
+                case "submission_update":
+                    lastSubmission = data.submission;
+                    isAwaitingGrading = false;
+                    finishConversation(true);
+                    addNotification("Оценка получена!", "success");
+                    break;
+                case "submission_error":
+                case "error":
+                    addNotification(data.message, "error");
+                    if (isAwaitingGrading) isAwaitingGrading = false;
+                    emitState();
+                    break;
+            }
+        };
+
+        socket.onclose = () => {
+            isConnecting = false;
+        };
+    }
+
+    // Audio Logic
+    async function startMicCapture() {
+        try {
+            micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+            const source = audioContext.createMediaStreamSource(micStream);
+            processor = audioContext.createScriptProcessor(4096, 1, 1);
+            source.connect(processor);
+            processor.connect(audioContext.destination);
+
+            processor.onaudioprocess = (e) => {
+                if (!isConversationActive || !socket || socket.readyState !== WebSocket.OPEN || isSpeaking) return;
+
+                const inputData = e.inputBuffer.getChannelData(0);
+                const nativeRate = audioContext.sampleRate;
+                const targetRate = 16000;
+                let pcm16 = (nativeRate !== targetRate) 
+                    ? downsampleBuffer(inputData, nativeRate, targetRate) 
+                    : floatTo16BitPCM(inputData);
+                socket.send(pcm16);
+            };
+        } catch (e) {
+            console.error("Mic error", e);
+            throw e;
+        }
+    }
+
+    function stopMicCapture() {
+        if (processor) {
+            processor.disconnect();
+            processor = null;
+        }
+        if (micStream) {
+            micStream.getTracks().forEach(t => t.stop());
+            micStream = null;
+        }
+    }
+
+    function downsampleBuffer(buffer, sampleRate, outSampleRate) {
+        if (outSampleRate === sampleRate) return floatTo16BitPCM(buffer);
+        const ratio = sampleRate / outSampleRate;
+        const newLength = Math.round(buffer.length / ratio);
+        const result = new Int16Array(newLength);
+        let offsetResult = 0, offsetBuffer = 0;
+        while (offsetResult < result.length) {
+            const nextOffsetBuffer = Math.round((offsetResult + 1) * ratio);
+            let accum = 0, count = 0;
+            for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+                accum += buffer[i];
+                count++;
+            }
+            let s = Math.max(-1, Math.min(1, accum / count));
+            result[offsetResult] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            offsetResult++;
+            offsetBuffer = nextOffsetBuffer;
+        }
+        return result.buffer;
+    }
+
+    function floatTo16BitPCM(input) {
+        const output = new Int16Array(input.length);
+        for (let i = 0; i < input.length; i++) {
+            const s = Math.max(-1, Math.min(1, input[i]));
+            output[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+        return output.buffer;
+    }
+
+    function playAudioChunk(base64Data) {
+        if (!playbackContext) playbackContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+        if (playbackContext.state === "suspended") playbackContext.resume();
+        
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+        const int16 = new Int16Array(bytes.buffer);
+        const float32 = new Float32Array(int16.length);
+        
+        let maxVol = 0;
+        for(let i=0; i<int16.length; i++) {
+            float32[i] = int16[i] / 32768.0;
+            if(Math.abs(float32[i]) > maxVol) maxVol = Math.abs(float32[i]);
+        }
+
+        const buffer = playbackContext.createBuffer(1, float32.length, 24000);
+        buffer.getChannelData(0).set(float32);
+
+        const source = playbackContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(playbackContext.destination);
+
+        const currentTime = playbackContext.currentTime;
+        if (nextStartTime < currentTime) nextStartTime = currentTime;
+        source.start(nextStartTime);
+        nextStartTime += buffer.duration;
+        
+        isSpeaking = true;
+        if (currentVrm) {
+            const openAmount = Math.min(1.0, maxVol * 4);
+            currentVrm.expressionManager.setValue("aa", openAmount);
+            setTimeout(() => { if(currentVrm) currentVrm.expressionManager.setValue("aa", 0); }, buffer.duration * 1000);
+        }
+    }
+
+    // 3D Logic
 
     function initThree() {
         scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera(
-            30,
-            canvas.clientWidth / canvas.clientHeight,
-            0.1,
-            20,
-        );
-        camera.position.set(0, 1.9, 2.0);
+        
+        camera = new THREE.PerspectiveCamera(30, canvas.clientWidth / canvas.clientHeight, 0.1, 20);
+        camera.position.set(0, 1.45, 1.6); 
+        camera.lookAt(0, 1.35, 0);
 
-        renderer = new THREE.WebGLRenderer({
-            canvas,
-            antialias: true,
-            alpha: true,
-        });
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
         renderer.setSize(canvas.clientWidth, canvas.clientHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.outputEncoding = THREE.sRGBEncoding;
 
-        const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
-        mainLight.position.set(0, 1.5, 2).normalize();
-        scene.add(mainLight);
-        
-        const topLight = new THREE.DirectionalLight(0xffffff, 0.6);
-        topLight.position.set(0, 2, 0).normalize();
-        scene.add(topLight);
-        
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
+        dirLight.position.set(0.5, 1.5, 1.5);
+        scene.add(dirLight);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
 
         clock = new THREE.Clock();
     }
 
-    async function loadVrm(url) {
+    async function loadModel(url) {
+        isModelLoading = true;
         const loader = new GLTFLoader();
-        loader.register((parser) => {
-            return new VRMLoaderPlugin(parser);
-        });
+        loader.register((parser) => new VRMLoaderPlugin(parser));
 
-        const gltf = await loader.loadAsync(url);
-        const vrm = gltf.userData.vrm;
-        scene.add(vrm.scene);
-        currentVrm = vrm;
+        try {
+            const gltf = await loader.loadAsync(url);
+            VRMUtils.removeUnnecessaryJoints(gltf.scene);
+            const vrm = gltf.userData.vrm;
+            
+            VRMUtils.rotateVRM0(vrm); 
+            vrm.scene.position.y = 0.0; 
 
-        VRMUtils.rotateVRM0(vrm);
-        vrm.scene.scale.set(1.6, 1.6, 1.6);
-        vrm.scene.position.y = -0.3;
-        
-        vrm.scene.scale.set(0.1, 0.1, 0.1);
-        let scale = 0.1;
-        const targetScale = 1.6;
-        const fadeIn = setInterval(() => {
-            scale += (targetScale - scale) * 0.1;
-            if (Math.abs(scale - targetScale) < 0.01) {
-                scale = targetScale;
-                clearInterval(fadeIn);
-                modelLoaded = true;
-            }
-            vrm.scene.scale.set(scale, scale, scale);
-        }, 16);
-        
-        console.log("VRM loaded:", vrm);
+            scene.add(vrm.scene);
+            currentVrm = vrm;
+            
+            currentVrm.update(0); // Init bones
+            
+            resetPose(vrm);
+            console.log("VRM Loaded");
+        } catch (e) {
+            console.error("Failed to load VRM:", e);
+            addNotification("Не удалось загрузить 3D модель", "error");
+        } finally {
+            isModelLoading = false;
+        }
+    }
+
+    function resetPose(vrm) {
+        try {
+             const leftArm = vrm.humanoid.getNormalizedBoneNode('leftUpperArm');
+             const rightArm = vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
+             if (leftArm) leftArm.rotation.z = 1.3;
+             if (rightArm) rightArm.rotation.z = -1.3;
+        } catch (e) { console.warn(e); }
+        vrm.expressionManager.setValue("happy", 0.15);
     }
 
     function animate() {
+        if (!renderer || !scene || !camera) return;
         requestAnimationFrame(animate);
-        const delta = clock.getDelta();
-        const elapsed = clock.getElapsedTime();
+        
+        const delta = Math.min(clock.getDelta(), 0.04); 
+        const t = clock.elapsedTime;
 
         if (currentVrm) {
-            if (elapsed - lastBlinkTime > blinkInterval) {
-                const blinkValue = Math.min(
-                    1.0,
-                    (elapsed - lastBlinkTime - blinkInterval) * 10,
-                );
-                currentVrm.expressionManager.setValue(
-                    "blink",
-                    1.0 - Math.abs(1.0 - blinkValue * 2),
-                );
+            // BLINKING
+            if (t - lastBlinkTime > blinkInterval) {
+                const blinkValue = Math.min(1.0, (t - lastBlinkTime - blinkInterval) * 10);
+                currentVrm.expressionManager.setValue("blink", 1.0 - Math.abs(1.0 - blinkValue * 2));
                 if (blinkValue >= 1.0) {
-                    lastBlinkTime = elapsed;
+                    lastBlinkTime = t;
                     blinkInterval = 2.0 + Math.random() * 4.0;
                 }
             }
 
-            currentVrm.expressionManager.setValue("happy", 0.15);
-
+            // Idle
+            
+            // Дыхание (Грудь)
             const chest = currentVrm.humanoid.getNormalizedBoneNode("chest");
             if (chest) {
-                if (chestBaseY === 0) {
-                    chestBaseY = chest.position.y;
-                }
-                const breathAmount = Math.sin(elapsed * 1.2) * 0.02;
-                chest.position.y = chestBaseY + breathAmount;
+                chest.position.y = Math.sin(t * 1.5) * 0.005; // Вверх-вниз
+                chest.rotation.x = Math.sin(t * 1.5) * 0.02; // Легкий наклон
             }
 
+            // Голова (Случайное покачивание)
             const neck = currentVrm.humanoid.getNormalizedBoneNode("neck");
-            if (neck && !isSpeaking) {
-                const headSway = Math.sin(elapsed * 0.5) * 0.05;
-                neck.rotation.z = headSway;
+            if (neck) {
+                neck.rotation.y = Math.sin(t * 0.3) * 0.05; // Поворот влево-вправо
+                neck.rotation.z = Math.sin(t * 0.5) * 0.02; // Наклон уха к плечу
             }
 
-            const leftUpperArm =
-                currentVrm.humanoid.getNormalizedBoneNode("leftUpperArm");
-            const rightUpperArm =
-                currentVrm.humanoid.getNormalizedBoneNode("rightUpperArm");
-            if (leftUpperArm) {
-                leftUpperArm.rotation.z = 1.3 + Math.sin(elapsed * 0.3) * 0.05;
-            }
-            if (rightUpperArm) {
-                rightUpperArm.rotation.z = -1.3 + Math.sin(elapsed * 0.3) * 0.05;
-            }
+            // Руки (Дыхание рук)
+            const leftArm = currentVrm.humanoid.getNormalizedBoneNode('leftUpperArm');
+            const rightArm = currentVrm.humanoid.getNormalizedBoneNode('rightUpperArm');
+            if (leftArm) leftArm.rotation.z = 1.3 + Math.sin(t * 1.5) * 0.03;
+            if (rightArm) rightArm.rotation.z = -1.3 - Math.sin(t * 1.5) * 0.03;
 
+            // Тело (Легкий дрейф)
             const hips = currentVrm.humanoid.getNormalizedBoneNode("hips");
-            if (hips && !isSpeaking) {
-                const bodySway = Math.sin(elapsed * 0.4) * 0.01;
-                hips.rotation.z = bodySway;
+            if (hips) {
+                hips.rotation.y = Math.sin(t * 0.2) * 0.02;
             }
 
             currentVrm.update(delta);
@@ -332,549 +410,340 @@
         renderer.render(scene, camera);
     }
 
-    let lastBlinkTime = 0;
-    let blinkInterval = 3.0;
-    let chestBaseY = 0;
-
-    function connectWebSocket() {
-        const token =
-            localStorage.getItem("access") ||
-            localStorage.getItem("access_token");
-        const url = `${WS_BASE_URL}/ws/conversation/${testData.id}/${token ? `?token=${token}` : ""}`;
-        socket = new WebSocket(url);
-
-        socket.onopen = () => {
-            isConnecting = false;
-            console.log("Connected to AI Conversation");
-        };
-
-        socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === "ready") {
-                isConnecting = false;
-                currentSubtitleEntry = { speaker: "", text: "", translated: "" };
-            } else if (data.type === "audio_chunk") {
-                handleAudioChunk(data.data);
-            } else if (data.type === "ai_text_chunk") {
-                if (isModelReflection(data.text)) {
-                    console.log("Пропущено внутреннее размышление модели:", data.text);
-                    return;
-                }
-                
-                if (currentSubtitleEntry.speaker !== "Сенсей") {
-                    if (currentSubtitleEntry.text && currentSubtitleEntry.speaker) {
-                        chatLog.push({ ...currentSubtitleEntry, timestamp: Date.now() });
-                    }
-                    currentSubtitleEntry = { speaker: "Сенсей", text: data.text, translated: "" };
-                } else {
-                    currentSubtitleEntry.text += data.text;
-                }
-                currentSubtitleEntry = { ...currentSubtitleEntry };
-            } else if (data.type === "ai_text_translated") {
-                if (isModelReflection(data.text)) {
-                    return;
-                }
-                
-                if (currentSubtitleEntry.speaker === "Сенсей" && currentSubtitleEntry.text === data.text) {
-                    currentSubtitleEntry.translated = data.translated || data.text;
-                    currentSubtitleEntry = { ...currentSubtitleEntry };
-                }
-                const lastEntry = chatLog[chatLog.length - 1];
-                if (lastEntry && lastEntry.speaker === "Сенсей" && lastEntry.text === data.text) {
-                    lastEntry.translated = data.translated || data.text;
-                    chatLog = [...chatLog];
-                }
-            } else if (data.type === "user_text_transcript") {
-                if (currentSubtitleEntry.text && currentSubtitleEntry.speaker) {
-                    chatLog.push({ ...currentSubtitleEntry, timestamp: Date.now() });
-                }
-                currentSubtitleEntry = { speaker: username, text: data.text, translated: data.text };
-                chatLog.push({ ...currentSubtitleEntry, timestamp: Date.now() });
-                chatLog = [...chatLog];
-            } else if (data.type === "user_text_translated") {
-                const lastEntry = chatLog[chatLog.length - 1];
-                if (lastEntry && lastEntry.speaker === username && lastEntry.text === data.text) {
-                    lastEntry.translated = data.translated || data.text;
-                    chatLog = [...chatLog];
-                }
-                if (currentSubtitleEntry.speaker === username && currentSubtitleEntry.text === data.text) {
-                    currentSubtitleEntry.translated = data.translated || data.text;
-                    currentSubtitleEntry = { ...currentSubtitleEntry };
-                }
-            } else if (data.type === "turn_complete") {
-                setTimeout(() => {
-                    isSpeaking = false;
-                }, 500);
-                if (currentSubtitleEntry.speaker === "Сенсей" && currentSubtitleEntry.text) {
-                    chatLog.push({ ...currentSubtitleEntry, timestamp: Date.now() });
-                    chatLog = [...chatLog];
-                }
-            } else if (data.type === "error") {
-                addNotification(data.message, "error");
-            }
-        };
-
-        socket.onclose = () => {
-            isConnecting = true;
-            console.log("Disconnected from AI Conversation");
-        };
-    }
-
-    function handleAudioChunk(base64Data) {
-        if (!playbackContext) {
-            playbackContext = new (window.AudioContext ||
-                window.webkitAudioContext)({
-                sampleRate: 24000,
-            });
-        }
-
-        const binaryString = atob(base64Data);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-
-        const pcmData = new Int16Array(bytes.buffer);
-        const floatData = new Float32Array(pcmData.length);
-        for (let i = 0; i < pcmData.length; i++) {
-            floatData[i] = pcmData[i] / 32768.0;
-        }
-
-        const buffer = playbackContext.createBuffer(1, floatData.length, 24000);
-        buffer.getChannelData(0).set(floatData);
-
-        const source = playbackContext.createBufferSource();
-        source.buffer = buffer;
-        source.connect(playbackContext.destination);
-
-        const currentTime = playbackContext.currentTime;
-        if (nextStartTime < currentTime) {
-            nextStartTime = currentTime;
-        }
-
-        source.start(nextStartTime);
-        nextStartTime += buffer.duration;
-
-        isSpeaking = true;
-
-        if (currentVrm) {
-            let max = 0;
-            for (let i = 0; i < floatData.length; i++) {
-                if (Math.abs(floatData[i]) > max) max = Math.abs(floatData[i]);
-            }
-            currentVrm.expressionManager.setValue(
-                "aa",
-                Math.min(1.0, max * 2.5),
-            );
-            setTimeout(() => {
-                if (currentVrm) currentVrm.expressionManager.setValue("aa", 0);
-            }, 100);
-        }
-    }
-
-    function stopConversation() {
+    // Control Flow
+    function finishConversation(graded = false) {
         isConversationActive = false;
+        isSpeaking = false;
+        conversationStopped = true;
         stopMicCapture();
-        if (socket) {
-            socket.send(JSON.stringify({ action: "submit_for_evaluation" }));
-        }
-        if (playbackContext) {
-            playbackContext.close();
-            playbackContext = null;
-        }
+        if (socket && !graded) socket.close();
+        emitState();
     }
 
-    function sendUserMessage(message) {
-        if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ action: "chat", message: message }));
+    async function submitConversation() {
+        if (isAwaitingGrading) return;
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+             addNotification("Нет соединения.", "error"); return;
         }
+        isAwaitingGrading = true;
+        socket.send(JSON.stringify({ action: "submit_for_evaluation" }));
+        emitState();
+    }
+
+    function resetState() {
+        subtitlesHistory = [];
+        conversationStopped = false;
+        hasConversationRecording = false;
+        isAwaitingGrading = false;
+        lastSubmission = null;
+    }
+
+    function emitState() {
+        dispatch("stateChange", {
+            sectionItemId,
+            hasRecording: hasConversationRecording,
+            awaitingGrading: isAwaitingGrading,
+            conversationStopped,
+            lastSubmission
+        });
     }
 </script>
 
-<div class="test-container" style="background-image: {bgImageUrl}">
-    <div class="ai-conversation-display">
-        <div class="character-viewport">
-            <canvas bind:this={canvas}></canvas>
+<div class="ai-container">
+    <div class="viewport-wrapper" style="background-image: {bgImageUrl}">
+        <canvas bind:this={canvas}></canvas>
 
-            <div class="overlay-ui">
-                {#if isConnecting}
-                    <div class="connecting-overlay" transition:fade>
-                        <div class="loader"></div>
-                        <p>Подключение к сенсею...</p>
-                    </div>
-                {/if}
+        {#if isModelLoading}
+            <div class="overlay loader-overlay" transition:fade>
+                <div class="spinner"></div>
+                <p>Зову Сенсея...</p>
             </div>
+        {/if}
 
-            <div class="bottom-controls">
-                {#if isConversationActive}
-                    <div class="interaction-hud">
-                        <div class="hud-content">
-                            {#if isThinking}
-                                <div class="hud-status thinking-state">
-                                    <div class="pulse-ring"></div>
-                                    <span>Сенсей думает...</span>
-                                </div>
-                            {:else if isSpeaking}
-                                <div class="hud-status speaking-state">
-                                    <div class="wave-bars">
-                                        <span></span><span></span><span></span>
-                                    </div>
-                                    <span>Сенсей говорит...</span>
-                                </div>
-                            {:else}
-                                <div class="hud-status listening-state">
-                                    <div class="mic-pulse"></div>
-                                    <span>Сенсей слушает...</span>
-                                </div>
-                            {/if}
-                        </div>
+        {#if isConnecting && !isModelLoading}
+            <div class="overlay status-overlay" transition:fade>
+                <div class="spinner"></div>
+                <p>Устанавливаем связь...</p>
+            </div>
+        {/if}
 
-                        <button
-                            class="hud-stop-btn"
-                            on:click={stopConversation}
-                        >
-                            Завершить
-                        </button>
-                    </div>
-                {:else}
-                    <button class="start-btn" on:click={startConversation}>
-                        <svg
-                            viewBox="0 0 24 24"
-                            width="24"
-                            height="24"
-                            fill="currentColor"
-                        >
-                            <path d="M8 5v14l11-7z" />
-                        </svg>
-                        Начать разговор
+        <div class="hud-wrapper">
+            {#if !isConversationActive}
+                <button 
+                    class="glass-btn start" 
+                    on:click={startConversation}
+                    disabled={isInteractionLocked || isModelLoading}
+                    title={conversationStopped ? "Начать заново" : "Начать"}
+                >
+                    {#if conversationStopped}
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    {:else}
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                    {/if}
+                </button>
+                
+                {#if conversationStopped && hasConversationRecording && !lastSubmission}
+                    <button class="glass-btn submit" on:click={submitConversation} disabled={isAwaitingGrading} title="Оценить">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                     </button>
                 {/if}
-            </div>
+
+            {:else}
+                <div class="glass-panel" transition:scale={{duration: 200}}>
+                    
+                    <div class="visualizer">
+                        {#if isSpeaking}
+                            <div class="voice-bars">
+                                <span></span><span></span><span></span><span></span>
+                            </div>
+                        {:else}
+                            <div class="recording-dot-wrapper">
+                                <div class="rec-dot"></div>
+                                <div class="rec-pulse"></div>
+                            </div>
+                        {/if}
+                    </div>
+
+                    <button class="action-icon-btn stop" on:click={() => finishConversation(false)} title="Завершить">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                    </button>
+                </div>
+            {/if}
         </div>
     </div>
-    
-    <div class="subtitles-container-wrapper">
-        <button 
-            class="toggle-subtitles-btn" 
-            on:click={() => subtitlesVisible = !subtitlesVisible}
-            title={subtitlesVisible ? "Скрыть подтитры" : "Показать подтитры"}
-        >
-            <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                width="20" 
-                height="20" 
-                viewBox="0 0 24 24" 
-                fill="currentColor"
-            >
-                {#if subtitlesVisible}
-                    <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 12h4v2H4v-2zm6 0h4v2h-4v-2zm6 0h4v2h-4v-2zM4 16h10v2H4v-2zm12 0h4v2h-4v-2z"/>
-                {:else}
-                    <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 12h4v2H4v-2zm6 0h4v2h-4v-2zm6 0h4v2h-4v-2zM4 16h10v2H4v-2zm12 0h4v2h-4v-2z" opacity="0.5"/>
-                {/if}
-            </svg>
-            <span>{subtitlesVisible ? "Скрыть подтитры" : "Показать подтитры"}</span>
-        </button>
-        
+
+    <div class="subtitles-box">
+        <div class="subtitles-header">
+            <span class="title">Диалог</span>
+            <button class="toggle-subs" on:click={() => subtitlesVisible = !subtitlesVisible}>
+                {subtitlesVisible ? "▼" : "▲"}
+            </button>
+        </div>
         {#if subtitlesVisible}
-            <div class="subtitles-panel" transition:fade>
-                {#if currentSubtitleEntry.text}
-                    <div class="subtitle-entry current" class:sensei={currentSubtitleEntry.speaker === "Сенсей"}>
-                        <div class="subtitle-speaker">{currentSubtitleEntry.speaker}:</div>
-                        <div class="subtitle-content">
-                            {currentSubtitleEntry.translated || currentSubtitleEntry.text}
+            <div class="subtitles-list" transition:slide>
+                {#each subtitlesHistory as entry (entry.id)}
+                    <div class="sub-item" class:sensei={entry.speaker === "Сенсей"} class:user={entry.speaker !== "Сенсей"}>
+                        <div class="sub-label">{entry.speaker}</div>
+                        <div class="sub-text">
+                            {entry.translated || entry.text}
+                            {#if !entry.translated && entry.text}<span class="dots">...</span>{/if}
                         </div>
                     </div>
-                {/if}
-                {#each chatLog.slice().reverse() as entry (entry.timestamp)}
-                    {#if entry.text && entry.speaker}
-                        <div class="subtitle-entry" class:sensei={entry.speaker === "Сенсей"}>
-                            <div class="subtitle-speaker">{entry.speaker}:</div>
-                            <div class="subtitle-content">
-                                {entry.translated || entry.text}
-                            </div>
-                        </div>
-                    {/if}
                 {/each}
+                {#if subtitlesHistory.length === 0}
+                    <div class="empty-subs">История пуста</div>
+                {/if}
             </div>
         {/if}
     </div>
 </div>
 
 <style>
-    .test-container {
+    .ai-container {
         width: 100%;
-        position: relative;
-        background-position: center;
-        background-size: cover;
-        background-repeat: no-repeat;
-        background-color: #2c2c2c;
-        border-radius: var(--spacing-border-radius-block, 16px);
-        box-shadow: 0 4px 12px rgba(var(--color-primary-rgb, 175, 164, 255), 0.07);
+        border-radius: var(--spacing-border-radius-card);
         overflow: hidden;
-        margin-bottom: 0;
-    }
-
-    .ai-conversation-display {
-        width: 100%;
-        height: 600px;
-        background: transparent;
+        background: var(--color-bg-light);
+        box-shadow: var(--color-shadow);
         position: relative;
+        margin-bottom: var(--spacing-margin-bottom-medium);
     }
 
-    .character-viewport {
-        width: 100%;
-        height: 100%;
+    .viewport-wrapper {
         position: relative;
-    }
-
-    canvas {
         width: 100%;
-        height: 100%;
-        display: block;
+        height: 550px;
+        background-color: #2c2c2c;
+        background-size: cover;
+        background-position: center;
     }
 
-    .overlay-ui {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        padding: 40px;
-    }
+    canvas { display: block; width: 100%; height: 100%; }
 
-    .connecting-overlay {
-        position: absolute;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.3);
-        backdrop-filter: blur(2px);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
+    /* LOADER */
+    .overlay {
+        position: absolute; inset: 0;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
         z-index: 10;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(5px);
         color: #fff;
     }
-
-    .loader {
-        width: 48px;
-        height: 48px;
-        border: 4px solid rgba(255, 255, 255, 0.1);
-        border-left-color: #6366f1;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin-bottom: 20px;
+    .overlay p { margin-top: 15px; font-weight: 500; letter-spacing: 0.5px; }
+    
+    .spinner {
+        width: 40px; height: 40px;
+        border: 3px solid rgba(255,255,255,0.1);
+        border-top-color: var(--color-primary);
+        border-radius: 50%; 
+        animation: spin 0.8s linear infinite;
+        will-change: transform;
+        z-index: 11;
     }
 
-    @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
-
-    .subtitles-container-wrapper {
-        margin-top: 15px;
-        width: 100%;
-    }
-
-    .toggle-subtitles-btn {
-        background: var(--color-bg-light, #fff);
-        border: 1px solid var(--color-border-light, #e7eaf3);
-        border-top: none;
-        border-radius: 0 0 var(--spacing-border-radius-block, 16px) var(--spacing-border-radius-block, 16px);
-        padding: 10px 16px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        color: var(--color-text-muted, #555);
-        font-size: 0.9rem;
-        width: 100%;
-        justify-content: center;
-    }
-
-    .toggle-subtitles-btn:hover {
-        background: var(--color-bg-ultra-light, #f8f8f8);
-        color: var(--color-primary, #AFA4FF);
-    }
-
-    .subtitles-panel {
-        background-color: var(--color-bg-light, #fff);
-        border: 1px solid var(--color-border-light, #e7eaf3);
-        border-top: 1px solid var(--color-border-light, #e7eaf3);
-        border-radius: 0 0 var(--spacing-border-radius-block, 16px) var(--spacing-border-radius-block, 16px);
-        padding: 20px;
-        max-height: 300px;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column-reverse;
-        gap: 12px;
-    }
-
-    .subtitle-entry {
-        padding: 12px 16px;
-        border-radius: var(--spacing-border-radius-small, 8px);
-        background-color: var(--color-bg-ultra-light, #f8f8f8);
-        border-left: 3px solid var(--color-primary, #AFA4FF);
-        transition: all 0.2s ease;
-    }
-
-    .subtitle-entry.current {
-        background-color: rgba(var(--color-primary-rgb, 175, 164, 255), 0.1);
-        border-left-width: 4px;
-    }
-
-    .subtitle-entry:not(.sensei) {
-        border-left-color: var(--color-secondary, #6D7FC9);
-    }
-
-    .subtitle-entry.sensei {
-        border-left-color: var(--color-primary, #AFA4FF);
-    }
-
-    .subtitle-speaker {
-        font-weight: var(--font-weight-semi-bold, 600);
-        font-size: 0.85rem;
-        color: var(--color-text-muted, #555);
-        margin-bottom: 4px;
-    }
-
-    .subtitle-entry:not(.sensei) .subtitle-speaker {
-        color: var(--color-secondary, #6D7FC9);
-    }
-
-    .subtitle-entry.sensei .subtitle-speaker {
-        color: var(--color-primary, #AFA4FF);
-    }
-
-    .subtitle-content {
-        font-size: var(--font-size-p, 0.95rem);
-        color: var(--color-text-dark, #333);
-        line-height: var(--line-height-body, 1.6);
-    }
-
-    .bottom-controls {
+    /* HUD */
+    .hud-wrapper {
         position: absolute;
-        bottom: 40px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 100%;
-        max-width: 500px;
-        padding: 0 20px;
-        z-index: 5;
-    }
-
-    .interaction-hud {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border: 1px solid var(--color-border-light, rgba(0, 0, 0, 0.1));
-        border-radius: var(--spacing-border-radius-button, 20px);
-        padding: 12px 24px;
+        bottom: 30px;
+        left: 0; right: 0;
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        box-shadow: 0 4px 12px rgba(var(--color-primary-rgb, 175, 164, 255), 0.15);
+        justify-content: center;
+        align-items: flex-end;
+        gap: 20px;
+        z-index: 20;
+        pointer-events: none; 
     }
 
-    .hud-status {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        color: var(--color-text-dark, #333);
-        font-weight: var(--font-weight-medium, 500);
-        font-size: var(--font-size-p, 0.95rem);
-    }
-
-    .wave-bars {
-        display: flex;
-        gap: 3px;
-        align-items: center;
-        height: 16px;
-    }
-
-    .wave-bars span {
-        width: 3px;
-        height: 100%;
-        background: var(--color-primary, #AFA4FF);
-        border-radius: 2px;
-        animation: wave 1s infinite ease-in-out;
-    }
-
-    .wave-bars span:nth-child(2) {
-        animation-delay: 0.2s;
-    }
-    .wave-bars span:nth-child(3) {
-        animation-delay: 0.4s;
-    }
-
-    @keyframes wave {
-        0%,
-        100% {
-            height: 4px;
-        }
-        50% {
-            height: 16px;
-        }
-    }
-
-    .mic-pulse {
-        width: 12px;
-        height: 12px;
-        background: var(--color-secondary, #6D7FC9);
+    .glass-btn {
+        pointer-events: auto;
+        width: 60px; height: 60px;
         border-radius: 50%;
-        animation: breathe 1.5s infinite ease-in-out;
-        box-shadow: 0 0 12px var(--color-secondary, #6D7FC9);
-    }
-
-    @keyframes breathe {
-        0%,
-        100% {
-            transform: scale(1);
-            opacity: 0.8;
-        }
-        50% {
-            transform: scale(1.3);
-            opacity: 1;
-        }
-    }
-
-    .start-btn {
-        background: linear-gradient(135deg, var(--color-primary, #AFA4FF) 0%, var(--color-primary-dark, #8679f0) 100%);
-        color: var(--color-text-light, #fff);
-        border: none;
-        padding: var(--spacing-padding-button-large, 16px 30px);
-        border-radius: var(--spacing-border-radius-button, 20px);
-        font-size: var(--font-size-button, 0.9rem);
-        font-weight: var(--font-weight-semi-bold, 600);
+        border: 1px solid rgba(255,255,255,0.4);
+        background: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(10px);
+        color: #fff;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        display: flex; align-items: center; justify-content: center;
         cursor: pointer;
+        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s;
+    }
+    .glass-btn:hover { transform: scale(1.1); background: rgba(255,255,255,0.4); }
+    .glass-btn:active { transform: scale(0.95); }
+    .glass-btn svg { width: 28px; height: 28px; }
+
+    .glass-btn.start { color: var(--color-primary); background: #fff; }
+    .glass-btn.submit { background: var(--color-success); color: #fff; border: none; width: 50px; height: 50px; }
+
+    .glass-panel {
+        pointer-events: auto;
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        padding: 6px 6px 6px 20px;
+        border-radius: 50px;
         display: flex;
         align-items: center;
-        gap: 12px;
-        margin: 0 auto;
-        transition: all var(--animation-duration-transition, 0.3s) ease;
-        box-shadow: 0 4px 12px rgba(var(--color-primary-rgb, 175, 164, 255), 0.3);
+        gap: 20px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        height: 60px;
+        min-width: 140px;
+        justify-content: space-between;
     }
 
-    .start-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(var(--color-primary-rgb, 175, 164, 255), 0.4);
+    .visualizer {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 50px;
     }
 
-    .hud-stop-btn {
-        background: rgba(var(--color-danger-red-rgb, 255, 77, 77), 0.1);
-        color: var(--color-danger-red, #ff4d4d);
-        border: 1px solid rgba(var(--color-danger-red-rgb, 255, 77, 77), 0.2);
-        padding: var(--spacing-padding-button-low, 4px 8px);
-        border-radius: var(--spacing-border-radius-button, 20px);
+    .action-icon-btn.stop {
+        width: 48px; height: 48px;
+        border-radius: 50%;
+        background: rgba(255, 77, 77, 0.1);
+        color: var(--color-danger-red);
+        border: none;
+        display: flex; align-items: center; justify-content: center;
         cursor: pointer;
-        font-weight: var(--font-weight-medium, 500);
-        font-size: var(--font-size-button, 0.9rem);
-        transition: all var(--animation-duration-transition, 0.3s);
+        transition: all 0.2s;
+    }
+    .action-icon-btn.stop:hover { background: var(--color-danger-red); color: #fff; }
+    .action-icon-btn.stop svg { width: 20px; height: 20px; }
+
+    /* ANIMATIONS */
+    .voice-bars {
+        display: flex; align-items: center; gap: 4px; height: 20px;
+    }
+    .voice-bars span {
+        display: block; width: 4px;
+        background: var(--color-primary);
+        border-radius: 2px;
+        animation: barBounce 1s ease-in-out infinite;
+    }
+    .voice-bars span:nth-child(1) { height: 8px; animation-delay: 0s; }
+    .voice-bars span:nth-child(2) { height: 16px; animation-delay: 0.1s; }
+    .voice-bars span:nth-child(3) { height: 12px; animation-delay: 0.2s; }
+    .voice-bars span:nth-child(4) { height: 6px; animation-delay: 0.3s; }
+    
+    @keyframes barBounce { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(2.2); } }
+
+    .recording-dot-wrapper {
+        position: relative; width: 24px; height: 24px;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .rec-dot {
+        width: 12px; height: 12px;
+        background: var(--color-danger-red);
+        border-radius: 50%; z-index: 2;
+        box-shadow: 0 0 5px rgba(255, 77, 77, 0.5);
+    }
+    .rec-pulse {
+        position: absolute; inset: 0;
+        border-radius: 50%;
+        background: rgba(255, 77, 77, 0.3);
+        animation: recPulse 1.5s infinite;
+    }
+    @keyframes recPulse { 0% { transform: scale(0.8); opacity: 0.8; } 100% { transform: scale(2.0); opacity: 0; } }
+
+    /* SUBTITLES */
+    .subtitles-box {
+        background: var(--color-bg-light);
+        border-top: 1px solid var(--color-border-light);
+        display: flex; flex-direction: column;
+        max-height: 250px;
+    }
+    .subtitles-header {
+        padding: 10px 24px;
+        display: flex; justify-content: space-between; align-items: center;
+        border-bottom: 1px solid var(--color-bg-ultra-light);
+    }
+    .subtitles-header .title {
+        font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--color-text-muted);
+    }
+    .toggle-subs {
+        background: none; border: none; cursor: pointer; color: #ccc;
+        font-size: 0.8rem;
+    }
+    
+    .subtitles-list {
+        overflow-y: auto;
+        padding: 16px 24px;
+        display: flex; flex-direction: column; gap: 12px;
+    }
+    .sub-item {
+        max-width: 85%;
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        position: relative;
     }
 
-    .hud-stop-btn:hover {
-        background: var(--color-danger-red, #ff4d4d);
-        color: var(--color-text-light, #fff);
+    .sub-item.sensei {
+        align-self: flex-start;
+        background: var(--color-bg-ultra-light);
+        color: var(--color-text-dark);
+        border-left: 3px solid var(--color-primary);
     }
+    .sub-item.user {
+        align-self: flex-end;
+        background: #f0f4ff; 
+        color: var(--color-text-dark);
+        border-right: 3px solid var(--color-secondary);
+        text-align: right;
+    }
+    
+    .sub-label {
+        font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 4px; font-weight: 600;
+    }
+    .sub-item.sensei .sub-label { color: var(--color-primary); }
+    .sub-item.user .sub-label { color: var(--color-secondary); }
+
+    .dots { opacity: 0.5; animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    
+    .empty-subs { text-align: center; font-size: 0.85rem; color: #ccc; font-style: italic; }
 </style>

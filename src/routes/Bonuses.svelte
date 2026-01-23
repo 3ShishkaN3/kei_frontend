@@ -105,7 +105,6 @@
 </script>
 
 <div class="page-container">
-    <!-- Header with Coins -->
     <div class="header-section">
         <h1>Магазин бонусов</h1>
         <div class="header-controls">

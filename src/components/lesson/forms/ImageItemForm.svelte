@@ -198,7 +198,7 @@
                     </button>
                 </div>
             {:else}
-                <label class="image-upload-label-box" for="image-file-input-img"> <!-- Уникальный ID -->
+                <label class="image-upload-label-box" for="image-file-input-img">
                     <ImagePlus size="36px" />
                     <span>Нажмите для загрузки изображения</span>
                 </label>

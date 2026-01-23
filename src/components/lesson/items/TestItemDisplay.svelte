@@ -35,6 +35,14 @@
     let selectedDraggableOptionForSlot = null;
 
     let aiConversationComponent = null;
+    let aiConversationState = {
+        hasRecording: false,
+        awaitingGrading: false,
+        conversationStopped: false,
+        errorMessage: "",
+    };
+    let aiConversationSubmission = null;
+    let aiSubmitInFlight = false;
 
     function generateUiId() {
         return `ui_${Math.random().toString(36).substr(2, 9)}`;
@@ -77,6 +85,60 @@
     function updateLocalStudentAnswerText(event) {
         localStudentAnswerText = event.detail;
     }
+
+    function handleAiConversationStateChange(event) {
+        const detail = event.detail || {};
+        aiConversationState = {
+            ...aiConversationState,
+            ...detail,
+        };
+        if (detail.errorMessage) {
+            dispatch("notify", {
+                type: "error",
+                message: detail.errorMessage,
+            });
+        }
+        if (typeof detail.lastSubmission !== "undefined") {
+            aiConversationSubmission = detail.lastSubmission;
+        }
+        if (detail.awaitingGrading === false) {
+            aiSubmitInFlight = false;
+        }
+    }
+
+    function handleAiConversationSubmission(event) {
+        const detail = event.detail || {};
+        const { submission, sectionItemId: childSection } = detail;
+        if (submission) {
+            aiConversationSubmission = submission;
+            studentSubmission = submission;
+            isTestSubmittedByStudent = true;
+            canStudentInteract = false;
+            dispatch("submissionUpdated", {
+                submission,
+                sectionItemId: childSection || sectionItemId,
+            });
+            if (submission.status === "graded") {
+                aiSubmitInFlight = false;
+            }
+        }
+    }
+
+    async function handleAiConversationSubmit() {
+        if (!aiConversationComponent?.submitConversation || aiSubmitInFlight) {
+            return;
+        }
+        aiSubmitInFlight = true;
+        const success = await aiConversationComponent.submitConversation();
+        if (!success) {
+            aiSubmitInFlight = false;
+        }
+    }
+
+    $: aiSubmitDisabled =
+        aiConversationState.awaitingGrading ||
+        !aiConversationState.hasRecording ||
+        aiSubmitInFlight;
 
     async function refreshSubmissionStatus() {
         if (!studentSubmission?.id) return;
@@ -639,9 +701,8 @@
                 {sectionItemId}
                 {viewMode}
                 {canStudentInteract}
-                on:conversationEnded={(e) => {
-                    console.log("Conversation ended by AI", e.detail);
-                }}
+                on:stateChange={handleAiConversationStateChange}
+                on:submissionUpdate={handleAiConversationSubmission}
             />
         {/if}
 
@@ -657,6 +718,21 @@
                     </button>
                 </div>
             {/if}
+        {/if}
+
+        {#if viewMode === "student" && testData?.test_type === "ai-conversation"}
+            <div class="ai-conversation-summary">
+                <div class="ai-actions">
+                    <button
+                        type="button"
+                        class="btn-submit-test-display"
+                        on:click={handleAiConversationSubmit}
+                        disabled={aiSubmitDisabled}
+                    >
+                        {aiSubmitInFlight || aiConversationState.awaitingGrading ? "Отправляем..." : "Отправить ответ"}
+                    </button>
+                </div>
+            </div>
         {/if}
 
         {#if viewMode === "student" && studentSubmission}
