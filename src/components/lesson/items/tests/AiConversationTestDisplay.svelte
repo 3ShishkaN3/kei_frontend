@@ -566,7 +566,7 @@
                             <div class="original-text">{entry.text}</div>
                             {#if entry.translated}
                                 <div class="translated-text">({entry.translated})</div>
-                            {:else if entry.text && entry.isFinal}
+                            {:else if entry.text}
                                 <button 
                                     class="translate-btn" 
                                     on:click={() => requestTranslation(entry.id, entry.text, entry.speaker === "Сенсей" ? 'ai' : 'user')}
