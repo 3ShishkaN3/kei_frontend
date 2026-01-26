@@ -23,6 +23,7 @@
     let isModelLoading = true;
     let isConversationActive = false;
     let isSpeaking = false; // Sensei is speaking
+    let activeAudioSources = 0; // Счетчик активных аудио источников
     let subtitlesVisible = true;
     let conversationStopped = false;
     let hasConversationRecording = false;
@@ -71,6 +72,12 @@
         initThree();
         setTimeout(() => loadModel("/Khirano.vrm"), 200);
         animate();
+        
+        // Инициализируем аудио после загрузки 3D
+        setTimeout(() => {
+            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioContext.state === "suspended") audioContext.resume();
+        }, 500);
     });
 
     onDestroy(() => {
@@ -88,14 +95,18 @@
     // Subtitle Logic
     function updateSubtitle(speaker, text, translated = null, isFinal = false) {
         const lastMsg = subtitlesHistory[0];
+        
+        // Если есть предыдущее сообщение от того же спикера и оно не финальное
         if (lastMsg && lastMsg.speaker === speaker && !lastMsg.isFinal) {
+            // Обновляем существующее сообщение
             lastMsg.text = text;
             if (translated) lastMsg.translated = translated;
             lastMsg.isFinal = isFinal;
             subtitlesHistory = [...subtitlesHistory];
         } else {
+            // Создаем новое сообщение с уникальным ID
             const newMsg = {
-                id: Date.now(),
+                id: `${Date.now()}_${Math.random()}`, // Уникальный ID
                 speaker,
                 text,
                 translated: translated || null,
@@ -107,6 +118,29 @@
         if (speaker === username) {
             hasConversationRecording = true;
             emitState();
+        }
+    }
+
+    // Translation state
+    let translatingMessages = new Set();
+
+    async function requestTranslation(messageId, text, sourceType) {
+        if (translatingMessages.has(messageId)) return;
+        
+        translatingMessages.add(messageId);
+        
+        try {
+            // Send translation request through WebSocket
+            socket.send(JSON.stringify({
+                action: 'translate',
+                text: text,
+                source_type: sourceType
+            }));
+        } catch (error) {
+            console.error('Translation request failed:', error);
+        } finally {
+            // Will be removed when translation response arrives
+            setTimeout(() => translatingMessages.delete(messageId), 10000);
         }
     }
 
@@ -125,8 +159,6 @@
         isConversationActive = true;
         isConnecting = true;
         try {
-            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioContext.state === "suspended") await audioContext.resume();
             await startMicCapture();
             connectWebSocket();
         } catch (e) {
@@ -143,7 +175,6 @@
         socket = new WebSocket(url);
 
         socket.onopen = () => {
-            console.log("WS Connected");
             socket.send(JSON.stringify({ action: "start" }));
         };
 
@@ -158,23 +189,20 @@
                     playAudioChunk(data.data);
                     break;
                 case "ai_text_chunk":
-                    updateSubtitle("Сенсей", data.text, null, false);
+                    updateSubtitle("Сенсей", data.text, null, data.is_final || false);
                     break;
                 case "ai_text_translated":
-                    updateTranslationOnly(data.text, data.translated);
-                    break;
-                case "user_text_transcript":
-                    updateSubtitle(username, data.text, null, data.is_final);
-                    break;
-                case "user_text_translated":
-                    updateTranslationOnly(data.text, data.translated);
-                    break;
+                updateTranslationOnly(data.text, data.translated);
+                break;
+            case "user_text_transcript":
+                updateSubtitle(username, data.text, null, data.is_final);
+                break;
+            case "user_text_translated":
+                updateTranslationOnly(data.text, data.translated);
+                break;
                 case "turn_complete":
-                    if (subtitlesHistory.length > 0 && subtitlesHistory[0].speaker === "Сенсей") {
-                        subtitlesHistory[0].isFinal = true;
-                        subtitlesHistory = [...subtitlesHistory];
-                    }
-                    setTimeout(() => { isSpeaking = false; }, 200);
+                    // НЕ финализируем сообщения - это прерывает диалог
+                    // turn_complete используется только для завершения транскрипции на бэкенде
                     break;
                 case "submission_update":
                     lastSubmission = data.submission;
@@ -203,7 +231,7 @@
             const source = audioContext.createMediaStreamSource(micStream);
             processor = audioContext.createScriptProcessor(4096, 1, 1);
             source.connect(processor);
-            processor.connect(audioContext.destination);
+            // НЕ подключаем processor к audioContext.destination - это создает эхо
 
             processor.onaudioprocess = (e) => {
                 if (!isConversationActive || !socket || socket.readyState !== WebSocket.OPEN || isSpeaking) return;
@@ -292,11 +320,22 @@
         nextStartTime += buffer.duration;
         
         isSpeaking = true;
+        activeAudioSources++;
+        
         if (currentVrm) {
             const openAmount = Math.min(1.0, maxVol * 4);
             currentVrm.expressionManager.setValue("aa", openAmount);
             setTimeout(() => { if(currentVrm) currentVrm.expressionManager.setValue("aa", 0); }, buffer.duration * 1000);
         }
+        
+        // Сбрасываем isSpeaking когда этот аудио чанк заканчивается
+        source.onended = () => {
+            activeAudioSources--;
+            if (activeAudioSources <= 0) {
+                isSpeaking = false;
+                activeAudioSources = 0; // Защита от отрицательных значений
+            }
+        };
     }
 
     // 3D Logic
@@ -340,7 +379,6 @@
             currentVrm.update(0); // Init bones
             
             resetPose(vrm);
-            console.log("VRM Loaded");
         } catch (e) {
             console.error("Failed to load VRM:", e);
             addNotification("Не удалось загрузить 3D модель", "error");
@@ -525,8 +563,22 @@
                     <div class="sub-item" class:sensei={entry.speaker === "Сенсей"} class:user={entry.speaker !== "Сенсей"}>
                         <div class="sub-label">{entry.speaker}</div>
                         <div class="sub-text">
-                            {entry.translated || entry.text}
-                            {#if !entry.translated && entry.text}<span class="dots">...</span>{/if}
+                            <div class="original-text">{entry.text}</div>
+                            {#if entry.translated}
+                                <div class="translated-text">({entry.translated})</div>
+                            {:else if entry.text && entry.isFinal}
+                                <button 
+                                    class="translate-btn" 
+                                    on:click={() => requestTranslation(entry.id, entry.text, entry.speaker === "Сенсей" ? 'ai' : 'user')}
+                                    disabled={translatingMessages.has(entry.id)}
+                                >
+                                    {#if translatingMessages.has(entry.id)}
+                                        Переводим...
+                                    {:else}
+                                        Показать перевод
+                                    {/if}
+                                </button>
+                            {/if}
                         </div>
                     </div>
                 {/each}
@@ -741,9 +793,41 @@
     }
     .sub-item.sensei .sub-label { color: var(--color-primary); }
     .sub-item.user .sub-label { color: var(--color-secondary); }
-
-    .dots { opacity: 0.5; animation: blink 1s infinite; }
-    @keyframes blink { 50% { opacity: 0; } }
     
     .empty-subs { text-align: center; font-size: 0.85rem; color: #ccc; font-style: italic; }
+    
+    /* Translation styles */
+    .original-text {
+        font-size: 0.9rem;
+        line-height: 1.4;
+        margin-bottom: 4px;
+    }
+    
+    .translated-text {
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+        font-style: italic;
+        line-height: 1.3;
+    }
+    
+    .translate-btn {
+        margin-top: 6px;
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        background: var(--color-primary);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: opacity 0.2s;
+    }
+    
+    .translate-btn:hover:not(:disabled) {
+        opacity: 0.8;
+    }
+    
+    .translate-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
 </style>
