@@ -11,7 +11,9 @@ Sentry.init({
 
 });
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/build/pdf.worker.js';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/build/pdfjs-dist/build/pdf.worker.js';
+
 const app = new App({
     target: document.body,
 });
