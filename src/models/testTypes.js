@@ -274,27 +274,38 @@ export class SpellingTestModel extends BaseTestModel {
 /**
  * Модель для AI Conversation теста ("Кайва с сенсеем")
  */
+function _normalizeBackgroundImageId(val) {
+    if (val == null) return null;
+    if (typeof val === 'number' && Number.isInteger(val)) return val;
+    if (typeof val === 'object' && val != null && typeof val.id === 'number') return val.id;
+    return null;
+}
+
 export class AiConversationTestModel extends BaseTestModel {
     constructor(data = {}) {
         const { ai_conversation_question = {}, ...baseData } = data;
         super({ ...baseData, test_type: 'ai-conversation' });
 
+        const rawBg = ai_conversation_question.background_image ?? data.background_image;
+        const bgId = _normalizeBackgroundImageId(rawBg) ?? _normalizeBackgroundImageId(ai_conversation_question.background_image_details ?? data.background_image_details);
+
         this.ai_conversation_question = {
             context: ai_conversation_question.context || data.context || "",
             personality: ai_conversation_question.personality || data.personality || "",
             goodbye_condition: ai_conversation_question.goodbye_condition || data.goodbye_condition || "",
-            background_image: ai_conversation_question.background_image || data.background_image || null,
+            background_image: bgId,
             background_image_details: ai_conversation_question.background_image_details || data.background_image_details || null,
         };
     }
 
     toPayload() {
         const payload = super.toPayload();
+        const bgId = _normalizeBackgroundImageId(this.ai_conversation_question.background_image);
         payload.ai_conversation_question = {
             context: this.ai_conversation_question.context,
             personality: this.ai_conversation_question.personality,
             goodbye_condition: this.ai_conversation_question.goodbye_condition,
-            background_image: this.ai_conversation_question.background_image
+            background_image: bgId,
         };
         return payload;
     }

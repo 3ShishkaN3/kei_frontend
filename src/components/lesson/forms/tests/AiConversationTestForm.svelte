@@ -68,10 +68,10 @@
             }
             localTestModel = new AiConversationTestModel(currentTestData);
 
-            if (currentTestData.ai_conversation_question.background_image) {
-                currentServerBgId =
-                    currentTestData.ai_conversation_question.background_image;
-            }
+            const bg = currentTestData.ai_conversation_question;
+            const rawBg = bg.background_image ?? bg.background_image_details;
+            currentServerBgId = typeof rawBg === "number" ? rawBg : (rawBg?.id ?? null);
+
             if (
                 currentTestData.ai_conversation_question
                     .background_image_details?.image
@@ -223,6 +223,9 @@
         }
 
         const testDefinition = localTestModel.toPayload();
+        testDefinition.ai_conversation_question.background_image = finalCroppedFile
+            ? null
+            : currentServerBgId;
 
         if (finalCroppedFile) {
             const formData = new FormData();
@@ -338,14 +341,9 @@
                         <div class="action-buttons">
                             <button
                                 type="button"
-                                class="btn-action-small"
-                                on:click={() => (showImageCropper = false)}
-                                >Готово</button
-                            >
-                            <button
-                                type="button"
                                 class="btn-action-small danger"
-                                on:click={removeAttachedBg}>Удалить</button
+                                on:click={removeAttachedBg}
+                                >Удалить</button
                             >
                         </div>
                     </div>

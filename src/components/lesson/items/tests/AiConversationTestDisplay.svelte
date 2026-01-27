@@ -92,21 +92,17 @@
         if (playbackContext && playbackContext.state !== 'closed') playbackContext.close();
     });
 
-    // Subtitle Logic
     function updateSubtitle(speaker, text, translated = null, isFinal = false) {
         const lastMsg = subtitlesHistory[0];
         
-        // Если есть предыдущее сообщение от того же спикера и оно не финальное
         if (lastMsg && lastMsg.speaker === speaker && !lastMsg.isFinal) {
-            // Обновляем существующее сообщение
             lastMsg.text = text;
             if (translated) lastMsg.translated = translated;
             lastMsg.isFinal = isFinal;
             subtitlesHistory = [...subtitlesHistory];
         } else {
-            // Создаем новое сообщение с уникальным ID
             const newMsg = {
-                id: `${Date.now()}_${Math.random()}`, // Уникальный ID
+                id: `${Date.now()}_${Math.random()}`,
                 speaker,
                 text,
                 translated: translated || null,
@@ -121,7 +117,6 @@
         }
     }
 
-    // Translation state
     let translatingMessages = new Set();
 
     async function requestTranslation(messageId, text, sourceType) {
@@ -130,7 +125,6 @@
         translatingMessages.add(messageId);
         
         try {
-            // Use HTTP API instead of WebSocket
             const response = await apiFetch(`${API_BASE_URL}/materials/tests/translate_subtitle/`, {
                 method: 'POST',
                 headers: {
@@ -233,8 +227,6 @@
                 isAwaitingGrading = true;
                 break;
             case "turn_complete":
-                // НЕ финализируем сообщения - это прерывает диалог
-                // turn_complete используется только для завершения транскрипции на бэкенде
                 break;
             case "error":
                 addNotification(data.message, "error");
@@ -256,7 +248,6 @@
             const source = audioContext.createMediaStreamSource(micStream);
             processor = audioContext.createScriptProcessor(4096, 1, 1);
             source.connect(processor);
-            // НЕ подключаем processor к audioContext.destination - это создает эхо
 
             processor.onaudioprocess = (e) => {
                 if (!isConversationActive || !socket || socket.readyState !== WebSocket.OPEN || isSpeaking) return;
@@ -353,17 +344,14 @@
             setTimeout(() => { if(currentVrm) currentVrm.expressionManager.setValue("aa", 0); }, buffer.duration * 1000);
         }
         
-        // Сбрасываем isSpeaking когда этот аудио чанк заканчивается
         source.onended = () => {
             activeAudioSources--;
             if (activeAudioSources <= 0) {
                 isSpeaking = false;
-                activeAudioSources = 0; // Защита от отрицательных значений
+                activeAudioSources = 0;
             }
         };
     }
-
-    // 3D Logic
 
     function initThree() {
         scene = new THREE.Scene();
@@ -398,12 +386,21 @@
             VRMUtils.rotateVRM0(vrm); 
             vrm.scene.position.y = 0.0; 
 
+            vrm.scene.traverse((object) => {
+            if (object.isMesh || object.isSkinnedMesh) {
+                    if (object.name.toLowerCase().includes('ear')) { 
+                        object.visible = false; 
+                    }
+                }
+            });
+
             scene.add(vrm.scene);
             currentVrm = vrm;
             
-            currentVrm.update(0); // Init bones
+            currentVrm.update(0);
             
             resetPose(vrm);
+
         } catch (e) {
             console.error("Failed to load VRM:", e);
             addNotification("Не удалось загрузить 3D модель", "error");
@@ -490,15 +487,12 @@
         stopMicCapture();
         
         if (socket) {
-            // Автоматически запускаем оценку при завершении разговора
             if (hasConversationRecording && !lastSubmission && !gradingComplete) {
                 console.log('Starting evaluation...');
-                // НЕ закрываем сокет - отправляем оценку через тот же сокет
                 submitConversation();
             } else {
                 console.log('NOT starting evaluation - conditions not met');
             }
-            // Закрываем сокет только после завершения оценки
             if (gradingComplete) {
                 console.log('Closing socket after grading complete');
                 socket.close();
