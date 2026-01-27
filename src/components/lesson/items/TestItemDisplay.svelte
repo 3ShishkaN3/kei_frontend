@@ -720,21 +720,6 @@
             {/if}
         {/if}
 
-        {#if viewMode === "student" && testData?.test_type === "ai-conversation"}
-            <div class="ai-conversation-summary">
-                <div class="ai-actions">
-                    <button
-                        type="button"
-                        class="btn-submit-test-display"
-                        on:click={handleAiConversationSubmit}
-                        disabled={aiSubmitDisabled}
-                    >
-                        {aiSubmitInFlight || aiConversationState.awaitingGrading ? "Отправляем..." : "Отправить ответ"}
-                    </button>
-                </div>
-            </div>
-        {/if}
-
         {#if viewMode === "student" && studentSubmission}
             <div
                 class="submission-result-display status-{studentSubmission.status.toLowerCase()}"

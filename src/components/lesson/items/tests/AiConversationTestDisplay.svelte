@@ -130,22 +130,32 @@
         translatingMessages.add(messageId);
         
         try {
-            // Send translation request through WebSocket
-            socket.send(JSON.stringify({
-                action: 'translate',
-                text: text,
-                source_type: sourceType
-            }));
+            // Use HTTP API instead of WebSocket
+            const response = await apiFetch(`${API_BASE_URL}/materials/tests/translate_subtitle/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text: text
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                updateTranslationOnly(messageId, data.translated_text);
+            } else {
+                console.error('Translation request failed:', response.statusText);
+            }
         } catch (error) {
             console.error('Translation request failed:', error);
         } finally {
-            // Will be removed when translation response arrives
-            setTimeout(() => translatingMessages.delete(messageId), 10000);
+            translatingMessages.delete(messageId);
         }
     }
 
-    function updateTranslationOnly(textKey, translatedText) {
-        const target = subtitlesHistory.find(s => s.text === textKey || s.text.includes(textKey));
+    function updateTranslationOnly(messageId, translatedText) {
+        const target = subtitlesHistory.find(s => s.id === messageId);
         if (target) {
             target.translated = translatedText;
             subtitlesHistory = [...subtitlesHistory];
@@ -155,6 +165,7 @@
     // WebSocket Logic
     async function startConversation() {
         if (isInteractionLocked) return;
+        console.log('startConversation called');
         resetState();
         isConversationActive = true;
         isConnecting = true;
@@ -178,50 +189,64 @@
             socket.send(JSON.stringify({ action: "start" }));
         };
 
-        socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            switch (data.type) {
-                case "ready":
-                    isConnecting = false;
-                    addNotification("Сенсей готов!", "success");
-                    break;
-                case "audio_chunk":
-                    playAudioChunk(data.data);
-                    break;
-                case "ai_text_chunk":
-                    updateSubtitle("Сенсей", data.text, null, data.is_final || false);
-                    break;
-                case "ai_text_translated":
-                updateTranslationOnly(data.text, data.translated);
-                break;
-            case "user_text_transcript":
-                updateSubtitle(username, data.text, null, data.is_final);
-                break;
-            case "user_text_translated":
-                updateTranslationOnly(data.text, data.translated);
-                break;
-                case "turn_complete":
-                    // НЕ финализируем сообщения - это прерывает диалог
-                    // turn_complete используется только для завершения транскрипции на бэкенде
-                    break;
-                case "submission_update":
-                    lastSubmission = data.submission;
-                    isAwaitingGrading = false;
-                    finishConversation(true);
-                    addNotification("Оценка получена!", "success");
-                    break;
-                case "submission_error":
-                case "error":
-                    addNotification(data.message, "error");
-                    if (isAwaitingGrading) isAwaitingGrading = false;
-                    emitState();
-                    break;
-            }
-        };
+        socket.onmessage = onMessage;
 
         socket.onclose = () => {
             isConnecting = false;
         };
+    }
+
+    // WebSocket message handler
+    function onMessage(event) {
+        const data = JSON.parse(event.data);
+        
+        console.log('WebSocket message received:', data.type);
+        
+        switch (data.type) {
+            case "ready":
+                isConnecting = false;
+                addNotification("Сенсей готов!", "success");
+                break;
+            case "audio_chunk":
+                playAudioChunk(data.data);
+                break;
+            case "ai_text_chunk":
+                updateSubtitle("Сенсей", data.text, null, data.is_final || false);
+                break;
+            case "user_text_transcript":
+                updateSubtitle(username, data.text, null, data.is_final);
+                break;
+            case "submission_update":
+                console.log('Received submission_update, closing socket');
+                lastSubmission = data.submission;
+                isAwaitingGrading = false;
+                finishConversation(true);
+                addNotification("Оценка получена!", "success");
+                break;
+            case "submission_error":
+                console.log('Received submission_error, closing socket');
+                isAwaitingGrading = false;
+                finishConversation(true);
+                addNotification("Ошибка оценки", "error");
+                break;
+            case "submission_status":
+                isAwaitingGrading = true;
+                break;
+            case "turn_complete":
+                // НЕ финализируем сообщения - это прерывает диалог
+                // turn_complete используется только для завершения транскрипции на бэкенде
+                break;
+            case "error":
+                addNotification(data.message, "error");
+                break;
+            case "ai_text_translated":
+                updateTranslationOnly(data.text, data.translated);
+                break;
+            case "user_text_translated":
+                updateTranslationOnly(data.text, data.translated);
+                break;
+        }
+        emitState();
     }
 
     // Audio Logic
@@ -449,12 +474,38 @@
     }
 
     // Control Flow
-    function finishConversation(graded = false) {
+    function finishConversation(gradingComplete = false) {
+        console.log('=== finishConversation called ===');
+        console.log('gradingComplete:', gradingComplete);
+        console.log('hasConversationRecording:', hasConversationRecording);
+        console.log('lastSubmission:', lastSubmission);
+        console.log('socket exists:', !!socket);
+        if (socket) {
+            console.log('socket readyState:', socket.readyState);
+        }
+        
         isConversationActive = false;
         isSpeaking = false;
         conversationStopped = true;
         stopMicCapture();
-        if (socket && !graded) socket.close();
+        
+        if (socket) {
+            // Автоматически запускаем оценку при завершении разговора
+            if (hasConversationRecording && !lastSubmission && !gradingComplete) {
+                console.log('Starting evaluation...');
+                // НЕ закрываем сокет - отправляем оценку через тот же сокет
+                submitConversation();
+            } else {
+                console.log('NOT starting evaluation - conditions not met');
+            }
+            // Закрываем сокет только после завершения оценки
+            if (gradingComplete) {
+                console.log('Closing socket after grading complete');
+                socket.close();
+            } else {
+                console.log('NOT closing socket - waiting for grading');
+            }
+        }
         emitState();
     }
 
@@ -463,6 +514,7 @@
         if (!socket || socket.readyState !== WebSocket.OPEN) {
              addNotification("Нет соединения.", "error"); return;
         }
+        console.log('submitConversation: sending submit_for_evaluation action');
         isAwaitingGrading = true;
         socket.send(JSON.stringify({ action: "submit_for_evaluation" }));
         emitState();
@@ -520,12 +572,6 @@
                     {/if}
                 </button>
                 
-                {#if conversationStopped && hasConversationRecording && !lastSubmission}
-                    <button class="glass-btn submit" on:click={submitConversation} disabled={isAwaitingGrading} title="Оценить">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    </button>
-                {/if}
-
             {:else}
                 <div class="glass-panel" transition:scale={{duration: 200}}>
                     
@@ -566,13 +612,14 @@
                             <div class="original-text">{entry.text}</div>
                             {#if entry.translated}
                                 <div class="translated-text">({entry.translated})</div>
-                            {:else if entry.text}
+                            {:else if entry.text && entry.text.trim().length > 0}
                                 <button 
                                     class="translate-btn" 
                                     on:click={() => requestTranslation(entry.id, entry.text, entry.speaker === "Сенсей" ? 'ai' : 'user')}
                                     disabled={translatingMessages.has(entry.id)}
                                 >
                                     {#if translatingMessages.has(entry.id)}
+                                        <span class="spinner"></span>
                                         Переводим...
                                     {:else}
                                         Показать перевод
@@ -665,7 +712,6 @@
     .glass-btn svg { width: 28px; height: 28px; }
 
     .glass-btn.start { color: var(--color-primary); background: #fff; }
-    .glass-btn.submit { background: var(--color-success); color: #fff; border: none; width: 50px; height: 50px; }
 
     .glass-panel {
         pointer-events: auto;
@@ -829,5 +875,20 @@
     .translate-btn:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+    }
+    
+    .spinner {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        margin-right: 12px;
+        border: 4px solid rgba(var(--color-primary-rgb), 0.2);
+        border-left-color: var(--color-primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
     }
 </style>
