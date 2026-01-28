@@ -91,3 +91,18 @@ export async function deleteDictionaryEntry(sectionId, entryId) {
         throw new Error(errorData.detail || `Error deleting dictionary entry: ${response.status}`);
     }
 }
+
+export async function fetchAllDictionarySections() {
+    const url = `${dictsBaseUrl}/`;
+    const response = await apiFetch(url);
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Error fetching dictionary sections: ${response.status}`);
+    }
+    const data = await response.json();
+    // Обрабатываем пагинацию, если есть
+    if (data.results) {
+        return data.results;
+    }
+    return Array.isArray(data) ? data : [];
+}

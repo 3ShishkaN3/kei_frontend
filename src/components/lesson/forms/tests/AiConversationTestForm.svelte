@@ -3,6 +3,8 @@
     import { AiConversationTestModel } from "../../../../models/testTypes.js";
     import { addNotification } from "../../../../stores/notifications.js";
     import { API_BASE_URL } from "../../../../config.js";
+    import { fetchAllDictionarySections } from "../../../../api/dictionaryApi.js";
+    import { apiFetch } from "../../../../api/api.js";
     import ImagePlusOutline from "svelte-material-icons/ImagePlusOutline.svelte";
     import CloseCircle from "svelte-material-icons/CloseCircle.svelte";
     import { fade } from "svelte/transition";
@@ -36,6 +38,11 @@
     let imageZoom = 1;
     let imageCroppedAreaPixels = null;
     let imageAspectRatio = 16 / 9;
+
+    // Словари
+    let availableDictionaries = [];
+    let selectedDictionaryIds = [];
+    let isLoadingDictionaries = false;
 
     function initializeModel(currentTestData) {
         if (!currentTestData) {
@@ -85,12 +92,59 @@
             imagePreviewUrlForCropper = null;
             showImageCropper = false;
             attachedBgFile = null;
+
+            if (localTestModel?.ai_conversation_question?.dictionaries) {
+                selectedDictionaryIds = localTestModel.ai_conversation_question.dictionaries;
+            } else if (localTestModel?.ai_conversation_question?.dictionaries_details) {
+                selectedDictionaryIds = localTestModel.ai_conversation_question.dictionaries_details.map(d => d.id);
+            } else {
+                selectedDictionaryIds = [];
+            }
         }
     }
 
-    onMount(() => {
+    onMount(async () => {
         initializeModel(testData);
+        await loadDictionaries();
+        if (localTestModel?.ai_conversation_question?.dictionaries) {
+            selectedDictionaryIds = localTestModel.ai_conversation_question.dictionaries;
+        } else if (localTestModel?.ai_conversation_question?.dictionaries_details) {
+            selectedDictionaryIds = localTestModel.ai_conversation_question.dictionaries_details.map(d => d.id);
+        }
     });
+
+    async function loadDictionaries() {
+        isLoadingDictionaries = true;
+        try {
+            const dictionaries = await fetchAllDictionarySections();
+            availableDictionaries = dictionaries.map(dict => ({
+                id: dict.id,
+                title: dict.title,
+                course_id: dict.course_id,
+                course_title: dict.course?.title || 'Неизвестный курс',
+                display_name: `${dict.course?.title || 'Неизвестный курс'} - ${dict.title}`
+            }));
+            
+            if (localTestModel?.ai_conversation_question?.dictionaries) {
+                selectedDictionaryIds = localTestModel.ai_conversation_question.dictionaries;
+            } else if (localTestModel?.ai_conversation_question?.dictionaries_details) {
+                selectedDictionaryIds = localTestModel.ai_conversation_question.dictionaries_details.map(d => d.id);
+            }
+        } catch (error) {
+            console.error("Error loading dictionaries:", error);
+            addNotification("Ошибка загрузки словарей", "error");
+        } finally {
+            isLoadingDictionaries = false;
+        }
+    }
+
+    function handleDictionaryChange(event) {
+        const selectedOptions = Array.from(event.target.selectedOptions);
+        selectedDictionaryIds = selectedOptions.map(option => parseInt(option.value));
+        if (localTestModel?.ai_conversation_question) {
+            localTestModel.ai_conversation_question.dictionaries = selectedDictionaryIds;
+        }
+    }
 
     let currentId = testData?.id;
 
@@ -310,6 +364,34 @@
                 />
             </div>
 
+            <div class="form-group">
+                <label for="ai-dictionaries">Словари (опционально)</label>
+                <select
+                    id="ai-dictionaries"
+                    multiple
+                    size="5"
+                    on:change={handleDictionaryChange}
+                    disabled={isLoading || isLoadingDictionaries}
+                    class="dictionaries-select"
+                >
+                    {#if isLoadingDictionaries}
+                        <option disabled>Загрузка словарей...</option>
+                    {:else if availableDictionaries.length === 0}
+                        <option disabled>Нет доступных словарей</option>
+                    {:else}
+                        {#each availableDictionaries as dict (dict.id)}
+                            <option value={dict.id} selected={selectedDictionaryIds.includes(dict.id)}>
+                                {dict.display_name}
+                            </option>
+                        {/each}
+                    {/if}
+                </select>
+                <small class="hint"
+                    >Выберите словари, слова из которых будут использоваться в разговоре. 
+                    Удерживайте Ctrl (Cmd на Mac) для выбора нескольких.</small
+                >
+            </div>
+
             <div class="form-group attachment-control">
                 <label for="ai-bg-upload">Фоновое изображение (локация)</label>
 
@@ -493,11 +575,19 @@
         color: var(--color-text-dark);
     }
     .form-group input[type="text"],
-    .form-group textarea {
+    .form-group textarea,
+    .form-group select {
         padding: 10px;
         border: 1px solid var(--color-border-light);
         border-radius: var(--spacing-border-radius-small);
         font-family: inherit;
+    }
+    .dictionaries-select {
+        min-height: 120px;
+        padding: 8px;
+    }
+    .dictionaries-select option {
+        padding: 6px 8px;
     }
     .form-section {
         background: var(--color-bg-ultra-light);

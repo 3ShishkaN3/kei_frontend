@@ -289,23 +289,48 @@ export class AiConversationTestModel extends BaseTestModel {
         const rawBg = ai_conversation_question.background_image ?? data.background_image;
         const bgId = _normalizeBackgroundImageId(rawBg) ?? _normalizeBackgroundImageId(ai_conversation_question.background_image_details ?? data.background_image_details);
 
+        const dictionaries = ai_conversation_question.dictionaries || data.dictionaries || [];
+        const dictionariesDetails = ai_conversation_question.dictionaries_details || data.dictionaries_details || [];
+        
+        // Нормализуем dictionaries - извлекаем только ID
+        let normalizedDictionaries = [];
+        if (Array.isArray(dictionaries)) {
+            normalizedDictionaries = dictionaries.map(item => {
+                // Если это объект с id, берем id, иначе это уже id
+                return typeof item === 'object' && item !== null && 'id' in item ? item.id : item;
+            }).filter(id => id != null && id !== undefined);
+        }
+        
         this.ai_conversation_question = {
             context: ai_conversation_question.context || data.context || "",
             personality: ai_conversation_question.personality || data.personality || "",
             goodbye_condition: ai_conversation_question.goodbye_condition || data.goodbye_condition || "",
             background_image: bgId,
             background_image_details: ai_conversation_question.background_image_details || data.background_image_details || null,
+            dictionaries: normalizedDictionaries,
+            dictionaries_details: Array.isArray(dictionariesDetails) ? dictionariesDetails : [],
         };
     }
 
     toPayload() {
         const payload = super.toPayload();
         const bgId = _normalizeBackgroundImageId(this.ai_conversation_question.background_image);
+        
+        // Обрабатываем dictionaries - извлекаем только ID
+        let dictionariesIds = [];
+        if (Array.isArray(this.ai_conversation_question.dictionaries)) {
+            dictionariesIds = this.ai_conversation_question.dictionaries.map(item => {
+                // Если это объект с id, берем id, иначе это уже id
+                return typeof item === 'object' && item !== null && 'id' in item ? item.id : item;
+            }).filter(id => id != null); // Убираем null/undefined
+        }
+        
         payload.ai_conversation_question = {
             context: this.ai_conversation_question.context,
             personality: this.ai_conversation_question.personality,
             goodbye_condition: this.ai_conversation_question.goodbye_condition,
             background_image: bgId,
+            dictionaries: dictionariesIds,
         };
         return payload;
     }
