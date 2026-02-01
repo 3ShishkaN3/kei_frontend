@@ -211,7 +211,6 @@ export class WordOrderTestModel extends BaseTestModel {
         const word_order_sentence = data.word_order_sentence || {};
         const wos = word_order_sentence.correct_ordered_texts ? word_order_sentence : (data.word_order_sentence_details || {});
 
-        // Handle both nested and flat formats
         const correct_ordered_texts = wos.correct_ordered_texts || data.correct_ordered_texts || [];
         const display_prompt = wos.display_prompt || data.display_prompt || "";
         const explanation = wos.explanation || data.explanation || "";
