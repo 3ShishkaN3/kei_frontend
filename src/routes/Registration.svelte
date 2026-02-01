@@ -552,15 +552,16 @@
     width: 100%;
   }
 
-  .password-input-container input[type="password"] {
-    font-size: 1.5rem;
-    letter-spacing: 0.1em;
+  .password-input-container input {
+    width: 100%;
+    font-size: 1.25rem !important;
+    letter-spacing: normal !important;
   }
 
   .toggle-password {
     position: absolute;
     right: 15px;
-    top: 50%;
+    top: 45%;
     transform: translateY(-50%);
     background: none;
     border: none;

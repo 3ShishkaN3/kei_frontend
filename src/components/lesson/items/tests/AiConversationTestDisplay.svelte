@@ -21,7 +21,7 @@
     const dispatch = createEventDispatcher();
 
     // UI State
-    let isInteractionLocked = viewMode !== "student" || !canStudentInteract;
+    $: isInteractionLocked = viewMode !== "student" || !canStudentInteract;
     let isConnecting = false;
     let isModelLoading = true;
     let isConversationActive = false;
@@ -302,17 +302,25 @@
                 updateSubtitle(username, data.text, null, data.is_final);
                 break;
             case "submission_update":
-                console.log("Received submission_update, closing socket");
+                console.log("Received submission_update");
                 lastSubmission = data.submission;
                 isAwaitingGrading = false;
+                dispatch("submissionUpdate", {
+                    submission: data.submission,
+                    sectionItemId,
+                });
                 finishConversation(true);
                 addNotification("Оценка получена!", "success");
                 break;
             case "submission_error":
-                console.log("Received submission_error, closing socket");
+                console.log("Received submission_error");
                 isAwaitingGrading = false;
+                dispatch("submissionUpdate", {
+                    submission: { status: "auto_failed", score: 0 },
+                    sectionItemId,
+                });
                 finishConversation(true);
-                addNotification("Ошибка оценки", "error");
+                addNotification("Ошибка оценки: " + data.message, "error");
                 break;
             case "submission_status":
                 isAwaitingGrading = true;
@@ -881,6 +889,133 @@
         background-color: #2c2c2c;
         background-size: cover;
         background-position: center;
+    }
+
+    /* Mobile phones */
+    @media (max-width: 480px) {
+        .viewport-wrapper {
+            height: 400px;
+        }
+        
+        .hud-wrapper {
+            bottom: 20px;
+            gap: 15px;
+        }
+        
+        .glass-btn {
+            width: 50px;
+            height: 50px;
+        }
+        
+        .glass-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+        
+        .glass-panel {
+            height: 50px;
+            min-width: 120px;
+            padding: 4px 4px 4px 16px;
+            gap: 15px;
+        }
+        
+        .action-icon-btn.stop {
+            width: 42px;
+            height: 42px;
+        }
+        
+        .subtitles-box {
+            max-height: 200px;
+        }
+        
+        .subtitles-list {
+            padding: 12px 16px;
+        }
+        
+        .sub-item {
+            max-width: 90%;
+            font-size: 0.9rem;
+        }
+    }
+
+    /* Tablets */
+    @media (min-width: 481px) and (max-width: 768px) {
+        .viewport-wrapper {
+            height: 450px;
+        }
+        
+        .hud-wrapper {
+            bottom: 25px;
+            gap: 18px;
+        }
+        
+        .glass-btn {
+            width: 55px;
+            height: 55px;
+        }
+        
+        .glass-panel {
+            height: 55px;
+            min-width: 130px;
+        }
+        
+        .subtitles-box {
+            max-height: 220px;
+        }
+    }
+
+    /* Small laptops */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .viewport-wrapper {
+            height: 500px;
+        }
+    }
+
+    /* Large screens */
+    @media (min-width: 1400px) {
+        .viewport-wrapper {
+            height: 650px;
+        }
+        
+        .glass-btn {
+            width: 70px;
+            height: 70px;
+        }
+        
+        .glass-btn svg {
+            width: 32px;
+            height: 32px;
+        }
+        
+        .glass-panel {
+            height: 70px;
+            min-width: 160px;
+            padding: 8px 8px 8px 24px;
+            gap: 24px;
+        }
+        
+        .action-icon-btn.stop {
+            width: 54px;
+            height: 54px;
+        }
+        
+        .action-icon-btn.stop svg {
+            width: 24px;
+            height: 24px;
+        }
+        
+        .subtitles-box {
+            max-height: 300px;
+        }
+        
+        .subtitles-list {
+            padding: 20px 32px;
+        }
+        
+        .sub-item {
+            font-size: 1rem;
+            max-width: 80%;
+        }
     }
 
     canvas {

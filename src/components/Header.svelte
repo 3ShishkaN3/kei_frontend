@@ -55,7 +55,7 @@
       const response = await apiFetch(`${API_BASE_URL}/profile/avatar`);
       if (response.ok) {
         const data = await response.json();
-        avatar.set(data.avatar || "/avatar.png");
+        avatar.set(data.avatar || "/avatar.jpg");
       } else {
         console.error("Ошибка загрузки аватара");
       }
@@ -103,20 +103,19 @@
   <div class="nav-buttons">
     {#if isAuthenticated}
       <div class="navigation-buttons">
-        <button class="simple-button" on:click={handleBonuses}>БОНУСЫ</button>
+        <button class="simple-button" on:click={handleInfo}>Блог</button>
         <button class="simple-button primary-action" on:click={handleLessons}
-          >ОБУЧЕНИЕ</button
+          >Обучение</button
         >
+        <button class="simple-button" on:click={handleBonuses}>Бонусы</button>
         <button class="simple-button" on:click={handleSettings}
-          >НАСТРОЙКИ</button
+          >Настройки</button
         >
       </div>
 
       <div class="divider"></div>
 
       <div class="user-controls">
-        <button class="simple-button" on:click={handleInfo}>БЛОГ</button>
-        <button class="simple-button" on:click={handleInfo}>О НАС</button>
         <NotificationBell />
         <div
           class="avatar-container"
@@ -125,20 +124,20 @@
             (e.key === "Enter" || e.key === " ") && handleProfile()}
         >
           <img
-            src={$avatar || "/avatar.png"}
+            src={$avatar || "/avatar.jpg"}
             alt="Аватар"
             class="avatar"
             title="Перейти в личный кабинет"
           />
         </div>
-        <button class="logout-button" on:click={handleLogout}>ВЫХОД</button>
+        <button class="logout-button" on:click={handleLogout}>Выход</button>
       </div>
     {:else}
       <Link to="/registration">
-        <button class="auth-button">РЕГИСТРАЦИЯ</button>
+        <button class="auth-button">Регистрация</button>
       </Link>
       <Link to="/login">
-        <button class="auth-button">ВХОД</button>
+        <button class="auth-button">Вход</button>
       </Link>
     {/if}
   </div>
@@ -161,37 +160,30 @@
         <button
           class="mobile-nav-item"
           on:click={() => {
-            handleBonuses();
+            handleInfo();
             closeMobileMenu();
-          }}>БОНУСЫ</button
+          }}>Блог</button
         >
         <button
           class="mobile-nav-item primary"
           on:click={() => {
             handleLessons();
             closeMobileMenu();
-          }}>ОБУЧЕНИЕ</button
+          }}>Обучение</button
+        >
+        <button
+          class="mobile-nav-item"
+          on:click={() => {
+            handleBonuses();
+            closeMobileMenu();
+          }}>Бонусы</button
         >
         <button
           class="mobile-nav-item"
           on:click={() => {
             handleSettings();
             closeMobileMenu();
-          }}>НАСТРОЙКИ</button
-        >
-        <button
-          class="mobile-nav-item"
-          on:click={() => {
-            handleInfo();
-            closeMobileMenu();
-          }}>БЛОГ</button
-        >
-        <button
-          class="mobile-nav-item"
-          on:click={() => {
-            handleInfo();
-            closeMobileMenu();
-          }}>О НАС</button
+          }}>Настройки</button
         >
         <div class="mobile-divider"></div>
         <div class="mobile-profile-row">
@@ -202,7 +194,7 @@
               closeMobileMenu();
             }}
           >
-            <img src={$avatar || "/avatar.png"} alt="Аватар" class="avatar" />
+            <img src={$avatar || "/avatar.jpg"} alt="Аватар" class="avatar" />
           </div>
           <NotificationBell />
           <button
@@ -210,16 +202,16 @@
             on:click={() => {
               handleLogout();
               closeMobileMenu();
-            }}>ВЫХОД</button
+            }}>Выход</button
           >
         </div>
       </div>
     {:else}
       <Link to="/registration" on:click={closeMobileMenu}>
-        <button class="auth-button">РЕГИСТРАЦИЯ</button>
+        <button class="auth-button">Регистрация</button>
       </Link>
       <Link to="/login" on:click={closeMobileMenu}>
-        <button class="auth-button">ВХОД</button>
+        <button class="auth-button">Вход</button>
       </Link>
     {/if}
   </div>
@@ -231,7 +223,7 @@
     align-items: center;
     justify-content: space-between;
     background: var(--color-header-bg);
-    padding: var(--spacing-header-padding-desktop);
+    padding: 16px 64px;
     position: fixed;
     top: 0;
     left: 0;
@@ -250,7 +242,7 @@
   }
 
   .logo {
-    height: var(--spacing-logo-height);
+    height: 72px;
     cursor: pointer;
   }
 
@@ -400,11 +392,11 @@
 
   @media (max-width: 1200px) {
     header {
-      padding: var(--spacing-header-padding-tablet);
+      padding: 16px 32px;
     }
 
     .nav-buttons {
-      gap: 8px;
+      gap: 15px;
     }
 
     .simple-button {
@@ -414,7 +406,7 @@
 
   @media (max-width: 992px) {
     header {
-      padding: var(--spacing-header-padding-mobile);
+      padding: 16px 16px;
     }
   }
 
@@ -464,7 +456,7 @@
   .navigation-buttons {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 25px;
     flex-wrap: wrap;
     justify-content: center;
   }
@@ -472,7 +464,11 @@
   .user-controls {
     display: flex;
     align-items: center;
-    gap: var(--spacing-user-controls-gap);
+    gap: 25px;
+  }
+
+  .logout-button {
+    margin-left: 10px;
   }
 
   .avatar-container {
@@ -484,6 +480,7 @@
     box-shadow: 0 3px 8px var(--color-avatar-shadow);
     width: var(--spacing-avatar-size);
     height: var(--spacing-avatar-size);
+    margin-top: -10px;
   }
 
   .avatar-container:hover {
@@ -530,9 +527,9 @@
   header::after {
     content: "";
     position: absolute;
-    left: 80px;
-    right: 80px;
-    bottom: 20px;
+    left: 64px;
+    right: 64px;
+    bottom: 16px;
     height: var(--spacing-header-bottom-border-height);
     background: rgba(0, 0, 0, 0.2);
   }
@@ -643,10 +640,14 @@
   .mobile-profile-row {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 25px;
     justify-content: center;
     width: 100%;
     padding-bottom: 20px;
+  }
+
+  .logout-button.small {
+    margin-left: 10px;
   }
 
   .avatar-container.small {

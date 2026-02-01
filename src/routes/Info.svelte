@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import gsap from "gsap";
   import { ScrollTrigger } from "gsap/ScrollTrigger";
   import { TextPlugin } from "gsap/TextPlugin";
@@ -7,14 +7,27 @@
   gsap.registerPlugin(ScrollTrigger, TextPlugin);
 
   let container;
+  let scrollTriggers = [];
 
   onMount(() => {
-    createDecorativeElements();
-    animateHeadings();
-    animateAboutSection();
-    animateInfoBlocks();
-    animateJapaneseText();
-    animateDisclaimer();
+    // Small delay to ensure DOM is fully rendered
+    setTimeout(() => {
+      createDecorativeElements();
+      animateHeadings();
+      animateAboutSection();
+      animateInfoBlocks();
+      animateJapaneseText();
+      animateDisclaimer();
+      
+      // Refresh all ScrollTrigger instances
+      ScrollTrigger.refresh();
+    }, 100);
+  });
+
+  onDestroy(() => {
+    // Clean up all ScrollTrigger instances
+    scrollTriggers.forEach(trigger => trigger.kill());
+    ScrollTrigger.getAll().forEach(trigger => trigger.kill());
   });
 
   function createDecorativeElements() {
@@ -328,9 +341,9 @@
   />
 </svelte:head>
 
-<div bind:this={container}>
+<div bind:this={container} style="background-color: #f9f9f9; min-height: 100vh;">
   <main>
-    <h1>О сайте</h1>
+    <h1></h1>
     <div class="about">
       <img src="banner-info.jpg" alt="Информационный баннер" />
       <div class="about-content">
@@ -371,18 +384,6 @@
         <div class="contact-buttons-container">
           <button
             class="contact-button btn-telegram"
-            on:click={() => window.open("https://t.me/yourjapanese", "_blank")}
-          >
-            <svg viewBox="0 0 24 24">
-              <path
-                d="M21.5,2.5c-0.2,0-0.4,0.1-0.5,0.2l-18,8c-0.3,0.1-0.3,0.6,0,0.7l4.3,1.8l1.7,5.1c0.1,0.3,0.5,0.4,0.7,0.2l2.5-2.2l4.2,3.1c0.3,0.2,0.7,0.1,0.8-0.3l2.5-9C22,2.8,21.8,2.5,21.5,2.5z M9.8,13.2L9,12l7.4-3.7L9.8,13.2z"
-              />
-            </svg>
-            TELEGRAM (ГРУППА)
-          </button>
-
-          <button
-            class="contact-button btn-telegram"
             on:click={() => window.open("https://t.me/keisenpai_com", "_blank")}
           >
             <svg viewBox="0 0 24 24">
@@ -390,13 +391,24 @@
                 d="M21.5,2.5c-0.2,0-0.4,0.1-0.5,0.2l-18,8c-0.3,0.1-0.3,0.6,0,0.7l4.3,1.8l1.7,5.1c0.1,0.3,0.5,0.4,0.7,0.2l2.5-2.2l4.2,3.1c0.3,0.2,0.7,0.1,0.8-0.3l2.5-9C22,2.8,21.8,2.5,21.5,2.5z M9.8,13.2L9,12l7.4-3.7L9.8,13.2z"
               />
             </svg>
-            TELEGRAM (ЛИЧНЫЙ)
+            Связаться с нами
+          </button>
+
+          <button
+            class="contact-button btn-telegram"
+            on:click={() => window.open("https://t.me/yourjapanese", "_blank")}
+          >
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M21.5,2.5c-0.2,0-0.4,0.1-0.5,0.2l-18,8c-0.3,0.1-0.3,0.6,0,0.7l4.3,1.8l1.7,5.1c0.1,0.3,0.5,0.4,0.7,0.2l2.5-2.2l4.2,3.1c0.3,0.2,0.7,0.1,0.8-0.3l2.5-9C22,2.8,21.8,2.5,21.5,2.5z M9.8,13.2L9,12l7.4-3.7L9.8,13.2z"
+              />
+            </svg>
+            Публичная группа
           </button>
 
           <button
             class="contact-button btn-email"
-            on:click={() =>
-              (window.location.href = "mailto:your.email@gmail.com")}
+            on:click={() => (window.location.href = "mailto:contact@gmail.com")}
           >
             <svg viewBox="0 0 24 24">
               <path
@@ -425,7 +437,7 @@
     font-family: var(--font-family-secondary);
     line-height: var(--line-height-body);
     color: var(--color-text-dark);
-    background-color: #f9f9f9;
+    background-color: #f9f9f9 !important;
     overflow-x: hidden;
   }
 
@@ -507,9 +519,10 @@
   .about h6 {
     white-space: pre-line;
     font-weight: var(--font-weight-bold);
-    font-size: var(--font-size-h6);
-    margin-bottom: 1rem;
-    line-height: var(--line-height-title);
+    font-size: 1rem;
+    color: var(--color-text-dark);
+    margin: 1.5rem 0;
+    line-height: 1.6;
     opacity: 0;
     transform: translateX(30px);
   }
@@ -517,9 +530,10 @@
   .about p {
     white-space: pre-line;
     font-weight: var(--font-weight-medium);
-    font-size: var(--font-size-p);
+    font-size: 0.95rem;
     color: var(--color-text-dark);
-    line-height: var(--line-height-title);
+    margin: 1.5rem 0;
+    line-height: 1.7;
     opacity: 0;
     transform: translateX(30px);
   }
@@ -605,6 +619,10 @@
     text-align: center;
     font-size: clamp(1.2rem, 3vw, 1.5rem);
     margin: 1rem 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
   }
 
   .contact-buttons-container {

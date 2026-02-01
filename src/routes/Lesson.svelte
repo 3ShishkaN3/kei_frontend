@@ -1831,34 +1831,6 @@
         .lesson-page-container {
             padding: clamp(30px, 8vw, 50px) var(--spacing-padding-page);
         }
-        .lesson-page-container.sidebar-mobile-active::before {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.4);
-            z-index: 1000;
-            opacity: 1;
-            visibility: visible;
-            transition: opacity 0.3s ease;
-        }
-        .lesson-page-container::before {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.4);
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition:
-                opacity 0.3s ease,
-                visibility 0s 0.3s;
-        }
     }
 
     @media (max-width: 768px) {

@@ -243,7 +243,7 @@
         transform: scale(1.05);
     }
     .icon-container :global(svg) {
-        color: var(--color-purple-active);
+        color: #ccc;
     }
     .default-icon {
         color: var(--color-purple-active);
@@ -253,16 +253,16 @@
         content: "";
         position: absolute;
         inset: 0;
-        background: rgba(0, 0, 0, 0.3);
         border-radius: 12px;
     }
     .lock-overlay {
         position: absolute;
         z-index: 2;
-        color: white;
+        color: rgba(0, 0, 0, 0.7);
         display: flex;
         align-items: center;
         justify-content: center;
+        filter: brightness(0.8);
     }
 
     .info-wrapper {

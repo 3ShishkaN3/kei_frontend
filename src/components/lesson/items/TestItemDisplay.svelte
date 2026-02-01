@@ -826,34 +826,168 @@
                         />
                     </button>
                 </div>
-                <p>
-                    Статус:
-                    <strong>
-                        {studentSubmission.status === "graded"
-                            ? "Оценено"
-                            : studentSubmission.status === "auto_passed" ||
-                                studentSubmission.status === "auto_correct"
-                              ? "Зачтено"
-                              : studentSubmission.status === "auto_failed" ||
-                                  studentSubmission.status === "auto_incorrect"
-                                ? "Не зачтено"
-                                : studentSubmission.status === "grading_pending"
-                                  ? "На проверке"
-                                  : "Отправлено"}
-                    </strong>
-                </p>
-                {#if typeof studentSubmission.score === "number"}
-                    <p>Оценка: <strong>{studentSubmission.score}</strong></p>
-                {/if}
-                {#if studentSubmission.feedback}
-                    <p class="feedback-text">
-                        Комментарий: <strong
-                            >{@html studentSubmission.feedback.replace(
-                                /\n/g,
-                                "<br>",
-                            )}</strong
-                        >
+
+                {#if testData?.test_type === "ai-conversation" && studentSubmission.ai_conversation_answer}
+                    {@const evalDetails =
+                        studentSubmission.ai_conversation_answer
+                            .evaluation_details}
+                    <div class="ai-results-container">
+                        <div class="ai-score-overview">
+                            <div class="overall-circle">
+                                <span class="score-value"
+                                    >{Math.round(
+                                        studentSubmission.ai_conversation_answer
+                                            .overall_score || 0,
+                                    )}</span
+                                >
+                                <span class="score-label">Общий балл</span>
+                            </div>
+                            <div
+                                class="pass-status-badge {studentSubmission.status}"
+                            >
+                                {studentSubmission.status === "auto_passed"
+                                    ? "Пройдено"
+                                    : "Не пройдено"}
+                            </div>
+                        </div>
+
+                        <div class="ai-scores-grid">
+                            {#each [{ label: "Грамматика", key: "grammar_score" }, { label: "Лексика", key: "vocabulary_score" }, { label: "Беглость", key: "fluency_score" }, { label: "Произношение", key: "pronunciation_score" }, { label: "Релевантность", key: "relevance_score" }, { label: "Активность", key: "conversation_flow" }] as item}
+                                <div class="ai-score-item">
+                                    <div class="score-info">
+                                        <span class="label">{item.label}</span>
+                                        <span class="value"
+                                            >{evalDetails[item.key] || 0}%</span
+                                        >
+                                    </div>
+                                    <div class="progress-bar-bg">
+                                        <div
+                                            class="progress-bar-fill"
+                                            style="width: {evalDetails[
+                                                item.key
+                                            ] || 0}%"
+                                        ></div>
+                                    </div>
+                                </div>
+                            {/each}
+                        </div>
+
+                        {#if evalDetails.detailed_feedback}
+                            <div class="ai-feedback-section">
+                                <h5>Комментарий преподавателя:</h5>
+                                <div class="feedback-bubble">
+                                    {@html evalDetails.detailed_feedback.replace(
+                                        /\n/g,
+                                        "<br>",
+                                    )}
+                                </div>
+                            </div>
+                        {/if}
+
+                        <div class="ai-insights-grid">
+                            {#if evalDetails.strengths?.length}
+                                <div class="insight-card strengths">
+                                    <h5>Сильные стороны:</h5>
+                                    <ul>
+                                        {#each evalDetails.strengths as strength}
+                                            <li>{strength}</li>
+                                        {/each}
+                                    </ul>
+                                </div>
+                            {/if}
+                            {#if evalDetails.weaknesses?.length}
+                                <div class="insight-card weaknesses">
+                                    <h5>Слабые стороны:</h5>
+                                    <ul>
+                                        {#each evalDetails.weaknesses as weakness}
+                                            <li>{weakness}</li>
+                                        {/each}
+                                    </ul>
+                                </div>
+                            {/if}
+                        </div>
+
+                        {#if evalDetails.recommendations?.length}
+                            <div class="ai-feedback-section recommendations">
+                                <h5>Рекомендации:</h5>
+                                <ul>
+                                    {#each evalDetails.recommendations as rec}
+                                        <li>{rec}</li>
+                                    {/each}
+                                </ul>
+                            </div>
+                        {/if}
+
+                        {#if studentSubmission.ai_conversation_answer.transcript}
+                            <div class="ai-transcript-section">
+                                <h5>Транскрипция разговора:</h5>
+                                <div class="transcript-list">
+                                    {#each studentSubmission.ai_conversation_answer.transcript as turn}
+                                        <div
+                                            class="transcript-turn {turn.role ===
+                                                'assistant' ||
+                                            turn.role === 'Сенсей'
+                                                ? 'assistant'
+                                                : 'student'}"
+                                        >
+                                            <span class="role"
+                                                >{turn.role === "assistant"
+                                                    ? "Сенсей"
+                                                    : turn.role === "user"
+                                                      ? "Ученик"
+                                                      : turn.role}:</span
+                                            >
+                                            <div class="turn-content">
+                                                <span class="content"
+                                                    >{turn.content}</span
+                                                >
+                                                {#if turn.translated}
+                                                    <span class="translated"
+                                                        >{turn.translated}</span
+                                                    >
+                                                {/if}
+                                            </div>
+                                        </div>
+                                    {/each}
+                                </div>
+                            </div>
+                        {/if}
+                    </div>
+                {:else}
+                    <p>
+                        Статус:
+                        <strong>
+                            {studentSubmission.status === "graded"
+                                ? "Оценено"
+                                : studentSubmission.status === "auto_passed" ||
+                                    studentSubmission.status === "auto_correct"
+                                  ? "Зачтено"
+                                  : studentSubmission.status ===
+                                          "auto_failed" ||
+                                      studentSubmission.status ===
+                                          "auto_incorrect"
+                                    ? "Не зачтено"
+                                    : studentSubmission.status ===
+                                        "grading_pending"
+                                      ? "На проверке"
+                                      : "Отправлено"}
+                        </strong>
                     </p>
+                    {#if typeof studentSubmission.score === "number"}
+                        <p>
+                            Оценка: <strong>{studentSubmission.score}</strong>
+                        </p>
+                    {/if}
+                    {#if studentSubmission.feedback}
+                        <p class="feedback-text">
+                            Комментарий: <strong
+                                >{@html studentSubmission.feedback.replace(
+                                    /\n/g,
+                                    "<br>",
+                                )}</strong
+                            >
+                        </p>
+                    {/if}
                 {/if}
             </div>
         {/if}
@@ -987,16 +1121,258 @@
 
     .submission-result-display {
         margin-top: 25px;
-        padding: 15px 20px;
+        padding: 25px;
         background-color: #f8f6ff;
         border: 1px solid #d1c9ff;
-        border-radius: 12px;
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(88, 69, 216, 0.05);
     }
     .submission-result-display h4 {
         margin-top: 0;
-        margin-bottom: 12px;
+        margin-bottom: 20px;
         color: #5845d8;
-        font-size: 1.1em;
+        font-size: 1.25em;
+        font-weight: 700;
+    }
+
+    /* AI Results Styles */
+    .ai-results-container {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .ai-score-overview {
+        display: flex;
+        align-items: center;
+        gap: 30px;
+        padding: 20px;
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e0dbff;
+    }
+
+    .overall-circle {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .overall-circle .score-value {
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .overall-circle .score-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.9;
+    }
+
+    .pass-status-badge {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .pass-status-badge.auto_passed {
+        background-color: #dcfce7;
+        color: #166534;
+    }
+
+    .pass-status-badge.auto_failed {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+
+    .ai-scores-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+    }
+
+    .ai-score-item {
+        background: white;
+        padding: 12px 16px;
+        border-radius: 10px;
+        border: 1px solid #f0eeff;
+    }
+
+    .score-info {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+    }
+
+    .score-info .label {
+        color: #4b5563;
+        font-weight: 500;
+    }
+
+    .score-info .value {
+        color: #5845d8;
+        font-weight: 700;
+    }
+
+    .progress-bar-bg {
+        height: 6px;
+        background: #f3f4f6;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #6366f1, #8b5cf6);
+        border-radius: 3px;
+        transition: width 1s ease-out;
+    }
+
+    .ai-feedback-section h5,
+    .insight-card h5 {
+        margin-top: 0;
+        margin-bottom: 12px;
+        color: #1f2937;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .feedback-bubble {
+        background: #fff;
+        padding: 16px;
+        border-radius: 12px;
+        border-left: 4px solid #5845d8;
+        color: #374151;
+        line-height: 1.6;
+        font-size: 0.95rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .ai-insights-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    @media (max-width: 640px) {
+        .ai-insights-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .insight-card {
+        background: white;
+        padding: 16px;
+        border-radius: 12px;
+        border: 1px solid #f0eeff;
+    }
+
+    .insight-card ul,
+    .recommendations ul {
+        margin: 0;
+        padding-left: 20px;
+        color: #4b5563;
+        font-size: 0.9rem;
+    }
+
+    .insight-card li,
+    .recommendations li {
+        margin-bottom: 8px;
+    }
+
+    .strengths h5 {
+        color: #166534;
+    }
+    .strengths {
+        border-top: 3px solid #4ade80;
+    }
+
+    .weaknesses h5 {
+        color: #991b1b;
+    }
+    .weaknesses {
+        border-top: 3px solid #f87171;
+    }
+
+    .recommendations {
+        background: #eff6ff;
+        padding: 20px;
+        border-radius: 12px;
+        border: 1px solid #bfdbfe;
+    }
+
+    .recommendations h5 {
+        color: #1e40af;
+    }
+
+    .ai-transcript-section {
+        margin-top: 20px;
+    }
+
+    .transcript-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-height: 400px;
+        overflow-y: auto;
+        padding-right: 10px;
+    }
+
+    .transcript-turn {
+        padding: 10px 14px;
+        border-radius: 12px;
+        max-width: 85%;
+        font-size: 0.9rem;
+        line-height: 1.4;
+    }
+
+    .transcript-turn.assistant {
+        align-self: flex-start;
+        background-color: #f3f4f6;
+        color: #1f2937;
+        border-bottom-left-radius: 2px;
+    }
+
+    .transcript-turn.student {
+        align-self: flex-end;
+        background-color: #e0dbff;
+        color: #5845d8;
+        border-bottom-right-radius: 2px;
+    }
+
+    .transcript-turn .role {
+        font-weight: 700;
+        margin-right: 6px;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        display: block;
+        margin-bottom: 2px;
+    }
+
+    .turn-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .turn-content .translated {
+        font-size: 0.85rem;
+        opacity: 0.8;
+        font-style: italic;
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+        padding-top: 4px;
+        margin-top: 2px;
     }
     .submission-result-display p {
         margin-bottom: 8px;
