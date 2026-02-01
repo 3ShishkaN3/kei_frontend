@@ -8,6 +8,7 @@
     import WordOrderTestDisplay from "./tests/WordOrderTestDisplay.svelte";
     import FreeTextTestDisplay from "./tests/FreeTextTestDisplay.svelte";
     import AiConversationTestDisplay from "./tests/AiConversationTestDisplay.svelte";
+    import { WS_SUBMISSION_BASE_URL } from "../../../config";
 
     export let testData = null;
     export let sectionItemId = null;
@@ -43,6 +44,8 @@
     };
     let aiConversationSubmission = null;
     let aiSubmitInFlight = false;
+
+    let submissionSocket = null;
 
     function generateUiId() {
         return `ui_${Math.random().toString(36).substr(2, 9)}`;
@@ -227,6 +230,14 @@
             dndBasePoolForCurrentTest = [];
             selectedDraggableOptionForSlot = null;
             localStudentAnswerText = "";
+
+            closeSocket();
+        }
+
+        if (studentSubmission?.id && viewMode === "student") {
+            setupSubmissionSocket(studentSubmission.id);
+        } else {
+            closeSocket();
         }
 
         if (currentTestData) {
@@ -603,6 +614,83 @@
             fileData: null,
         });
     }
+
+    function setupSubmissionSocket(submissionId) {
+        if (!submissionId) return;
+
+        closeSocket();
+
+        const wsUrl = `${WS_SUBMISSION_BASE_URL}/ws/submission/${submissionId}/`;
+        console.log("Connecting to WebSocket:", wsUrl);
+
+        try {
+            submissionSocket = new WebSocket(wsUrl);
+
+            submissionSocket.onopen = () => {
+                console.log(
+                    "WebSocket connected for submission:",
+                    submissionId,
+                );
+            };
+
+            submissionSocket.onmessage = (event) => {
+                handleSocketMessage(event);
+            };
+
+            submissionSocket.onerror = (error) => {
+                console.error("WebSocket error:", error);
+            };
+
+            submissionSocket.onclose = () => {
+                console.log("WebSocket closed for submission:", submissionId);
+            };
+        } catch (error) {
+            console.error("Failed to create WebSocket:", error);
+        }
+    }
+
+    function closeSocket() {
+        if (submissionSocket) {
+            submissionSocket.close();
+            submissionSocket = null;
+        }
+    }
+
+    function handleSocketMessage(event) {
+        try {
+            const data = JSON.parse(event.data);
+            console.log("Received WebSocket message:", data);
+
+            const submissionData = data.submission || data;
+
+            if (
+                submissionData.status ||
+                submissionData.score !== undefined ||
+                submissionData.feedback
+            ) {
+                studentSubmission = {
+                    ...studentSubmission,
+                    ...submissionData,
+                };
+
+                if (isRefreshing) {
+                    isRefreshing = false;
+                }
+
+                dispatch("submissionUpdated", {
+                    submission: studentSubmission,
+                    sectionItemId,
+                });
+            }
+        } catch (error) {
+            console.error("Failed to parse WebSocket message:", error);
+        }
+    }
+
+    import { onDestroy } from "svelte";
+    onDestroy(() => {
+        closeSocket();
+    });
 </script>
 
 <div

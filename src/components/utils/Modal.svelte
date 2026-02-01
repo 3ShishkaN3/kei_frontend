@@ -1,23 +1,23 @@
 <script>
-	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-	import { fly, fade } from 'svelte/transition';
-	import CloseIcon from 'svelte-material-icons/Close.svelte';
+	import { createEventDispatcher, onMount, onDestroy } from "svelte";
+	import { fly, fade } from "svelte/transition";
+	import CloseIcon from "svelte-material-icons/Close.svelte";
 
 	export let isOpen = false;
-	export let modalTitle = '';
-	export let size = 'medium'; // 'small', 'medium', 'large', 'xlarge'
+	export let modalTitle = "";
+	export let size = "medium"; // 'small', 'medium', 'large', 'xlarge'
 	export let showCloseButton = true;
-	export let closeOnOverlayClick = true;
+	export let closeOnOverlayClick = false;
 	export let closeOnEsc = true;
 
 	const dispatch = createEventDispatcher();
 
 	function closeModal() {
-		dispatch('close');
+		dispatch("close");
 	}
 
 	function handleKeydown(event) {
-		if (isOpen && closeOnEsc && event.key === 'Escape') {
+		if (isOpen && closeOnEsc && event.key === "Escape") {
 			closeModal();
 		}
 	}
@@ -28,24 +28,23 @@
 		}
 	}
 
-    let modalContentElement;
+	let modalContentElement;
 
-    $: {
-        if (typeof document !== 'undefined') {
-            if (isOpen) {
-                document.body.style.overflow = 'hidden';
-            } else {
-                document.body.style.overflow = '';
-            }
-        }
-    }
+	$: {
+		if (typeof document !== "undefined") {
+			if (isOpen) {
+				document.body.style.overflow = "hidden";
+			} else {
+				document.body.style.overflow = "";
+			}
+		}
+	}
 
-    onDestroy(() => {
-        if (typeof document !== 'undefined') {
-             document.body.style.overflow = '';
-        }
-    });
-
+	onDestroy(() => {
+		if (typeof document !== "undefined") {
+			document.body.style.overflow = "";
+		}
+	});
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -70,10 +69,16 @@
 			{#if modalTitle || showCloseButton}
 				<div class="modal-header">
 					{#if modalTitle}
-						<h2 id="modal-title-id" class="modal-title-text">{modalTitle}</h2>
+						<h2 id="modal-title-id" class="modal-title-text">
+							{modalTitle}
+						</h2>
 					{/if}
 					{#if showCloseButton}
-						<button class="modal-close-button" on:click={closeModal} aria-label="Закрыть модальное окно">
+						<button
+							class="modal-close-button"
+							on:click={closeModal}
+							aria-label="Закрыть модальное окно"
+						>
 							<CloseIcon size="24px" />
 						</button>
 					{/if}
@@ -106,7 +111,7 @@
 		align-items: center;
 		z-index: var(--z-index-modal, 1050);
 		padding: 20px;
-        overflow-y: auto;
+		overflow-y: auto;
 	}
 
 	.modal-content {
@@ -115,17 +120,24 @@
 		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 		position: relative;
 		width: 100%;
-        max-height: calc(100vh - 40px);
+		max-height: calc(100vh - 40px);
 		display: flex;
-        flex-direction: column;
-        overflow: hidden;
+		flex-direction: column;
+		overflow: hidden;
 	}
 
-	.modal-content.size-small { max-width: 400px; }
-	.modal-content.size-medium { max-width: 600px; }
-	.modal-content.size-large { max-width: 800px; }
-	.modal-content.size-xlarge { max-width: 1000px; }
-
+	.modal-content.size-small {
+		max-width: 400px;
+	}
+	.modal-content.size-medium {
+		max-width: 600px;
+	}
+	.modal-content.size-large {
+		max-width: 800px;
+	}
+	.modal-content.size-xlarge {
+		max-width: 1000px;
+	}
 
 	.modal-header {
 		display: flex;
@@ -133,7 +145,7 @@
 		align-items: center;
 		padding: 15px 20px;
 		border-bottom: 1px solid var(--color-border-light, #eee);
-        flex-shrink: 0;
+		flex-shrink: 0;
 	}
 
 	.modal-title-text {
@@ -141,7 +153,7 @@
 		font-size: 1.4rem;
 		font-weight: var(--font-weight-semi-bold, 600);
 		color: var(--color-text-dark, #333);
-        line-height: 1.3;
+		line-height: 1.3;
 	}
 
 	.modal-close-button {
@@ -151,10 +163,12 @@
 		color: var(--color-text-muted, #888);
 		padding: 5px;
 		border-radius: 50%;
-		transition: background-color 0.2s, color 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+		transition:
+			background-color 0.2s,
+			color 0.2s;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 	.modal-close-button:hover {
 		background-color: var(--color-simple-button-hover-bg, #f0f0f0);
@@ -164,7 +178,7 @@
 	.modal-body {
 		padding: 20px;
 		overflow-y: auto;
-        flex-grow: 1;
+		flex-grow: 1;
 	}
 
 	.modal-footer {
@@ -173,15 +187,15 @@
 		display: flex;
 		justify-content: flex-end;
 		gap: 10px;
-        background-color: var(--color-bg-ultra-light, #f9f9f9);
-        flex-shrink: 0;
+		background-color: var(--color-bg-ultra-light, #f9f9f9);
+		flex-shrink: 0;
 	}
-    .modal-footer :global(button) {
-        padding: var(--spacing-padding-button-medium, 8px 15px);
-        border-radius: var(--spacing-border-radius-button, 20px);
-        font-weight: var(--font-weight-semi-bold, 600);
-        cursor: pointer;
-        transition: all 0.2s ease;
-        font-size: 0.9rem;
-    }
+	.modal-footer :global(button) {
+		padding: var(--spacing-padding-button-medium, 8px 15px);
+		border-radius: var(--spacing-border-radius-button, 20px);
+		font-weight: var(--font-weight-semi-bold, 600);
+		cursor: pointer;
+		transition: all 0.2s ease;
+		font-size: 0.9rem;
+	}
 </style>

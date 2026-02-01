@@ -1,8 +1,8 @@
 <script>
-    import { createEventDispatcher, onDestroy} from 'svelte';
-    import Close from 'svelte-material-icons/Close.svelte';
-    import { fade, fly } from 'svelte/transition';
-    import { addNotification } from '../../stores/notifications.js';
+    import { createEventDispatcher, onDestroy } from "svelte";
+    import Close from "svelte-material-icons/Close.svelte";
+    import { fade, fly } from "svelte/transition";
+    import { addNotification } from "../../stores/notifications.js";
 
     export let isOpen = false;
     export let title = "Введите значение";
@@ -12,100 +12,116 @@
     export let required = true;
     export let isLoading = false;
 
-    let value = '';
+    let value = "";
     let inputElement;
 
     const dispatch = createEventDispatcher();
     function handleKeydown(event) {
-        if (event.key === 'Escape') {
+        if (event.key === "Escape") {
             handleClose();
         }
     }
     function handleGlobalKeydown(event) {
-        if (isOpen && event.key === 'Escape') {
+        if (isOpen && event.key === "Escape") {
             handleClose();
         }
     }
     function autoFocus(node) {
-    if (node) {
-        node.focus();
-    }
-
-    return {
-        destroy() {
+        if (node) {
+            node.focus();
         }
-    };
-}
+
+        return {
+            destroy() {},
+        };
+    }
     $: if (isOpen) {
         value = initialValue;
-       
-        window.addEventListener('keydown', handleGlobalKeydown);
+
+        window.addEventListener("keydown", handleGlobalKeydown);
     } else {
-        window.removeEventListener('keydown', handleGlobalKeydown);
+        window.removeEventListener("keydown", handleGlobalKeydown);
     }
 
     onDestroy(() => {
-        window.removeEventListener('keydown', handleGlobalKeydown);
+        window.removeEventListener("keydown", handleGlobalKeydown);
     });
 
-
     onDestroy(() => {
-        window.removeEventListener('keydown', handleKeydown);
+        window.removeEventListener("keydown", handleKeydown);
     });
 
     function handleSubmit() {
         if (required && !value.trim()) {
-            addNotification("Поле не может быть пустым.", 'warning');
+            addNotification("Поле не может быть пустым.", "warning");
             return;
         }
-        dispatch('submit', value);
+        dispatch("submit", value);
     }
 
     function handleClose() {
-        dispatch('close');
+        dispatch("close");
     }
-
 </script>
 
-<svelte:window on:keydown={handleKeydown}/>
+<svelte:window on:keydown={handleKeydown} />
 
 {#if isOpen}
-<div class="simple-modal-backdrop" on:click|self={handleClose} transition:fade="{{duration: 200}}">
-    <div class="simple-modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title" transition:fly="{{y: -20, duration: 300}}">
-        <button class="close-button" on:click={handleClose} aria-label="Закрыть">
-            <Close size="20px" />
-        </button>
-        <h3 id="modal-title">{title}</h3>
-        <form on:submit|preventDefault={handleSubmit}>
-            <label for="simple-input">{prompt}</label>
-            {#if inputType === 'number'}
-                <input
-                    use:autoFocus
-                    type="number"
-                    id="simple-input"
-                    bind:value
-                    {required}
-                    placeholder="0"
-                >
-            {:else}
-                <input
-                    use:autoFocus
-                    type="text"
-                    id="simple-input"
-                    bind:value
-                    {required}
-                    placeholder=""
-                >
-            {/if}
-            <div class="modal-actions">
-                <button type="button" class="cancel-btn" on:click={handleClose} disabled={isLoading}>Отмена</button>
-                <button type="submit" class="save-btn" disabled={isLoading}>
-                    {#if isLoading} <span class="spinner"></span> {:else} Сохранить {/if}
-                </button>
-            </div>
-        </form>
+    <div class="simple-modal-backdrop" transition:fade={{ duration: 200 }}>
+        <div
+            class="simple-modal-content"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-title"
+            transition:fly={{ y: -20, duration: 300 }}
+        >
+            <button
+                class="close-button"
+                on:click={handleClose}
+                aria-label="Закрыть"
+            >
+                <Close size="20px" />
+            </button>
+            <h3 id="modal-title">{title}</h3>
+            <form on:submit|preventDefault={handleSubmit}>
+                <label for="simple-input">{prompt}</label>
+                {#if inputType === "number"}
+                    <input
+                        use:autoFocus
+                        type="number"
+                        id="simple-input"
+                        bind:value
+                        {required}
+                        placeholder="0"
+                    />
+                {:else}
+                    <input
+                        use:autoFocus
+                        type="text"
+                        id="simple-input"
+                        bind:value
+                        {required}
+                        placeholder=""
+                    />
+                {/if}
+                <div class="modal-actions">
+                    <button
+                        type="button"
+                        class="cancel-btn"
+                        on:click={handleClose}
+                        disabled={isLoading}>Отмена</button
+                    >
+                    <button type="submit" class="save-btn" disabled={isLoading}>
+                        {#if isLoading}
+                            <span class="spinner"></span>
+                        {:else}
+                            Сохранить
+                        {/if}
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
 {/if}
 
 <style>
@@ -142,9 +158,22 @@
         color: #888;
         line-height: 1;
     }
-    .close-button:hover { color: #333; }
-    h3 { margin-top: 0; margin-bottom: 15px; color: #333; font-size: 1.2rem; }
-    label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em; color: #444; }
+    .close-button:hover {
+        color: #333;
+    }
+    h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        color: #333;
+        font-size: 1.2rem;
+    }
+    label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        font-size: 0.9em;
+        color: #444;
+    }
     input {
         width: 100%;
         padding: 10px;
@@ -160,12 +189,34 @@
         justify-content: flex-end;
         gap: 10px;
     }
-    .modal-actions button { padding: 9px 16px; border-radius: 5px; border: none; cursor: pointer; font-weight: 600; transition: background-color 0.2s; font-size: 0.9rem; }
-    .cancel-btn { background-color: #f0f0f0; color: #333; }
-    .cancel-btn:hover { background-color: #e0e0e0; }
-    .save-btn { background-color: var(--color-primary); color: white; min-width: 100px; }
-    .save-btn:hover { background-color: var(--color-primary-dark, #9d92f7); }
-    .save-btn:disabled { background-color: #cccccc; cursor: not-allowed; }
+    .modal-actions button {
+        padding: 9px 16px;
+        border-radius: 5px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background-color 0.2s;
+        font-size: 0.9rem;
+    }
+    .cancel-btn {
+        background-color: #f0f0f0;
+        color: #333;
+    }
+    .cancel-btn:hover {
+        background-color: #e0e0e0;
+    }
+    .save-btn {
+        background-color: var(--color-primary);
+        color: white;
+        min-width: 100px;
+    }
+    .save-btn:hover {
+        background-color: var(--color-primary-dark, #9d92f7);
+    }
+    .save-btn:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
 
     .spinner {
         display: inline-block;
@@ -178,5 +229,9 @@
         vertical-align: middle;
         margin-right: 5px;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
 </style>

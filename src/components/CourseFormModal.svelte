@@ -1,16 +1,16 @@
 <script>
-    import { createEventDispatcher, onMount } from 'svelte';
-    import { fly } from 'svelte/transition';
-    import Close from 'svelte-material-icons/Close.svelte';
+    import { createEventDispatcher, onMount } from "svelte";
+    import { fly } from "svelte/transition";
+    import Close from "svelte-material-icons/Close.svelte";
 
     export let courseToEdit = null;
 
     const dispatch = createEventDispatcher();
 
-    let title = '';
-    let subtitle = '';
-    let description = '';
-    let status = 'draft'; // 'draft', 'published', 'free'
+    let title = "";
+    let subtitle = "";
+    let description = "";
+    let status = "draft"; // 'draft', 'published', 'free'
     let coverImageFile = null;
     let currentImageUrl = null;
     let imagePreviewUrl = null;
@@ -20,10 +20,10 @@
 
     onMount(() => {
         if (courseToEdit) {
-            title = courseToEdit.title || '';
-            subtitle = courseToEdit.subtitle || '';
-            description = courseToEdit.description || '';
-            status = courseToEdit.status || 'draft';
+            title = courseToEdit.title || "";
+            subtitle = courseToEdit.subtitle || "";
+            description = courseToEdit.description || "";
+            status = courseToEdit.status || "draft";
             currentImageUrl = courseToEdit.cover_image;
         }
     });
@@ -48,21 +48,21 @@
         errors = {};
 
         const formData = new FormData();
-        formData.append('title', title);
-        formData.append('subtitle', subtitle);
-        formData.append('description', description);
-        formData.append('status', status);
+        formData.append("title", title);
+        formData.append("subtitle", subtitle);
+        formData.append("description", description);
+        formData.append("status", status);
 
         if (coverImageFile) {
-            formData.append('cover_image', coverImageFile);
+            formData.append("cover_image", coverImageFile);
         } else if (!courseToEdit && !currentImageUrl) {
         }
 
-        dispatch('save', formData);
+        dispatch("save", formData);
     }
 
     function closeModal() {
-        dispatch('close');
+        dispatch("close");
     }
 
     function handleBackdropClick(event) {
@@ -71,64 +71,98 @@
         }
     }
     function handleKeydown(event) {
-         if (event.key === 'Escape') {
-             closeModal();
-         }
+        if (event.key === "Escape") {
+            closeModal();
+        }
     }
-
 </script>
 
-<svelte:window on:keydown={handleKeydown}/>
+<svelte:window on:keydown={handleKeydown} />
 
-<div class="modal-backdrop" on:click={handleBackdropClick} transition:fly={{ y: -20, duration: 200 }}>
-    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <button class="close-button" on:click={closeModal} aria-label="Закрыть окно">
+<div class="modal-backdrop" transition:fly={{ y: -20, duration: 200 }}>
+    <div
+        class="modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+    >
+        <button
+            class="close-button"
+            on:click={closeModal}
+            aria-label="Закрыть окно"
+        >
             <Close size="24px" />
         </button>
 
-        <h2 id="modal-title">{courseToEdit ? 'Редактировать курс' : 'Создать новый курс'}</h2>
+        <h2 id="modal-title">
+            {courseToEdit ? "Редактировать курс" : "Создать новый курс"}
+        </h2>
 
         <form on:submit|preventDefault={handleSubmit}>
             <div class="form-group">
                 <label for="title">Название курса</label>
                 <input type="text" id="title" bind:value={title} required />
-                {#if errors.title}<span class="error-text">{errors.title.join(', ')}</span>{/if}
+                {#if errors.title}<span class="error-text"
+                        >{errors.title.join(", ")}</span
+                    >{/if}
             </div>
 
             <div class="form-group">
                 <label for="subtitle">Подзаголовок (краткое описание)</label>
                 <input type="text" id="subtitle" bind:value={subtitle} />
-                 {#if errors.subtitle}<span class="error-text">{errors.subtitle.join(', ')}</span>{/if}
+                {#if errors.subtitle}<span class="error-text"
+                        >{errors.subtitle.join(", ")}</span
+                    >{/if}
             </div>
 
             <div class="form-group">
                 <label for="description">Полное описание</label>
-                <textarea id="description" rows="4" bind:value={description} required></textarea>
-                 {#if errors.description}<span class="error-text">{errors.description.join(', ')}</span>{/if}
+                <textarea
+                    id="description"
+                    rows="4"
+                    bind:value={description}
+                    required
+                ></textarea>
+                {#if errors.description}<span class="error-text"
+                        >{errors.description.join(", ")}</span
+                    >{/if}
             </div>
 
             <div class="form-group">
                 <label for="status">Статус курса</label>
                 <select id="status" bind:value={status} required>
                     <option value="draft">Черновик (виден только вам)</option>
-                    <option value="published">Опубликован (виден всем, платный/по записи)</option>
-                    <option value="free">Бесплатный (виден всем, доступен для записи)</option>
+                    <option value="published"
+                        >Опубликован (виден всем, платный/по записи)</option
+                    >
+                    <option value="free"
+                        >Бесплатный (виден всем, доступен для записи)</option
+                    >
                 </select>
-                 {#if errors.status}<span class="error-text">{errors.status.join(', ')}</span>{/if}
+                {#if errors.status}<span class="error-text"
+                        >{errors.status.join(", ")}</span
+                    >{/if}
             </div>
 
             <div class="form-group">
                 <label for="cover_image">Баннер курса</label>
-                <input type="file" id="cover_image" accept="image/png, image/jpeg, image/webp" on:change={handleFileChange} />
-                 {#if errors.cover_image}<span class="error-text">{errors.cover_image.join(', ')}</span>{/if}
+                <input
+                    type="file"
+                    id="cover_image"
+                    accept="image/png, image/jpeg, image/webp"
+                    on:change={handleFileChange}
+                />
+                {#if errors.cover_image}<span class="error-text"
+                        >{errors.cover_image.join(", ")}</span
+                    >{/if}
 
                 {#if imagePreviewUrl}
                     <div class="image-preview">
-                         <p>Новый баннер:</p>
+                        <p>Новый баннер:</p>
                         <img src={imagePreviewUrl} alt="Предпросмотр баннера" />
                     </div>
                 {:else if currentImageUrl}
-                     <div class="image-preview">
+                    <div class="image-preview">
                         <p>Текущий баннер:</p>
                         <img src={currentImageUrl} alt="Текущий баннер курса" />
                     </div>
@@ -136,25 +170,36 @@
             </div>
 
             <div class="form-actions">
-                <button type="button" class="button secondary" on:click={closeModal} disabled={isLoading}>Отмена</button>
-                <button type="submit" class="button primary" disabled={isLoading}>
+                <button
+                    type="button"
+                    class="button secondary"
+                    on:click={closeModal}
+                    disabled={isLoading}>Отмена</button
+                >
+                <button
+                    type="submit"
+                    class="button primary"
+                    disabled={isLoading}
+                >
                     {#if isLoading}Сохранение...{:else}Сохранить{/if}
                 </button>
             </div>
-             {#if errors.non_field_errors}<p class="error-text non-field">{errors.non_field_errors.join(', ')}</p>{/if}
+            {#if errors.non_field_errors}<p class="error-text non-field">
+                    {errors.non_field_errors.join(", ")}
+                </p>{/if}
         </form>
     </div>
 </div>
 
 <style>
     :root {
-        --purple-light: #C2B6FC;
+        --purple-light: #c2b6fc;
         --text-dark: #333;
         --text-muted: #555;
         --danger-red: #dc3545;
         --bg-light: #fff;
         --border-light: #ccc;
-        --primary-action: #4D44B5;
+        --primary-action: #4d44b5;
         --primary-action-hover: #5f55d1;
     }
     .modal-backdrop {
@@ -168,7 +213,7 @@
         justify-content: center;
         align-items: center;
         z-index: 1000;
-         backdrop-filter: blur(4px);
+        backdrop-filter: blur(4px);
     }
 
     .modal-content {
@@ -217,8 +262,8 @@
         color: var(--text-dark);
         font-size: 0.9rem;
     }
-    label:has(+[required])::after {
-        content: ' *';
+    label:has(+ [required])::after {
+        content: " *";
         color: var(--danger-red);
     }
 
@@ -240,9 +285,9 @@
         border-color: var(--purple-light);
         box-shadow: 0 0 0 2px rgba(194, 182, 252, 0.3);
     }
-     input[type="file"] {
+    input[type="file"] {
         padding: 8px;
-     }
+    }
 
     textarea {
         resize: vertical;
@@ -281,7 +326,9 @@
         border: none;
         cursor: pointer;
         font-weight: 600;
-        transition: background-color 0.2s ease, transform 0.1s ease;
+        transition:
+            background-color 0.2s ease,
+            transform 0.1s ease;
     }
     .button.primary {
         background-color: var(--primary-action);
@@ -295,16 +342,16 @@
         color: var(--text-dark);
         border: 1px solid #ddd;
     }
-     .button.secondary:hover:not(:disabled) {
+    .button.secondary:hover:not(:disabled) {
         background-color: #e0e0e0;
     }
     .button:active:not(:disabled) {
         transform: scale(0.98);
     }
-     .button:disabled {
+    .button:disabled {
         opacity: 0.6;
         cursor: not-allowed;
-     }
+    }
 
     .error-text {
         color: var(--danger-red);
@@ -312,9 +359,9 @@
         margin-top: 4px;
         display: block;
     }
-     .error-text.non-field {
+    .error-text.non-field {
         margin-top: 15px;
         text-align: center;
         font-weight: bold;
-     }
+    }
 </style>

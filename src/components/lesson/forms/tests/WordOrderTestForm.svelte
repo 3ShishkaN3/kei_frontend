@@ -70,20 +70,8 @@
                 correct_ordered_texts: [],
             });
         } else {
-            const wosDetails = currentTestData.word_order_sentence || {};
-            const correctTexts = Array.isArray(wosDetails.correct_ordered_texts)
-                ? [...wosDetails.correct_ordered_texts]
-                : [];
-            const poolCopy = currentTestData.draggable_options_pool
-                ? [...currentTestData.draggable_options_pool]
-                : [];
-
             localTestModel = new WordOrderTestModel({
                 ...currentTestData,
-                draggable_options_pool: poolCopy,
-                correct_ordered_texts: correctTexts,
-                display_prompt: wosDetails.display_prompt || "",
-                explanation: wosDetails.explanation || "",
             });
         }
 
@@ -124,21 +112,6 @@
             testAudioFileName = null;
         }
 
-        if (
-            localTestModel.draggable_options_pool.length === 0 &&
-            currentTestData?.title !== undefined
-        ) {
-            localTestModel.addOptionToPool("Слово 1");
-            localTestModel.addOptionToPool("Слово 2");
-            localTestModel.addOptionToPool("Слово 3");
-        }
-        if (
-            localTestModel.word_order_sentence.correct_ordered_texts.length ===
-                0 &&
-            currentTestData?.title !== undefined &&
-            localTestModel.draggable_options_pool.length > 0
-        ) {
-        }
         localTestModel = localTestModel;
         tick().then(() => {});
     }

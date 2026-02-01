@@ -45,6 +45,11 @@
     let playbackContext;
     let nextStartTime = 0;
 
+    // Audio Devices
+    let audioOutputDeviceId = "default";
+    let availableOutputDevices = [];
+    let showDeviceSettings = false;
+
     // Three.js Globals
     let canvas;
     let scene, camera, renderer, clock;
@@ -83,8 +88,73 @@
                 audioContext = new (window.AudioContext ||
                     window.webkitAudioContext)();
             if (audioContext.state === "suspended") audioContext.resume();
+            enumerateAudioDevices();
+
+            // Listen for device changes
+            navigator.mediaDevices.ondevicechange = () => {
+                enumerateAudioDevices();
+            };
         }, 500);
     });
+
+    async function enumerateAudioDevices() {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            availableOutputDevices = devices.filter(
+                (d) => d.kind === "audiooutput",
+            );
+            // Try to find a "speaker" device if we are on mobile/default
+            const speaker = availableOutputDevices.find((d) =>
+                d.label.toLowerCase().includes("speaker"),
+            );
+            if (speaker && audioOutputDeviceId === "default") {
+                // audioOutputDeviceId = speaker.deviceId; // Optionally auto-select
+            }
+        } catch (e) {
+            console.error("Error enumerating devices", e);
+        }
+    }
+
+    async function setAudioOutput(deviceId) {
+        audioOutputDeviceId = deviceId;
+        if (
+            playbackContext &&
+            typeof playbackContext.setSinkId === "function"
+        ) {
+            try {
+                await playbackContext.setSinkId(deviceId);
+                addNotification("Вывод аудио переключен", "success");
+            } catch (e) {
+                console.error("Failed to set audio output", e);
+                addNotification(
+                    "Не удалось переключить аудио: " + e.message,
+                    "error",
+                );
+            }
+        }
+    }
+
+    async function toggleSpeakerMode() {
+        // Simple toggle for mobile if possible
+        const speaker = availableOutputDevices.find((d) =>
+            d.label.toLowerCase().includes("speaker"),
+        );
+        const current = availableOutputDevices.find(
+            (d) => d.deviceId === audioOutputDeviceId,
+        );
+
+        let targetId = "default";
+        if (
+            speaker &&
+            (!current || !current.label.toLowerCase().includes("speaker"))
+        ) {
+            targetId = speaker.deviceId;
+        } else {
+            // fallback to default
+            targetId = "default";
+        }
+        await setAudioOutput(targetId);
+    }
 
     onDestroy(() => {
         stopMicCapture();
@@ -348,9 +418,20 @@
     }
 
     function playAudioChunk(base64Data) {
-        if (!playbackContext)
+        if (!playbackContext) {
             playbackContext = new (window.AudioContext ||
                 window.webkitAudioContext)({ sampleRate: 24000 });
+
+            // Apply initial output device if set
+            if (
+                audioOutputDeviceId !== "default" &&
+                typeof playbackContext.setSinkId === "function"
+            ) {
+                playbackContext
+                    .setSinkId(audioOutputDeviceId)
+                    .catch((err) => console.warn("Initial sinkId failed", err));
+            }
+        }
         if (playbackContext.state === "suspended") playbackContext.resume();
 
         const binaryString = atob(base64Data);
@@ -684,6 +765,45 @@
                 </div>
             {/if}
         </div>
+
+        {#if availableOutputDevices.length > 0}
+            <div class="audio-controls-overlay">
+                <button
+                    class="icon-btn audio-switch"
+                    on:click={toggleSpeakerMode}
+                    title="Переключить динамик"
+                >
+                    {#if audioOutputDeviceId !== "default" && availableOutputDevices
+                            .find((d) => d.deviceId === audioOutputDeviceId)
+                            ?.label.toLowerCase()
+                            .includes("speaker")}
+                        <!-- Speaker Icon -->
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            width="20"
+                            height="20"
+                        >
+                            <path
+                                d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
+                            />
+                        </svg>
+                    {:else}
+                        <!-- Headset/Default Icon -->
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            width="20"
+                            height="20"
+                        >
+                            <path
+                                d="M12 1a9 9 0 0 0-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7a9 9 0 0 0-9-9z"
+                            />
+                        </svg>
+                    {/if}
+                </button>
+            </div>
+        {/if}
     </div>
 
     <div class="subtitles-box">
@@ -797,6 +917,29 @@
         animation: spin 0.8s linear infinite;
         will-change: transform;
         z-index: 11;
+    }
+
+    .audio-controls-overlay {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 20;
+    }
+
+    .icon-btn.audio-switch {
+        background: rgba(0, 0, 0, 0.5);
+        border: none;
+        border-radius: 50%;
+        color: white;
+        padding: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+    }
+    .icon-btn.audio-switch:hover {
+        background: rgba(0, 0, 0, 0.7);
     }
 
     /* HUD */

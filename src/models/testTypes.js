@@ -89,21 +89,19 @@ export class MCQTestModel extends BaseTestModel {
  * Модель для теста со свободным текстовым ответом.
  */
 export class FreeTextTestModel extends BaseTestModel {
-    constructor({
-        reference_answer = "",
-        explanation = "",
-        prompt_text = "",
-        prompt_image_file = null,
-        prompt_audio_file = null,
-        ...baseData
-    }) {
+    constructor(data = {}) {
+        const {
+            free_text_question = {},
+            ...baseData
+        } = data;
         super({ ...baseData, test_type: 'free-text' });
+
         this.free_text_question = {
-            reference_answer: reference_answer,
-            explanation: explanation,
-            prompt_text: prompt_text,
-            prompt_image_file: prompt_image_file,
-            prompt_audio_file: prompt_audio_file,
+            reference_answer: free_text_question.reference_answer || data.reference_answer || "",
+            explanation: free_text_question.explanation || data.explanation || "",
+            prompt_text: free_text_question.prompt_text || data.prompt_text || "",
+            prompt_image_file: free_text_question.prompt_image_file || data.prompt_image_file || null,
+            prompt_audio_file: free_text_question.prompt_audio_file || data.prompt_audio_file || null,
         };
     }
 
@@ -203,20 +201,27 @@ export class DragDropTestModel extends BaseTestModel {
  * Модель для теста на порядок слов
  */
 export class WordOrderTestModel extends BaseTestModel {
-    constructor({
-        correct_ordered_texts = [],
-        display_prompt = "",
-        explanation = "",
-        draggable_options_pool = [],
-        ...baseData
-    }) {
+    constructor(data = {}) {
+        const {
+            draggable_options_pool = [],
+            ...baseData
+        } = data;
         super({ ...baseData, test_type: 'word-order' });
+
+        const word_order_sentence = data.word_order_sentence || {};
+        const wos = word_order_sentence.correct_ordered_texts ? word_order_sentence : (data.word_order_sentence_details || {});
+
+        // Handle both nested and flat formats
+        const correct_ordered_texts = wos.correct_ordered_texts || data.correct_ordered_texts || [];
+        const display_prompt = wos.display_prompt || data.display_prompt || "";
+        const explanation = wos.explanation || data.explanation || "";
+
         this.word_order_sentence = {
             correct_ordered_texts: Array.isArray(correct_ordered_texts) ? [...correct_ordered_texts] : [],
             display_prompt: display_prompt,
             explanation: explanation,
         };
-        this.draggable_options_pool = Array.isArray(draggable_options_pool) ? [...draggable_options_pool] : [];
+        this.draggable_options_pool = Array.isArray(draggable_options_pool) ? [...draggable_options_pool] : (data.draggable_options_pool || []);
     }
 
     addOptionToPool(optionText) {
