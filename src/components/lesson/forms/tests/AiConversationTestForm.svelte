@@ -37,9 +37,14 @@
     let imageCrop = { x: 0, y: 0 };
     let imageZoom = 1;
     let imageCroppedAreaPixels = null;
-    let imageAspectRatio = 16 / 9;
+    let imageAspectRatio = undefined;
+    const aspectRatios = [
+        { label: "Своб.", value: undefined },
+        { label: "1:1", value: 1 / 1 },
+        { label: "16:9", value: 16 / 9 },
+        { label: "4:3", value: 4 / 3 },
+    ];
 
-    // Словари
     let availableDictionaries = [];
     let selectedDictionaryIds = [];
     let isLoadingDictionaries = false;
@@ -77,7 +82,8 @@
 
             const bg = currentTestData.ai_conversation_question;
             const rawBg = bg.background_image ?? bg.background_image_details;
-            currentServerBgId = typeof rawBg === "number" ? rawBg : (rawBg?.id ?? null);
+            currentServerBgId =
+                typeof rawBg === "number" ? rawBg : (rawBg?.id ?? null);
 
             if (
                 currentTestData.ai_conversation_question
@@ -94,9 +100,15 @@
             attachedBgFile = null;
 
             if (localTestModel?.ai_conversation_question?.dictionaries) {
-                selectedDictionaryIds = localTestModel.ai_conversation_question.dictionaries;
-            } else if (localTestModel?.ai_conversation_question?.dictionaries_details) {
-                selectedDictionaryIds = localTestModel.ai_conversation_question.dictionaries_details.map(d => d.id);
+                selectedDictionaryIds =
+                    localTestModel.ai_conversation_question.dictionaries;
+            } else if (
+                localTestModel?.ai_conversation_question?.dictionaries_details
+            ) {
+                selectedDictionaryIds =
+                    localTestModel.ai_conversation_question.dictionaries_details.map(
+                        (d) => d.id,
+                    );
             } else {
                 selectedDictionaryIds = [];
             }
@@ -107,9 +119,15 @@
         initializeModel(testData);
         await loadDictionaries();
         if (localTestModel?.ai_conversation_question?.dictionaries) {
-            selectedDictionaryIds = localTestModel.ai_conversation_question.dictionaries;
-        } else if (localTestModel?.ai_conversation_question?.dictionaries_details) {
-            selectedDictionaryIds = localTestModel.ai_conversation_question.dictionaries_details.map(d => d.id);
+            selectedDictionaryIds =
+                localTestModel.ai_conversation_question.dictionaries;
+        } else if (
+            localTestModel?.ai_conversation_question?.dictionaries_details
+        ) {
+            selectedDictionaryIds =
+                localTestModel.ai_conversation_question.dictionaries_details.map(
+                    (d) => d.id,
+                );
         }
     });
 
@@ -117,18 +135,24 @@
         isLoadingDictionaries = true;
         try {
             const dictionaries = await fetchAllDictionarySections();
-            availableDictionaries = dictionaries.map(dict => ({
+            availableDictionaries = dictionaries.map((dict) => ({
                 id: dict.id,
                 title: dict.title,
                 course_id: dict.course_id,
-                course_title: dict.course?.title || 'Неизвестный курс',
-                display_name: `${dict.course?.title || 'Неизвестный курс'} - ${dict.title}`
+                course_title: dict.course?.title || "Неизвестный курс",
+                display_name: `${dict.course?.title || "Неизвестный курс"} - ${dict.title}`,
             }));
-            
+
             if (localTestModel?.ai_conversation_question?.dictionaries) {
-                selectedDictionaryIds = localTestModel.ai_conversation_question.dictionaries;
-            } else if (localTestModel?.ai_conversation_question?.dictionaries_details) {
-                selectedDictionaryIds = localTestModel.ai_conversation_question.dictionaries_details.map(d => d.id);
+                selectedDictionaryIds =
+                    localTestModel.ai_conversation_question.dictionaries;
+            } else if (
+                localTestModel?.ai_conversation_question?.dictionaries_details
+            ) {
+                selectedDictionaryIds =
+                    localTestModel.ai_conversation_question.dictionaries_details.map(
+                        (d) => d.id,
+                    );
             }
         } catch (error) {
             console.error("Error loading dictionaries:", error);
@@ -140,9 +164,12 @@
 
     function handleDictionaryChange(event) {
         const selectedOptions = Array.from(event.target.selectedOptions);
-        selectedDictionaryIds = selectedOptions.map(option => parseInt(option.value));
+        selectedDictionaryIds = selectedOptions.map((option) =>
+            parseInt(option.value),
+        );
         if (localTestModel?.ai_conversation_question) {
-            localTestModel.ai_conversation_question.dictionaries = selectedDictionaryIds;
+            localTestModel.ai_conversation_question.dictionaries =
+                selectedDictionaryIds;
         }
     }
 
@@ -277,9 +304,8 @@
         }
 
         const testDefinition = localTestModel.toPayload();
-        testDefinition.ai_conversation_question.background_image = finalCroppedFile
-            ? null
-            : currentServerBgId;
+        testDefinition.ai_conversation_question.background_image =
+            finalCroppedFile ? null : currentServerBgId;
 
         if (finalCroppedFile) {
             const formData = new FormData();
@@ -380,15 +406,21 @@
                         <option disabled>Нет доступных словарей</option>
                     {:else}
                         {#each availableDictionaries as dict (dict.id)}
-                            <option value={dict.id} selected={selectedDictionaryIds.includes(dict.id)}>
+                            <option
+                                value={dict.id}
+                                selected={selectedDictionaryIds.includes(
+                                    dict.id,
+                                )}
+                            >
                                 {dict.display_name}
                             </option>
                         {/each}
                     {/if}
                 </select>
                 <small class="hint"
-                    >Выберите словари, слова из которых будут использоваться в разговоре. 
-                    Удерживайте Ctrl (Cmd на Mac) для выбора нескольких.</small
+                    >Выберите словари, слова из которых будут использоваться в
+                    разговоре. Удерживайте Ctrl (Cmd на Mac) для выбора
+                    нескольких.</small
                 >
             </div>
 
@@ -406,6 +438,21 @@
                         />
                     </div>
                     <div class="attachment-actions">
+                        <div class="aspect-ratio-controls">
+                            <span>Соотношение:</span>
+                            {#each aspectRatios as ratio}
+                                <button
+                                    type="button"
+                                    class="aspect-btn"
+                                    class:active={imageAspectRatio ===
+                                        ratio.value}
+                                    on:click={() =>
+                                        (imageAspectRatio = ratio.value)}
+                                >
+                                    {ratio.label}
+                                </button>
+                            {/each}
+                        </div>
                         <div class="control-group-inline">
                             <label for="ai-zoom-slider"
                                 >Масштаб: {imageZoom.toFixed(1)}x</label
@@ -424,8 +471,7 @@
                             <button
                                 type="button"
                                 class="btn-action-small danger"
-                                on:click={removeAttachedBg}
-                                >Удалить</button
+                                on:click={removeAttachedBg}>Удалить</button
                             >
                         </div>
                     </div>
@@ -505,6 +551,28 @@
         margin-bottom: 10px;
         border-radius: var(--spacing-border-radius-small);
         overflow: hidden;
+        contain: content;
+        transform: translateZ(0);
+    }
+    .aspect-ratio-controls {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+        color: var(--color-text-muted);
+        margin-right: 15px;
+    }
+    .aspect-btn {
+        font-size: 0.75em;
+        padding: 3px 6px;
+        border: 1px solid #ccc;
+        background: #f9f9f9;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .aspect-btn.active {
+        background: var(--color-primary-light);
+        color: var(--color-primary-dark);
+        border-color: var(--color-primary);
     }
     .attachment-actions {
         display: flex;

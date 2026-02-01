@@ -8,7 +8,7 @@ export const WS_CONVERSATION_BASE_URL = 'ws://localhost:8100/api/v1';
 
 
 
-// export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// export const API_BASE_URL = 'https://keisenpai.com/api/v1';
 
 // export const WS_BASE_URL = API_BASE_URL.startsWith('http')
 

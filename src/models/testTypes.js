@@ -10,16 +10,16 @@ export class BaseTestModel {
         description = "",
         test_type,
         attached_image_id = null,
-        attached_audio_id = null
-        // aspect_ratio_for_test_image = null
+        attached_audio_id = null,
+        attached_image = null,
+        attached_audio = null
     }) {
         this.id = id;
         this.title = title;
         this.description = description;
         this.test_type = test_type;
-        this.attached_image_id = attached_image_id;
-        this.attached_audio_id = attached_audio_id;
-        // this.aspect_ratio_for_test_image = aspect_ratio_for_test_image;
+        this.attached_image_id = attached_image_id || attached_image;
+        this.attached_audio_id = attached_audio_id || attached_audio;
     }
 
     toPayload() {
@@ -123,6 +123,8 @@ export class DragDropSlotModel {
         prompt_text = "",
         prompt_image_file = null,
         prompt_audio_file = null,
+        prompt_image = null,
+        prompt_audio = null,
         correct_answer_text = "",
         explanation = "",
         order = 0
@@ -131,6 +133,8 @@ export class DragDropSlotModel {
         this.prompt_text = prompt_text;
         this.prompt_image_file = prompt_image_file;
         this.prompt_audio_file = prompt_audio_file;
+        this.prompt_image_id = prompt_image || (prompt_image_file && typeof prompt_image_file === 'number' ? prompt_image_file : null);
+        this.prompt_audio_id = prompt_audio || (prompt_audio_file && typeof prompt_audio_file === 'number' ? prompt_audio_file : null);
         this.correct_answer_text = correct_answer_text;
         this.explanation = explanation;
         this.order = order;
@@ -139,8 +143,8 @@ export class DragDropSlotModel {
     toPayload() {
         const payload = {
             prompt_text: this.prompt_text,
-            prompt_image_file: null, // Файл передается отдельно в multipart/form-data
-            prompt_audio_file: null, // Файл передается отдельно в multipart/form-data
+            prompt_image: this.prompt_image_id,
+            prompt_audio: this.prompt_audio_id,
             correct_answer_text: this.correct_answer_text,
             explanation: this.explanation,
             order: this.order,
@@ -291,16 +295,14 @@ export class AiConversationTestModel extends BaseTestModel {
 
         const dictionaries = ai_conversation_question.dictionaries || data.dictionaries || [];
         const dictionariesDetails = ai_conversation_question.dictionaries_details || data.dictionaries_details || [];
-        
-        // Нормализуем dictionaries - извлекаем только ID
+
         let normalizedDictionaries = [];
         if (Array.isArray(dictionaries)) {
             normalizedDictionaries = dictionaries.map(item => {
-                // Если это объект с id, берем id, иначе это уже id
                 return typeof item === 'object' && item !== null && 'id' in item ? item.id : item;
             }).filter(id => id != null && id !== undefined);
         }
-        
+
         this.ai_conversation_question = {
             context: ai_conversation_question.context || data.context || "",
             personality: ai_conversation_question.personality || data.personality || "",
@@ -315,16 +317,14 @@ export class AiConversationTestModel extends BaseTestModel {
     toPayload() {
         const payload = super.toPayload();
         const bgId = _normalizeBackgroundImageId(this.ai_conversation_question.background_image);
-        
-        // Обрабатываем dictionaries - извлекаем только ID
+
         let dictionariesIds = [];
         if (Array.isArray(this.ai_conversation_question.dictionaries)) {
             dictionariesIds = this.ai_conversation_question.dictionaries.map(item => {
-                // Если это объект с id, берем id, иначе это уже id
                 return typeof item === 'object' && item !== null && 'id' in item ? item.id : item;
-            }).filter(id => id != null); // Убираем null/undefined
+            }).filter(id => id != null);
         }
-        
+
         payload.ai_conversation_question = {
             context: this.ai_conversation_question.context,
             personality: this.ai_conversation_question.personality,

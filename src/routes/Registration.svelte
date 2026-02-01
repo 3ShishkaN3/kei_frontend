@@ -7,6 +7,11 @@
   import { user } from "../stores/user.js";
   import { navigate } from "svelte-routing";
   import { fetchCsrfToken } from "../api/csrf.js";
+  import Eye from "svelte-material-icons/Eye.svelte";
+  import EyeOff from "svelte-material-icons/EyeOff.svelte";
+
+  let showPassword = false;
+  let showPassword2 = false;
 
   gsap.registerPlugin(ScrollTrigger);
 
@@ -302,18 +307,48 @@
           bind:value={email}
           required
         />
-        <input
-          type="password"
-          placeholder="Пароль"
-          bind:value={password}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Подтвердить пароль"
-          bind:value={password2}
-          required
-        />
+        <div class="password-input-container">
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Пароль"
+            value={password}
+            on:input={(e) => (password = e.target.value)}
+            required
+          />
+          <button
+            type="button"
+            class="toggle-password"
+            on:click={() => (showPassword = !showPassword)}
+            tabindex="-1"
+          >
+            {#if showPassword}
+              <EyeOff size="24px" />
+            {:else}
+              <Eye size="24px" />
+            {/if}
+          </button>
+        </div>
+        <div class="password-input-container">
+          <input
+            type={showPassword2 ? "text" : "password"}
+            placeholder="Подтвердить пароль"
+            value={password2}
+            on:input={(e) => (password2 = e.target.value)}
+            required
+          />
+          <button
+            type="button"
+            class="toggle-password"
+            on:click={() => (showPassword2 = !showPassword2)}
+            tabindex="-1"
+          >
+            {#if showPassword2}
+              <EyeOff size="24px" />
+            {:else}
+              <Eye size="24px" />
+            {/if}
+          </button>
+        </div>
         <button type="submit" class="confirm-email-button"
           >Зарегистрироваться</button
         >
@@ -376,7 +411,7 @@
     <div class="contact-buttons">
       <button
         class="telegram-button"
-        on:click={() => window.open("https://t.me/keisenpai", "_blank")}
+        on:click={() => window.open("https://t.me/keisenpai_com", "_blank")}
       >
         <svg viewBox="0 0 24 24">
           <path
@@ -394,7 +429,7 @@
   <h1 class="parallax-element">Бесплатная консультация</h1>
   <div class="consultation-text parallax-element">
     Отправьте заявку или напишите нам в Telegram:
-    <a href="https://t.me/KeiSenpai" target="_blank">@KeiSenpai</a>
+    <a href="https://t.me/keisenpai_com" target="_blank">@keisenpai_com</a>
   </div>
   <div class="consultation-form">
     <div class="consultation-inputs parallax-element">
@@ -501,15 +536,46 @@
   }
   form input {
     width: 100%;
-    padding: 20px 24px;
+    padding: 1.25rem 1.5rem;
     font-weight: 300;
-    font-size: 20px;
+    font-size: 1.25rem;
     color: #333;
     border: 1px solid #ccc;
     border-radius: 8px;
     box-sizing: border-box;
     transition: all 0.3s ease;
     animation: fadeInUp 0.8s ease-out both;
+  }
+
+  .password-input-container {
+    position: relative;
+    width: 100%;
+  }
+
+  .password-input-container input[type="password"] {
+    font-size: 1.5rem;
+    letter-spacing: 0.1em;
+  }
+
+  .toggle-password {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #bdb4fe;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    transition: color 0.3s;
+    z-index: 2;
+  }
+
+  .toggle-password:hover {
+    color: #8f7ee3;
   }
   form input:focus {
     box-shadow: 0 0 10px #a8a1f5;
@@ -520,7 +586,8 @@
     padding: 25px 15px;
     border: none;
     border-radius: 20px;
-    background-image: linear-gradient(to bottom, #c2b6fc, #ebc7f2);
+    background-image: linear-gradient(to bottom, #d8a6e2, #a192f1);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
     color: #fff;
     font-size: 22px;
     font-weight: 400;
@@ -531,7 +598,7 @@
     animation: pulse 2s infinite;
   }
   .confirm-email-button:hover {
-    background-image: linear-gradient(to bottom, #d8a8e8, #a8a1f5);
+    background-image: linear-gradient(to bottom, #c88ed5, #8c78e3);
     transform: scale(1.05);
   }
   .confirm-email-button:active {
@@ -588,10 +655,6 @@
     width: 57%;
     background: url("/banner.jpg") no-repeat right center;
     background-size: cover;
-    transition: transform 1.5s ease;
-  }
-  .banner:hover {
-    transform: scale(1.02);
   }
   @media (max-width: 1024px) {
     .registration-container {
@@ -682,7 +745,8 @@
     padding: 18px 25px;
     border: none;
     border-radius: 20px;
-    background-image: linear-gradient(to bottom, #c2b6fc, #ebc7f2);
+    background-image: linear-gradient(to bottom, #d8a6e2, #a192f1);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
     color: #fff;
     font-size: 20px;
     font-weight: 400;
@@ -692,7 +756,7 @@
     width: 100%;
   }
   .consultation-button:hover {
-    background-image: linear-gradient(to bottom, #d8a8e8, #a8a1f5);
+    background-image: linear-gradient(to bottom, #c88ed5, #8c78e3);
     transform: scale(1.05);
   }
   .consultation-button:active {

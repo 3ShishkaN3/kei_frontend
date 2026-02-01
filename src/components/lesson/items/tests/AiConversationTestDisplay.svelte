@@ -4,7 +4,10 @@
     import * as THREE from "three";
     import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
     import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
-    import { WS_CONVERSATION_BASE_URL, API_BASE_URL } from "../../../../config.js";
+    import {
+        WS_CONVERSATION_BASE_URL,
+        API_BASE_URL,
+    } from "../../../../config.js";
     import { addNotification } from "../../../../stores/notifications.js";
     import { apiFetch } from "../../../../api/api.js";
 
@@ -16,7 +19,7 @@
 
     // State Variables
     const dispatch = createEventDispatcher();
-    
+
     // UI State
     let isInteractionLocked = viewMode !== "student" || !canStudentInteract;
     let isConnecting = false;
@@ -28,11 +31,11 @@
     let conversationStopped = false;
     let hasConversationRecording = false;
     let isAwaitingGrading = false;
-    
+
     // Data State
     let socket = null;
     let username = "Ученик";
-    let subtitlesHistory = []; 
+    let subtitlesHistory = [];
     let lastSubmission = null;
 
     // Audio Contexts
@@ -46,13 +49,14 @@
     let canvas;
     let scene, camera, renderer, clock;
     let currentVrm = null;
-    
+
     // Animation Vars
     let lastBlinkTime = 0;
     let blinkInterval = 3.0;
 
     // Computed
-    $: bgImageUrl = testData?.ai_conversation_question?.background_image_details?.image
+    $: bgImageUrl = testData?.ai_conversation_question?.background_image_details
+        ?.image
         ? `url('${testData.ai_conversation_question.background_image_details.image}')`
         : "none";
 
@@ -72,10 +76,12 @@
         initThree();
         setTimeout(() => loadModel("/Khirano.vrm"), 200);
         animate();
-        
+
         // Инициализируем аудио после загрузки 3D
         setTimeout(() => {
-            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            if (!audioContext)
+                audioContext = new (window.AudioContext ||
+                    window.webkitAudioContext)();
             if (audioContext.state === "suspended") audioContext.resume();
         }, 500);
     });
@@ -88,13 +94,15 @@
             scene.remove(currentVrm.scene);
         }
         if (renderer) renderer.dispose();
-        if (audioContext && audioContext.state !== 'closed') audioContext.close();
-        if (playbackContext && playbackContext.state !== 'closed') playbackContext.close();
+        if (audioContext && audioContext.state !== "closed")
+            audioContext.close();
+        if (playbackContext && playbackContext.state !== "closed")
+            playbackContext.close();
     });
 
     function updateSubtitle(speaker, text, translated = null, isFinal = false) {
         const lastMsg = subtitlesHistory[0];
-        
+
         if (lastMsg && lastMsg.speaker === speaker && !lastMsg.isFinal) {
             lastMsg.text = text;
             if (translated) lastMsg.translated = translated;
@@ -106,7 +114,7 @@
                 speaker,
                 text,
                 translated: translated || null,
-                isFinal
+                isFinal,
             };
             subtitlesHistory = [newMsg, ...subtitlesHistory];
         }
@@ -121,35 +129,41 @@
 
     async function requestTranslation(messageId, text, sourceType) {
         if (translatingMessages.has(messageId)) return;
-        
+
         translatingMessages.add(messageId);
-        
+
         try {
-            const response = await apiFetch(`${API_BASE_URL}/materials/tests/translate_subtitle/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
+            const response = await apiFetch(
+                `${API_BASE_URL}/materials/tests/translate_subtitle/`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                    }),
                 },
-                body: JSON.stringify({
-                    text: text
-                })
-            });
-            
+            );
+
             if (response.ok) {
                 const data = await response.json();
                 updateTranslationOnly(messageId, data.translated_text);
             } else {
-                console.error('Translation request failed:', response.statusText);
+                console.error(
+                    "Translation request failed:",
+                    response.statusText,
+                );
             }
         } catch (error) {
-            console.error('Translation request failed:', error);
+            console.error("Translation request failed:", error);
         } finally {
             translatingMessages.delete(messageId);
         }
     }
 
     function updateTranslationOnly(messageId, translatedText) {
-        const target = subtitlesHistory.find(s => s.id === messageId);
+        const target = subtitlesHistory.find((s) => s.id === messageId);
         if (target) {
             target.translated = translatedText;
             subtitlesHistory = [...subtitlesHistory];
@@ -159,7 +173,7 @@
     // WebSocket Logic
     async function startConversation() {
         if (isInteractionLocked) return;
-        console.log('startConversation called');
+        console.log("startConversation called");
         resetState();
         isConversationActive = true;
         isConnecting = true;
@@ -175,7 +189,9 @@
     }
 
     function connectWebSocket() {
-        const token = localStorage.getItem("access") || localStorage.getItem("access_token");
+        const token =
+            localStorage.getItem("access") ||
+            localStorage.getItem("access_token");
         const url = `${WS_CONVERSATION_BASE_URL}/ws/conversation/${testData.id}/${token ? `?token=${token}` : ""}`;
         socket = new WebSocket(url);
 
@@ -193,9 +209,9 @@
     // WebSocket message handler
     function onMessage(event) {
         const data = JSON.parse(event.data);
-        
-        console.log('WebSocket message received:', data.type);
-        
+
+        console.log("WebSocket message received:", data.type);
+
         switch (data.type) {
             case "ready":
                 isConnecting = false;
@@ -205,20 +221,25 @@
                 playAudioChunk(data.data);
                 break;
             case "ai_text_chunk":
-                updateSubtitle("Сенсей", data.text, null, data.is_final || false);
+                updateSubtitle(
+                    "Сенсей",
+                    data.text,
+                    null,
+                    data.is_final || false,
+                );
                 break;
             case "user_text_transcript":
                 updateSubtitle(username, data.text, null, data.is_final);
                 break;
             case "submission_update":
-                console.log('Received submission_update, closing socket');
+                console.log("Received submission_update, closing socket");
                 lastSubmission = data.submission;
                 isAwaitingGrading = false;
                 finishConversation(true);
                 addNotification("Оценка получена!", "success");
                 break;
             case "submission_error":
-                console.log('Received submission_error, closing socket');
+                console.log("Received submission_error, closing socket");
                 isAwaitingGrading = false;
                 finishConversation(true);
                 addNotification("Ошибка оценки", "error");
@@ -244,20 +265,33 @@
     // Audio Logic
     async function startMicCapture() {
         try {
-            micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+            micStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                },
+            });
             const source = audioContext.createMediaStreamSource(micStream);
             processor = audioContext.createScriptProcessor(4096, 1, 1);
             source.connect(processor);
 
             processor.onaudioprocess = (e) => {
-                if (!isConversationActive || !socket || socket.readyState !== WebSocket.OPEN || isSpeaking) return;
+                if (
+                    !isConversationActive ||
+                    !socket ||
+                    socket.readyState !== WebSocket.OPEN ||
+                    isSpeaking
+                )
+                    return;
 
                 const inputData = e.inputBuffer.getChannelData(0);
                 const nativeRate = audioContext.sampleRate;
                 const targetRate = 16000;
-                let pcm16 = (nativeRate !== targetRate) 
-                    ? downsampleBuffer(inputData, nativeRate, targetRate) 
-                    : floatTo16BitPCM(inputData);
+                let pcm16 =
+                    nativeRate !== targetRate
+                        ? downsampleBuffer(inputData, nativeRate, targetRate)
+                        : floatTo16BitPCM(inputData);
                 socket.send(pcm16);
             };
         } catch (e) {
@@ -272,7 +306,7 @@
             processor = null;
         }
         if (micStream) {
-            micStream.getTracks().forEach(t => t.stop());
+            micStream.getTracks().forEach((t) => t.stop());
             micStream = null;
         }
     }
@@ -282,16 +316,22 @@
         const ratio = sampleRate / outSampleRate;
         const newLength = Math.round(buffer.length / ratio);
         const result = new Int16Array(newLength);
-        let offsetResult = 0, offsetBuffer = 0;
+        let offsetResult = 0,
+            offsetBuffer = 0;
         while (offsetResult < result.length) {
             const nextOffsetBuffer = Math.round((offsetResult + 1) * ratio);
-            let accum = 0, count = 0;
-            for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+            let accum = 0,
+                count = 0;
+            for (
+                let i = offsetBuffer;
+                i < nextOffsetBuffer && i < buffer.length;
+                i++
+            ) {
                 accum += buffer[i];
                 count++;
             }
             let s = Math.max(-1, Math.min(1, accum / count));
-            result[offsetResult] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            result[offsetResult] = s < 0 ? s * 0x8000 : s * 0x7fff;
             offsetResult++;
             offsetBuffer = nextOffsetBuffer;
         }
@@ -302,25 +342,28 @@
         const output = new Int16Array(input.length);
         for (let i = 0; i < input.length; i++) {
             const s = Math.max(-1, Math.min(1, input[i]));
-            output[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            output[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
         }
         return output.buffer;
     }
 
     function playAudioChunk(base64Data) {
-        if (!playbackContext) playbackContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+        if (!playbackContext)
+            playbackContext = new (window.AudioContext ||
+                window.webkitAudioContext)({ sampleRate: 24000 });
         if (playbackContext.state === "suspended") playbackContext.resume();
-        
+
         const binaryString = atob(base64Data);
         const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+        for (let i = 0; i < binaryString.length; i++)
+            bytes[i] = binaryString.charCodeAt(i);
         const int16 = new Int16Array(bytes.buffer);
         const float32 = new Float32Array(int16.length);
-        
+
         let maxVol = 0;
-        for(let i=0; i<int16.length; i++) {
+        for (let i = 0; i < int16.length; i++) {
             float32[i] = int16[i] / 32768.0;
-            if(Math.abs(float32[i]) > maxVol) maxVol = Math.abs(float32[i]);
+            if (Math.abs(float32[i]) > maxVol) maxVol = Math.abs(float32[i]);
         }
 
         const buffer = playbackContext.createBuffer(1, float32.length, 24000);
@@ -334,16 +377,18 @@
         if (nextStartTime < currentTime) nextStartTime = currentTime;
         source.start(nextStartTime);
         nextStartTime += buffer.duration;
-        
+
         isSpeaking = true;
         activeAudioSources++;
-        
+
         if (currentVrm) {
             const openAmount = Math.min(1.0, maxVol * 4);
             currentVrm.expressionManager.setValue("aa", openAmount);
-            setTimeout(() => { if(currentVrm) currentVrm.expressionManager.setValue("aa", 0); }, buffer.duration * 1000);
+            setTimeout(() => {
+                if (currentVrm) currentVrm.expressionManager.setValue("aa", 0);
+            }, buffer.duration * 1000);
         }
-        
+
         source.onended = () => {
             activeAudioSources--;
             if (activeAudioSources <= 0) {
@@ -355,12 +400,21 @@
 
     function initThree() {
         scene = new THREE.Scene();
-        
-        camera = new THREE.PerspectiveCamera(30, canvas.clientWidth / canvas.clientHeight, 0.1, 20);
-        camera.position.set(0, 1.45, 1.6); 
+
+        camera = new THREE.PerspectiveCamera(
+            30,
+            canvas.clientWidth / canvas.clientHeight,
+            0.1,
+            20,
+        );
+        camera.position.set(0, 1.45, 1.2);
         camera.lookAt(0, 1.35, 0);
 
-        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+        renderer = new THREE.WebGLRenderer({
+            canvas,
+            antialias: true,
+            alpha: true,
+        });
         renderer.setSize(canvas.clientWidth, canvas.clientHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -382,25 +436,24 @@
             const gltf = await loader.loadAsync(url);
             VRMUtils.removeUnnecessaryJoints(gltf.scene);
             const vrm = gltf.userData.vrm;
-            
-            VRMUtils.rotateVRM0(vrm); 
-            vrm.scene.position.y = 0.0; 
+
+            VRMUtils.rotateVRM0(vrm);
+            vrm.scene.position.y = 0.0;
 
             vrm.scene.traverse((object) => {
-            if (object.isMesh || object.isSkinnedMesh) {
-                    if (object.name.toLowerCase().includes('ear')) { 
-                        object.visible = false; 
+                if (object.isMesh || object.isSkinnedMesh) {
+                    if (object.name.toLowerCase().includes("ear")) {
+                        object.visible = false;
                     }
                 }
             });
 
             scene.add(vrm.scene);
             currentVrm = vrm;
-            
-            currentVrm.update(0);
-            
-            resetPose(vrm);
 
+            currentVrm.update(0);
+
+            resetPose(vrm);
         } catch (e) {
             console.error("Failed to load VRM:", e);
             addNotification("Не удалось загрузить 3D модель", "error");
@@ -411,26 +464,35 @@
 
     function resetPose(vrm) {
         try {
-             const leftArm = vrm.humanoid.getNormalizedBoneNode('leftUpperArm');
-             const rightArm = vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
-             if (leftArm) leftArm.rotation.z = 1.3;
-             if (rightArm) rightArm.rotation.z = -1.3;
-        } catch (e) { console.warn(e); }
+            const leftArm = vrm.humanoid.getNormalizedBoneNode("leftUpperArm");
+            const rightArm =
+                vrm.humanoid.getNormalizedBoneNode("rightUpperArm");
+            if (leftArm) leftArm.rotation.z = 1.3;
+            if (rightArm) rightArm.rotation.z = -1.3;
+        } catch (e) {
+            console.warn(e);
+        }
         vrm.expressionManager.setValue("happy", 0.15);
     }
 
     function animate() {
         if (!renderer || !scene || !camera) return;
         requestAnimationFrame(animate);
-        
-        const delta = Math.min(clock.getDelta(), 0.04); 
+
+        const delta = Math.min(clock.getDelta(), 0.04);
         const t = clock.elapsedTime;
 
         if (currentVrm) {
             // BLINKING
             if (t - lastBlinkTime > blinkInterval) {
-                const blinkValue = Math.min(1.0, (t - lastBlinkTime - blinkInterval) * 10);
-                currentVrm.expressionManager.setValue("blink", 1.0 - Math.abs(1.0 - blinkValue * 2));
+                const blinkValue = Math.min(
+                    1.0,
+                    (t - lastBlinkTime - blinkInterval) * 10,
+                );
+                currentVrm.expressionManager.setValue(
+                    "blink",
+                    1.0 - Math.abs(1.0 - blinkValue * 2),
+                );
                 if (blinkValue >= 1.0) {
                     lastBlinkTime = t;
                     blinkInterval = 2.0 + Math.random() * 4.0;
@@ -438,7 +500,7 @@
             }
 
             // Idle
-            
+
             // Дыхание (Грудь)
             const chest = currentVrm.humanoid.getNormalizedBoneNode("chest");
             if (chest) {
@@ -454,8 +516,10 @@
             }
 
             // Руки (Дыхание рук)
-            const leftArm = currentVrm.humanoid.getNormalizedBoneNode('leftUpperArm');
-            const rightArm = currentVrm.humanoid.getNormalizedBoneNode('rightUpperArm');
+            const leftArm =
+                currentVrm.humanoid.getNormalizedBoneNode("leftUpperArm");
+            const rightArm =
+                currentVrm.humanoid.getNormalizedBoneNode("rightUpperArm");
             if (leftArm) leftArm.rotation.z = 1.3 + Math.sin(t * 1.5) * 0.03;
             if (rightArm) rightArm.rotation.z = -1.3 - Math.sin(t * 1.5) * 0.03;
 
@@ -472,32 +536,36 @@
 
     // Control Flow
     function finishConversation(gradingComplete = false) {
-        console.log('=== finishConversation called ===');
-        console.log('gradingComplete:', gradingComplete);
-        console.log('hasConversationRecording:', hasConversationRecording);
-        console.log('lastSubmission:', lastSubmission);
-        console.log('socket exists:', !!socket);
+        console.log("=== finishConversation called ===");
+        console.log("gradingComplete:", gradingComplete);
+        console.log("hasConversationRecording:", hasConversationRecording);
+        console.log("lastSubmission:", lastSubmission);
+        console.log("socket exists:", !!socket);
         if (socket) {
-            console.log('socket readyState:', socket.readyState);
+            console.log("socket readyState:", socket.readyState);
         }
-        
+
         isConversationActive = false;
         isSpeaking = false;
         conversationStopped = true;
         stopMicCapture();
-        
+
         if (socket) {
-            if (hasConversationRecording && !lastSubmission && !gradingComplete) {
-                console.log('Starting evaluation...');
+            if (
+                hasConversationRecording &&
+                !lastSubmission &&
+                !gradingComplete
+            ) {
+                console.log("Starting evaluation...");
                 submitConversation();
             } else {
-                console.log('NOT starting evaluation - conditions not met');
+                console.log("NOT starting evaluation - conditions not met");
             }
             if (gradingComplete) {
-                console.log('Closing socket after grading complete');
+                console.log("Closing socket after grading complete");
                 socket.close();
             } else {
-                console.log('NOT closing socket - waiting for grading');
+                console.log("NOT closing socket - waiting for grading");
             }
         }
         emitState();
@@ -506,9 +574,10 @@
     async function submitConversation() {
         if (isAwaitingGrading) return;
         if (!socket || socket.readyState !== WebSocket.OPEN) {
-             addNotification("Нет соединения.", "error"); return;
+            addNotification("Нет соединения.", "error");
+            return;
         }
-        console.log('submitConversation: sending submit_for_evaluation action');
+        console.log("submitConversation: sending submit_for_evaluation action");
         isAwaitingGrading = true;
         socket.send(JSON.stringify({ action: "submit_for_evaluation" }));
         emitState();
@@ -528,7 +597,7 @@
             hasRecording: hasConversationRecording,
             awaitingGrading: isAwaitingGrading,
             conversationStopped,
-            lastSubmission
+            lastSubmission,
         });
     }
 </script>
@@ -553,26 +622,41 @@
 
         <div class="hud-wrapper">
             {#if !isConversationActive}
-                <button 
-                    class="glass-btn start" 
+                <button
+                    class="glass-btn start"
                     on:click={startConversation}
                     disabled={isInteractionLocked || isModelLoading}
                     title={conversationStopped ? "Начать заново" : "Начать"}
                 >
                     {#if conversationStopped}
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            ><path d="M23 4v6h-6" /><path d="M1 20v-6h6" /><path
+                                d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+                            /></svg
+                        >
                     {:else}
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor"
+                            ><path
+                                d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"
+                            /><path
+                                d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"
+                            /></svg
+                        >
                     {/if}
                 </button>
-                
             {:else}
-                <div class="glass-panel" transition:scale={{duration: 200}}>
-                    
+                <div class="glass-panel" transition:scale={{ duration: 200 }}>
                     <div class="visualizer">
                         {#if isSpeaking}
                             <div class="voice-bars">
-                                <span></span><span></span><span></span><span></span>
+                                <span></span><span></span><span></span><span
+                                ></span>
                             </div>
                         {:else}
                             <div class="recording-dot-wrapper">
@@ -582,8 +666,20 @@
                         {/if}
                     </div>
 
-                    <button class="action-icon-btn stop" on:click={() => finishConversation(false)} title="Завершить">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                    <button
+                        class="action-icon-btn stop"
+                        on:click={() => finishConversation(false)}
+                        title="Завершить"
+                    >
+                        <svg viewBox="0 0 24 24" fill="currentColor"
+                            ><rect
+                                x="6"
+                                y="6"
+                                width="12"
+                                height="12"
+                                rx="2"
+                            /></svg
+                        >
                     </button>
                 </div>
             {/if}
@@ -593,23 +689,39 @@
     <div class="subtitles-box">
         <div class="subtitles-header">
             <span class="title">Диалог</span>
-            <button class="toggle-subs" on:click={() => subtitlesVisible = !subtitlesVisible}>
+            <button
+                class="toggle-subs"
+                on:click={() => (subtitlesVisible = !subtitlesVisible)}
+            >
                 {subtitlesVisible ? "▼" : "▲"}
             </button>
         </div>
         {#if subtitlesVisible}
             <div class="subtitles-list" transition:slide>
                 {#each subtitlesHistory as entry (entry.id)}
-                    <div class="sub-item" class:sensei={entry.speaker === "Сенсей"} class:user={entry.speaker !== "Сенсей"}>
+                    <div
+                        class="sub-item"
+                        class:sensei={entry.speaker === "Сенсей"}
+                        class:user={entry.speaker !== "Сенсей"}
+                    >
                         <div class="sub-label">{entry.speaker}</div>
                         <div class="sub-text">
                             <div class="original-text">{entry.text}</div>
                             {#if entry.translated}
-                                <div class="translated-text">({entry.translated})</div>
+                                <div class="translated-text">
+                                    ({entry.translated})
+                                </div>
                             {:else if entry.text && entry.text.trim().length > 0}
-                                <button 
-                                    class="translate-btn" 
-                                    on:click={() => requestTranslation(entry.id, entry.text, entry.speaker === "Сенсей" ? 'ai' : 'user')}
+                                <button
+                                    class="translate-btn"
+                                    on:click={() =>
+                                        requestTranslation(
+                                            entry.id,
+                                            entry.text,
+                                            entry.speaker === "Сенсей"
+                                                ? "ai"
+                                                : "user",
+                                        )}
                                     disabled={translatingMessages.has(entry.id)}
                                 >
                                     {#if translatingMessages.has(entry.id)}
@@ -651,25 +763,37 @@
         background-position: center;
     }
 
-    canvas { display: block; width: 100%; height: 100%; }
+    canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
 
     /* LOADER */
     .overlay {
-        position: absolute; inset: 0;
-        display: flex; flex-direction: column;
-        align-items: center; justify-content: center;
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
         z-index: 10;
         background: rgba(0, 0, 0, 0.6);
         backdrop-filter: blur(5px);
         color: #fff;
     }
-    .overlay p { margin-top: 15px; font-weight: 500; letter-spacing: 0.5px; }
-    
+    .overlay p {
+        margin-top: 15px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+    }
+
     .spinner {
-        width: 40px; height: 40px;
-        border: 3px solid rgba(255,255,255,0.1);
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255, 255, 255, 0.1);
         border-top-color: var(--color-primary);
-        border-radius: 50%; 
+        border-radius: 50%;
         animation: spin 0.8s linear infinite;
         will-change: transform;
         z-index: 11;
@@ -679,33 +803,50 @@
     .hud-wrapper {
         position: absolute;
         bottom: 30px;
-        left: 0; right: 0;
+        left: 0;
+        right: 0;
         display: flex;
         justify-content: center;
         align-items: flex-end;
         gap: 20px;
         z-index: 20;
-        pointer-events: none; 
+        pointer-events: none;
     }
 
     .glass-btn {
         pointer-events: auto;
-        width: 60px; height: 60px;
+        width: 60px;
+        height: 60px;
         border-radius: 50%;
-        border: 1px solid rgba(255,255,255,0.4);
+        border: 1px solid rgba(255, 255, 255, 0.4);
         background: rgba(255, 255, 255, 0.25);
         backdrop-filter: blur(10px);
         color: #fff;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
-        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s;
+        transition:
+            transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+            background 0.2s;
     }
-    .glass-btn:hover { transform: scale(1.1); background: rgba(255,255,255,0.4); }
-    .glass-btn:active { transform: scale(0.95); }
-    .glass-btn svg { width: 28px; height: 28px; }
+    .glass-btn:hover {
+        transform: scale(1.1);
+        background: rgba(255, 255, 255, 0.4);
+    }
+    .glass-btn:active {
+        transform: scale(0.95);
+    }
+    .glass-btn svg {
+        width: 28px;
+        height: 28px;
+    }
 
-    .glass-btn.start { color: var(--color-primary); background: #fff; }
+    .glass-btn.start {
+        color: var(--color-primary);
+        background: #fff;
+    }
 
     .glass-panel {
         pointer-events: auto;
@@ -733,77 +874,137 @@
     }
 
     .action-icon-btn.stop {
-        width: 48px; height: 48px;
+        width: 48px;
+        height: 48px;
         border-radius: 50%;
         background: rgba(255, 77, 77, 0.1);
         color: var(--color-danger-red);
         border: none;
-        display: flex; align-items: center; justify-content: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
         transition: all 0.2s;
     }
-    .action-icon-btn.stop:hover { background: var(--color-danger-red); color: #fff; }
-    .action-icon-btn.stop svg { width: 20px; height: 20px; }
+    .action-icon-btn.stop:hover {
+        background: var(--color-danger-red);
+        color: #fff;
+    }
+    .action-icon-btn.stop svg {
+        width: 20px;
+        height: 20px;
+    }
 
     /* ANIMATIONS */
     .voice-bars {
-        display: flex; align-items: center; gap: 4px; height: 20px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 20px;
     }
     .voice-bars span {
-        display: block; width: 4px;
+        display: block;
+        width: 4px;
         background: var(--color-primary);
         border-radius: 2px;
         animation: barBounce 1s ease-in-out infinite;
     }
-    .voice-bars span:nth-child(1) { height: 8px; animation-delay: 0s; }
-    .voice-bars span:nth-child(2) { height: 16px; animation-delay: 0.1s; }
-    .voice-bars span:nth-child(3) { height: 12px; animation-delay: 0.2s; }
-    .voice-bars span:nth-child(4) { height: 6px; animation-delay: 0.3s; }
-    
-    @keyframes barBounce { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(2.2); } }
+    .voice-bars span:nth-child(1) {
+        height: 8px;
+        animation-delay: 0s;
+    }
+    .voice-bars span:nth-child(2) {
+        height: 16px;
+        animation-delay: 0.1s;
+    }
+    .voice-bars span:nth-child(3) {
+        height: 12px;
+        animation-delay: 0.2s;
+    }
+    .voice-bars span:nth-child(4) {
+        height: 6px;
+        animation-delay: 0.3s;
+    }
+
+    @keyframes barBounce {
+        0%,
+        100% {
+            transform: scaleY(1);
+        }
+        50% {
+            transform: scaleY(2.2);
+        }
+    }
 
     .recording-dot-wrapper {
-        position: relative; width: 24px; height: 24px;
-        display: flex; align-items: center; justify-content: center;
+        position: relative;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     .rec-dot {
-        width: 12px; height: 12px;
+        width: 12px;
+        height: 12px;
         background: var(--color-danger-red);
-        border-radius: 50%; z-index: 2;
+        border-radius: 50%;
+        z-index: 2;
         box-shadow: 0 0 5px rgba(255, 77, 77, 0.5);
     }
     .rec-pulse {
-        position: absolute; inset: 0;
+        position: absolute;
+        inset: 0;
         border-radius: 50%;
         background: rgba(255, 77, 77, 0.3);
         animation: recPulse 1.5s infinite;
     }
-    @keyframes recPulse { 0% { transform: scale(0.8); opacity: 0.8; } 100% { transform: scale(2.0); opacity: 0; } }
+    @keyframes recPulse {
+        0% {
+            transform: scale(0.8);
+            opacity: 0.8;
+        }
+        100% {
+            transform: scale(2);
+            opacity: 0;
+        }
+    }
 
     /* SUBTITLES */
     .subtitles-box {
         background: var(--color-bg-light);
         border-top: 1px solid var(--color-border-light);
-        display: flex; flex-direction: column;
+        display: flex;
+        flex-direction: column;
         max-height: 250px;
     }
     .subtitles-header {
         padding: 10px 24px;
-        display: flex; justify-content: space-between; align-items: center;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         border-bottom: 1px solid var(--color-bg-ultra-light);
     }
     .subtitles-header .title {
-        font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--color-text-muted);
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--color-text-muted);
     }
     .toggle-subs {
-        background: none; border: none; cursor: pointer; color: #ccc;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #ccc;
         font-size: 0.8rem;
     }
-    
+
     .subtitles-list {
         overflow-y: auto;
         padding: 16px 24px;
-        display: flex; flex-direction: column; gap: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
     }
     .sub-item {
         max-width: 85%;
@@ -822,34 +1023,46 @@
     }
     .sub-item.user {
         align-self: flex-end;
-        background: #f0f4ff; 
+        background: #f0f4ff;
         color: var(--color-text-dark);
         border-right: 3px solid var(--color-secondary);
         text-align: right;
     }
-    
+
     .sub-label {
-        font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 4px; font-weight: 600;
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+        margin-bottom: 4px;
+        font-weight: 600;
     }
-    .sub-item.sensei .sub-label { color: var(--color-primary); }
-    .sub-item.user .sub-label { color: var(--color-secondary); }
-    
-    .empty-subs { text-align: center; font-size: 0.85rem; color: #ccc; font-style: italic; }
-    
+    .sub-item.sensei .sub-label {
+        color: var(--color-primary);
+    }
+    .sub-item.user .sub-label {
+        color: var(--color-secondary);
+    }
+
+    .empty-subs {
+        text-align: center;
+        font-size: 0.85rem;
+        color: #ccc;
+        font-style: italic;
+    }
+
     /* Translation styles */
     .original-text {
         font-size: 0.9rem;
         line-height: 1.4;
         margin-bottom: 4px;
     }
-    
+
     .translated-text {
         font-size: 0.8rem;
         color: var(--color-text-muted);
         font-style: italic;
         line-height: 1.3;
     }
-    
+
     .translate-btn {
         margin-top: 6px;
         padding: 4px 8px;
@@ -861,16 +1074,16 @@
         cursor: pointer;
         transition: opacity 0.2s;
     }
-    
+
     .translate-btn:hover:not(:disabled) {
         opacity: 0.8;
     }
-    
+
     .translate-btn:disabled {
         opacity: 0.5;
         cursor: not-allowed;
     }
-    
+
     .spinner {
         display: inline-block;
         width: 40px;
@@ -881,8 +1094,10 @@
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
     }
-    
+
     @keyframes spin {
-        to { transform: rotate(360deg); }
+        to {
+            transform: rotate(360deg);
+        }
     }
 </style>

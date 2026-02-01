@@ -31,16 +31,16 @@
     const availableTestTypes = [
         {
             value: "mcq-single",
-            label: "MCQ (Один ответ)",
+            label: "MCQ",
             component: MCQTestForm,
             model: MCQTestModel,
         },
-        {
-            value: "mcq-multi",
-            label: "MCQ (Несколько ответов)",
-            component: MCQTestForm,
-            model: MCQTestModel,
-        },
+        // {
+        //     value: "mcq-multi",
+        //     label: "MCQ (Несколько ответов)",
+        //     component: MCQTestForm,
+        //     model: MCQTestModel,
+        // },
         {
             value: "word-order",
             label: "Порядок слов (из пула)",
@@ -70,7 +70,12 @@
     ];
 
     function getFreshModelData(type) {
-        const testMeta = availableTestTypes.find((t) => t.value === type);
+        let testMeta = availableTestTypes.find((t) => t.value === type);
+
+        if (type === "mcq-multi") {
+            testMeta = availableTestTypes.find((t) => t.value === "mcq-single");
+        }
+
         if (testMeta && testMeta.model) {
             return new testMeta.model({
                 title: "",
@@ -97,9 +102,14 @@
     });
 
     function updateSpecificTestFormComponent() {
-        const testMeta = availableTestTypes.find(
+        let testMeta = availableTestTypes.find(
             (t) => t.value === selectedTestType,
         );
+
+        if (selectedTestType === "mcq-multi") {
+            testMeta = availableTestTypes.find((t) => t.value === "mcq-single");
+        }
+
         if (testMeta) {
             specificTestFormComponent = testMeta.component;
             if (

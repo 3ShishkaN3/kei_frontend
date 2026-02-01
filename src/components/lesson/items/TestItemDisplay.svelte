@@ -994,4 +994,18 @@
     .rotating {
         animation: spin 1s linear infinite;
     }
+
+    .test-attachment {
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    .test-attached-image {
+        max-width: min(70%, 500px);
+        margin: 0 auto 20px;
+    }
+
+    .test-attached-image :global(img) {
+        border-radius: var(--spacing-border-radius-block, 12px);
+    }
 </style>
