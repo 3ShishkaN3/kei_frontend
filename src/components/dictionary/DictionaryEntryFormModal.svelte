@@ -2,6 +2,8 @@
     import { createEventDispatcher, onMount } from 'svelte';
     import { fly } from 'svelte/transition';
     import * as dictionaryApi from '../../api/dictionaryApi.js';
+    import { API_BASE_URL } from '../../config.js';
+    import { apiFetch } from '../../api/api.js';
     import { addNotification } from '../../stores/notifications.js';
     import Modal from '../utils/Modal.svelte';
 
@@ -11,19 +13,48 @@
     export let courseId;
 
     let localEntry = {};
+    let lessons = [];
+    let isLessonsLoading = false;
     let audioFile = null;
     let isSaving = false;
 
     $: modalTitle = entry ? 'Редактировать слово' : 'Создать новое слово';
 
-    onMount(resetForm);
+    onMount(() => {
+        resetForm();
+        loadLessons();
+    });
     $: if (isOpen) resetForm();
 
+    $: if (isOpen) loadLessons();
+
     function resetForm() {
-        localEntry = entry ? { ...entry } : { term: '', reading: '', translation: '' };
+        localEntry = entry
+            ? { ...entry }
+            : { term: '', reading: '', translation: '', lesson_id: null };
         audioFile = null;
         const fileInput = document.querySelector('#audio-file-input');
         if (fileInput) fileInput.value = '';
+    }
+
+    async function loadLessons() {
+        if (!courseId) return;
+        if (lessons.length > 0) return;
+        isLessonsLoading = true;
+        try {
+            const url = `${API_BASE_URL}/courses/${courseId}/lessons/?page=1&page_size=1000`;
+            const response = await apiFetch(url);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `Ошибка загрузки уроков: ${response.status}`);
+            }
+            const data = await response.json();
+            lessons = data.results || [];
+        } catch (e) {
+            addNotification(`Не удалось загрузить уроки: ${e.message}`, 'error');
+        } finally {
+            isLessonsLoading = false;
+        }
     }
 
     const dispatch = createEventDispatcher();
@@ -44,7 +75,10 @@
         formData.append('term', localEntry.term);
         formData.append('reading', localEntry.reading || '');
         formData.append('translation', localEntry.translation);
-        
+        if (localEntry.lesson_id !== undefined) {
+            formData.append('lesson', localEntry.lesson_id || '');
+        }
+
         if (audioFile) {
             formData.append('pronunciation_audio', audioFile, audioFile.name);
         }
@@ -56,7 +90,7 @@
             } else {
                 savedEntry = await dictionaryApi.createDictionaryEntry(sectionId, formData);
             }
-            
+
             dispatch('save', { entry: savedEntry, isNewEntry: !entry });
             close();
         } catch (e) {
@@ -69,6 +103,7 @@
 
 <Modal bind:isOpen {modalTitle} on:close={close} size="medium">
     <form on:submit|preventDefault={handleSubmit} class="entry-form">
+
         <div class="form-group">
             <label for="term">Слово (Кандзи/Кана)</label>
             <input type="text" id="term" bind:value={localEntry.term} required>
@@ -80,6 +115,15 @@
         <div class="form-group">
             <label for="translation">Перевод</label>
             <input type="text" id="translation" bind:value={localEntry.translation} required>
+        </div>
+        <div class="form-group">
+            <label for="lesson">Урок (необязательно)</label>
+            <select id="lesson" bind:value={localEntry.lesson_id} disabled={isLessonsLoading || !courseId}>
+                <option value="">—</option>
+                {#each lessons as l (l.id)}
+                    <option value={l.id}>{l.title}</option>
+                {/each}
+            </select>
         </div>
         <div class="form-group">
             <label for="audio-file-input">Аудио произношения</label>
@@ -127,6 +171,21 @@
         transition: border-color 0.2s, box-shadow 0.2s;
         background-color: var(--color-bg-light);
         color: var(--color-text-dark);
+    }
+    select {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ced4da;
+        border-radius: var(--spacing-border-radius-small);
+        font-size: 1rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        background-color: var(--color-bg-light);
+        color: var(--color-text-dark);
+    }
+    select:focus {
+        outline: none;
+        border-color: var(--color-purple-active);
+        box-shadow: 0 0 0 3px rgba(142, 139, 224, 0.25);
     }
     input[type="file"] {
         padding: 9px;

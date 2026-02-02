@@ -2,6 +2,7 @@ import { API_BASE_URL } from '../config';
 import { apiFetch } from './api';
 
 const dictsBaseUrl = `${API_BASE_URL}/dict`;
+const coursesBaseUrl = `${API_BASE_URL}/courses`;
 
 export async function fetchDictionarySectionDetails(sectionId) {
     const url = `${dictsBaseUrl}/${sectionId}/`;
@@ -105,4 +106,25 @@ export async function fetchAllDictionarySections() {
         return data.results;
     }
     return Array.isArray(data) ? data : [];
+}
+
+export async function fetchPrimaryLessonDictionaryEntries(courseId, lessonId, params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const url = `${coursesBaseUrl}/${courseId}/lessons/${lessonId}/primary_dictionary_entries/?${query}`;
+    const response = await apiFetch(url);
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Error fetching lesson dictionary entries: ${response.status}`);
+    }
+    return response.json();
+}
+
+export async function fetchPrimaryLessonDictionaryMetadata(courseId, lessonId) {
+    const url = `${coursesBaseUrl}/${courseId}/lessons/${lessonId}/primary_dictionary_entries/meta/`;
+    const response = await apiFetch(url);
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Error fetching lesson dictionary metadata: ${response.status}`);
+    }
+    return response.json();
 }

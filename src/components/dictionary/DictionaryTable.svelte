@@ -27,6 +27,7 @@
             <thead>
                 <tr>
                     <th class="col-check">Изучено</th>
+                    <th class="col-lesson">Урок</th>
                     <th class="col-term">Слово</th>
                     <th class="col-reading">Чтение</th>
                     <th class="col-translation">Перевод</th>
@@ -49,6 +50,7 @@
                                 <span class="checkmark"></span>
                             </label>
                         </td>
+                        <td class="col-lesson">{entry.lesson_title || '—'}</td>
                         <td class="col-term">{entry.term}</td>
                         <td class="col-reading">{entry.reading}</td>
                         <td class="col-translation">{entry.translation}</td>
@@ -152,6 +154,13 @@
         width: 100px; 
         text-align: center; 
         padding: 1rem 0.5rem;
+    }
+    
+    .col-lesson {
+        width: 20%;
+        min-width: 140px;
+        color: var(--color-text-muted);
+        font-weight: var(--font-weight-medium);
     }
     
     .col-term { 
@@ -292,6 +301,10 @@
 
         .col-reading, .col-translation {
             min-width: 100px;
+        }
+
+        .col-lesson {
+            min-width: 120px;
         }
 
         .icon-button {

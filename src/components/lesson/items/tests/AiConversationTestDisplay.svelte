@@ -874,12 +874,18 @@
 <style>
     .ai-container {
         width: 100%;
+        max-width: 100%;
         border-radius: var(--spacing-border-radius-card);
         overflow: hidden;
         background: var(--color-bg-light);
         box-shadow: var(--color-shadow);
         position: relative;
         margin-bottom: var(--spacing-margin-bottom-medium);
+    }
+
+    .ai-container,
+    .ai-container * {
+        box-sizing: border-box;
     }
 
     .viewport-wrapper {
@@ -1141,6 +1147,7 @@
         height: 60px;
         min-width: 140px;
         justify-content: space-between;
+        max-width: calc(100% - 24px);
     }
 
     .visualizer {
@@ -1339,6 +1346,8 @@
         color: var(--color-text-muted);
         font-style: italic;
         line-height: 1.3;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     .translate-btn {

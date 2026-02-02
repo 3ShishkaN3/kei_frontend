@@ -1,6 +1,6 @@
 <script>
     import { onMount, tick, onDestroy, createEventDispatcher } from "svelte";
-    import { link } from "svelte-routing";
+    import { link, navigate } from "svelte-routing";
     import { fade, fly, slide } from "svelte/transition";
     export let courseId;
     export let lessonId;
@@ -28,6 +28,7 @@
     import FolderPlusOutline from "svelte-material-icons/FolderPlusOutline.svelte";
     import MenuIcon from "svelte-material-icons/Menu.svelte";
     import CloseIcon from "svelte-material-icons/Close.svelte";
+    import BookOpenVariant from "svelte-material-icons/BookOpenVariant.svelte";
 
     import LoadingIndicator from "../components/utils/LoadingIndicator.svelte";
     import ErrorMessage from "../components/utils/ErrorMessage.svelte";
@@ -237,6 +238,11 @@
             await tick();
             setupItemObserver();
         }
+    }
+
+    function navigateToLessonDictionary() {
+        if (!courseId || !lessonId) return;
+        navigate(`/courses/${courseId}/lessons/${lessonId}/dictionary`);
     }
 
     $: {
@@ -1303,6 +1309,16 @@
             }}
         />
     {/if}
+
+    <button
+        type="button"
+        class="lesson-dictionary-fab"
+        on:click|stopPropagation={navigateToLessonDictionary}
+        title="Словарь урока"
+        aria-label="Словарь урока"
+    >
+        <BookOpenVariant size="24px" />
+    </button>
 </div>
 
 <style>
@@ -1330,6 +1346,50 @@
         min-height: calc(var(--min-height-page) + 50px);
         opacity: 0;
         animation: pageFadeIn 0.4s ease-out forwards;
+    }
+
+    .lesson-dictionary-fab {
+        position: fixed;
+        left: clamp(14px, 2.2vw, 28px);
+        bottom: clamp(14px, 2.2vw, 28px);
+        width: clamp(46px, 7vw, 62px);
+        height: clamp(46px, 7vw, 62px);
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.45);
+        background: linear-gradient(
+            135deg,
+            var(--color-purple-active),
+            var(--color-pink-active)
+        );
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 120;
+        box-shadow:
+            0 14px 26px rgba(77, 68, 181, 0.35),
+            0 3px 0 rgba(255, 255, 255, 0.22) inset,
+            0 -6px 12px rgba(0, 0, 0, 0.18) inset;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    }
+
+    .lesson-dictionary-fab:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.06);
+        box-shadow:
+            0 18px 34px rgba(77, 68, 181, 0.45),
+            0 3px 0 rgba(255, 255, 255, 0.24) inset,
+            0 -6px 12px rgba(0, 0, 0, 0.16) inset;
+    }
+
+    .lesson-dictionary-fab:active {
+        transform: translateY(0);
+        filter: brightness(0.98);
+        box-shadow:
+            0 10px 20px rgba(77, 68, 181, 0.35),
+            0 2px 0 rgba(255, 255, 255, 0.18) inset,
+            0 -4px 10px rgba(0, 0, 0, 0.22) inset;
     }
     @keyframes pageFadeIn {
         to {

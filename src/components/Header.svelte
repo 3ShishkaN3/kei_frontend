@@ -115,6 +115,10 @@
 
       <div class="divider"></div>
 
+      <div class="navigation-buttons">
+        <button class="simple-button" on:click={handleInfo}>О нас</button>
+      </div>
+
       <div class="user-controls">
         <NotificationBell />
         <div
@@ -185,26 +189,38 @@
             closeMobileMenu();
           }}>Настройки</button
         >
-        <div class="mobile-divider"></div>
-        <div class="mobile-profile-row">
-          <div
-            class="avatar-container small"
-            on:click={() => {
-              handleProfile();
-              closeMobileMenu();
-            }}
-          >
-            <img src={$avatar || "/avatar.jpg"} alt="Аватар" class="avatar" />
-          </div>
-          <NotificationBell />
-          <button
-            class="logout-button small"
-            on:click={() => {
-              handleLogout();
-              closeMobileMenu();
-            }}>Выход</button
-          >
+      </div>
+      
+      <div class="mobile-divider"></div>
+      
+      <div class="mobile-menu-section">
+        <button
+          class="mobile-nav-item"
+          on:click={() => {
+            handleInfo();
+            closeMobileMenu();
+          }}>О нас</button
+        >
+      </div>
+      
+      <div class="mobile-profile-row">
+        <NotificationBell />
+        <div
+          class="avatar-container small"
+          on:click={() => {
+            handleProfile();
+            closeMobileMenu();
+          }}
+        >
+          <img src={$avatar || "/avatar.jpg"} alt="Аватар" class="avatar" />
         </div>
+        <button
+          class="logout-button small"
+          on:click={() => {
+            handleLogout();
+            closeMobileMenu();
+          }}>Выход</button
+        >
       </div>
     {:else}
       <Link to="/registration" on:click={closeMobileMenu}>

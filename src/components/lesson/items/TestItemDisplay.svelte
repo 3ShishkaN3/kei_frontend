@@ -1150,11 +1150,14 @@
         background: white;
         border-radius: 12px;
         border: 1px solid #e0dbff;
+        flex-wrap: wrap;
     }
 
     .overall-circle {
         width: 100px;
         height: 100px;
+        aspect-ratio: 1 / 1;
+        flex: 0 0 auto;
         border-radius: 50%;
         background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
         display: flex;
@@ -1183,6 +1186,8 @@
         border-radius: 20px;
         font-weight: 600;
         font-size: 1.1rem;
+        flex: 1 1 160px;
+        min-width: 0;
     }
 
     .pass-status-badge.auto_passed {
@@ -1266,6 +1271,19 @@
     }
 
     @media (max-width: 640px) {
+        .ai-score-overview {
+            gap: 16px;
+        }
+
+        .overall-circle {
+            width: 88px;
+            height: 88px;
+        }
+
+        .overall-circle .score-value {
+            font-size: 1.7rem;
+        }
+
         .ai-insights-grid {
             grid-template-columns: 1fr;
         }

@@ -163,12 +163,9 @@
         transform: translateY(20px);
         animation: card-enter 0.5s ease-out forwards;
     }
-    .lesson-card.locked {
-        filter: grayscale(1);
-        opacity: 0.8;
-        pointer-events: none; /* Disable hovering effects basically, but we want click on button to show notification? Actually if pointer-events none, no events. */
+    .icon-container.locked {
+        filter: brightness(0.7);
     }
-    /* Allow pointer events for the button to show toast? or just disable */
 
     .lesson-card:hover {
         box-shadow: var(
@@ -243,6 +240,9 @@
         transform: scale(1.05);
     }
     .icon-container :global(svg) {
+        color: var(--color-purple-active);
+    }
+    .icon-container.locked :global(svg) {
         color: #ccc;
     }
     .default-icon {
@@ -258,11 +258,11 @@
     .lock-overlay {
         position: absolute;
         z-index: 2;
-        color: rgba(0, 0, 0, 0.7);
+        color: rgba(0, 0, 0, 0.9);
         display: flex;
         align-items: center;
         justify-content: center;
-        filter: brightness(0.8);
+        filter: none;
     }
 
     .info-wrapper {
