@@ -714,7 +714,6 @@
             );
         }
 
-        // --- legacy slotAudioFilesToAttach removed ---
 
         Object.keys(testDefinition).forEach((key) => {
             if (testDefinition[key] === undefined) delete testDefinition[key];
