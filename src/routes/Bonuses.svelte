@@ -105,12 +105,41 @@
 </script>
 
 <div class="page-container">
-    <!-- Header with Coins -->
     <div class="header-section">
         <h1>Магазин бонусов</h1>
         <div class="header-controls">
             <div class="coin-balance">
-                <span class="coin-icon">🪙</span>
+                <svg
+                    class="icon-coin"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                >
+                    <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        fill="#FFD700"
+                        stroke="#B8860B"
+                        stroke-width="1.5"
+                    />
+                    <rect
+                        x="8.5"
+                        y="8.5"
+                        width="7"
+                        height="7"
+                        rx="1"
+                        fill="#FFF8E7"
+                        stroke="#B8860B"
+                        stroke-width="1"
+                    />
+                    <path
+                        d="M12 4V7M12 17V20M4 12H7M17 12H20"
+                        stroke="#B8860B"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                    />
+                </svg>
                 <span class="coin-amount">{userCoins}</span>
             </div>
             {#if isTeacher}
@@ -179,7 +208,40 @@
                                 </div>
                             {/if}
                         {:else}
-                            <div class="price-tag">{bonus.price} 🪙</div>
+                            <div class="price-tag">
+                                {bonus.price}
+                                <svg
+                                    class="icon-coin inline"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                >
+                                    <circle
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        fill="#FFD700"
+                                        stroke="#B8860B"
+                                        stroke-width="1.5"
+                                    />
+                                    <rect
+                                        x="8.5"
+                                        y="8.5"
+                                        width="7"
+                                        height="7"
+                                        rx="1"
+                                        fill="#FFF8E7"
+                                        stroke="#B8860B"
+                                        stroke-width="1"
+                                    />
+                                    <path
+                                        d="M12 4V7M12 17V20M4 12H7M17 12H20"
+                                        stroke="#B8860B"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                    />
+                                </svg>
+                            </div>
                             <button
                                 class="buy-btn"
                                 on:click={() => handleBuy(bonus)}>Купить</button
@@ -251,8 +313,17 @@
         color: var(--color-text-dark);
     }
 
-    .coin-icon {
-        font-size: 1.5rem;
+    .icon-coin {
+        width: 24px;
+        height: 24px;
+    }
+
+    .icon-coin.inline {
+        width: 18px;
+        height: 18px;
+        display: inline-block;
+        vertical-align: middle;
+        margin-left: 5px;
     }
 
     .create-btn {

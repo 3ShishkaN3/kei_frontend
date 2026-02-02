@@ -69,6 +69,7 @@
     display: flex;
     min-height: 70vh;
     gap: 2rem;
+    align-items: stretch;
   }
 
   @media (max-width: 992px) {
@@ -90,6 +91,7 @@
     border-radius: var(--spacing-border-radius-card);
     padding: var(--spacing-padding-block);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    height: 500px;
   }
 
   .achievements-container {
@@ -98,6 +100,7 @@
     border-radius: var(--spacing-border-radius-card);
     padding: var(--spacing-padding-block);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    height: 870px;
   }
 
   .weekly-stats-section {

@@ -12,7 +12,7 @@
         coins: 0,
     };
 
-    let currentAvatar = "/avatar.png";
+    let currentAvatar = "/avatar.jpg";
     let username = "Ученик";
     let lastLesson = null;
     let loading = true;

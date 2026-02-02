@@ -6,6 +6,7 @@
   import { apiFetch } from "../api/api.js";
   import { csrfToken } from "../api/csrf.js";
   import { avatar } from "../stores/avatar.js";
+  import NotificationBell from "./NotificationBell.svelte";
 
   let mobileMenuOpen = false;
   let isAuthenticated = false;
@@ -54,7 +55,7 @@
       const response = await apiFetch(`${API_BASE_URL}/profile/avatar`);
       if (response.ok) {
         const data = await response.json();
-        avatar.set(data.avatar || "/avatar.png");
+        avatar.set(data.avatar || "/avatar.jpg");
       } else {
         console.error("Ошибка загрузки аватара");
       }
@@ -102,7 +103,10 @@
   <div class="nav-buttons">
     {#if isAuthenticated}
       <div class="navigation-buttons">
-        <button class="simple-button" on:click={handleLessons}>Уроки</button>
+        <button class="simple-button" on:click={handleInfo}>Блог</button>
+        <button class="simple-button primary-action" on:click={handleLessons}
+          >Обучение</button
+        >
         <button class="simple-button" on:click={handleBonuses}>Бонусы</button>
         <button class="simple-button" on:click={handleSettings}
           >Настройки</button
@@ -111,8 +115,12 @@
 
       <div class="divider"></div>
 
+      <div class="navigation-buttons">
+        <button class="simple-button" on:click={handleInfo}>О нас</button>
+      </div>
+
       <div class="user-controls">
-        <button class="simple-button" on:click={handleInfo}>Информация</button>
+        <NotificationBell />
         <div
           class="avatar-container"
           on:click={handleProfile}
@@ -120,7 +128,7 @@
             (e.key === "Enter" || e.key === " ") && handleProfile()}
         >
           <img
-            src={$avatar || "/avatar.png"}
+            src={$avatar || "/avatar.jpg"}
             alt="Аватар"
             class="avatar"
             title="Перейти в личный кабинет"
@@ -153,66 +161,66 @@
   <div class="mobile-menu {mobileMenuOpen ? 'open' : ''}">
     {#if isAuthenticated}
       <div class="mobile-menu-section">
-        <div class="mobile-menu-title">Навигация</div>
-        <div class="mobile-nav-buttons">
-          <button
-            class="simple-button"
-            on:click={() => {
-              handleBonuses();
-              closeMobileMenu();
-            }}>Бонусы</button
-          >
-          <button
-            class="simple-button"
-            on:click={() => {
-              handleSettings();
-              closeMobileMenu();
-            }}>Настройки</button
-          >
-          <button
-            class="simple-button"
-            on:click={() => {
-              handleLessons();
-              closeMobileMenu();
-            }}>Уроки</button
-          >
-        </div>
+        <button
+          class="mobile-nav-item"
+          on:click={() => {
+            handleInfo();
+            closeMobileMenu();
+          }}>Блог</button
+        >
+        <button
+          class="mobile-nav-item primary"
+          on:click={() => {
+            handleLessons();
+            closeMobileMenu();
+          }}>Обучение</button
+        >
+        <button
+          class="mobile-nav-item"
+          on:click={() => {
+            handleBonuses();
+            closeMobileMenu();
+          }}>Бонусы</button
+        >
+        <button
+          class="mobile-nav-item"
+          on:click={() => {
+            handleSettings();
+            closeMobileMenu();
+          }}>Настройки</button
+        >
       </div>
-
+      
+      <div class="mobile-divider"></div>
+      
       <div class="mobile-menu-section">
-        <div class="mobile-menu-title">Профиль</div>
-        <div class="mobile-user-controls">
-          <div
-            class="avatar-container"
-            on:click={() => {
-              handleProfile();
-              closeMobileMenu();
-            }}
-            on:keydown={(e) =>
-              (e.key === "Enter" || e.key === " ") && handleProfile()}
-          >
-            <img
-              src={$avatar || "/avatar.png"}
-              alt="Аватар"
-              class="avatar"
-              title="Перейти в личный кабинет"
-            />
-          </div>
-          <button
-            class="simple-button"
-            on:click={() => {
-              handleInfo();
-              closeMobileMenu();
-            }}>Информация</button
-          >
-          <button
-            class="logout-button"
-            on:click={() => {
-              handleLogout();
-              closeMobileMenu();
-            }}>Выход</button
-          >
+        <button
+          class="mobile-nav-item"
+          on:click={() => {
+            handleInfo();
+            closeMobileMenu();
+          }}>О нас</button
+        >
+      </div>
+      
+      <div class="mobile-profile-row">
+        <NotificationBell />
+        <div
+          class="avatar-container small"
+          on:click={() => {
+            handleProfile();
+            closeMobileMenu();
+          }}
+        >
+          <img src={$avatar || "/avatar.jpg"} alt="Аватар" class="avatar" />
         </div>
+        <button
+          class="logout-button small"
+          on:click={() => {
+            handleLogout();
+            closeMobileMenu();
+          }}>Выход</button
+        >
       </div>
     {:else}
       <Link to="/registration" on:click={closeMobileMenu}>
@@ -231,7 +239,7 @@
     align-items: center;
     justify-content: space-between;
     background: var(--color-header-bg);
-    padding: var(--spacing-header-padding-desktop);
+    padding: 16px 64px;
     position: fixed;
     top: 0;
     left: 0;
@@ -250,7 +258,7 @@
   }
 
   .logo {
-    height: var(--spacing-logo-height);
+    height: 72px;
     cursor: pointer;
   }
 
@@ -400,11 +408,11 @@
 
   @media (max-width: 1200px) {
     header {
-      padding: var(--spacing-header-padding-tablet);
+      padding: 16px 32px;
     }
 
     .nav-buttons {
-      gap: 8px;
+      gap: 15px;
     }
 
     .simple-button {
@@ -414,7 +422,7 @@
 
   @media (max-width: 992px) {
     header {
-      padding: var(--spacing-header-padding-mobile);
+      padding: 16px 16px;
     }
   }
 
@@ -458,15 +466,13 @@
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
-    padding: var(
-      --spacing-mobile-menu-padding
-    );
+    padding: var(--spacing-mobile-menu-padding);
   }
 
   .navigation-buttons {
     display: flex;
     align-items: center;
-    gap: var(--spacing-mobile-menu-gap);
+    gap: 25px;
     flex-wrap: wrap;
     justify-content: center;
   }
@@ -474,7 +480,11 @@
   .user-controls {
     display: flex;
     align-items: center;
-    gap: var(--spacing-user-controls-gap);
+    gap: 25px;
+  }
+
+  .logout-button {
+    margin-left: 10px;
   }
 
   .avatar-container {
@@ -486,6 +496,7 @@
     box-shadow: 0 3px 8px var(--color-avatar-shadow);
     width: var(--spacing-avatar-size);
     height: var(--spacing-avatar-size);
+    margin-top: -10px;
   }
 
   .avatar-container:hover {
@@ -519,8 +530,8 @@
   .avatar-container::before {
     content: "";
     position: absolute;
-    bottom: 0;
-    right: 0;
+    bottom: -3px;
+    right: -3px;
     width: var(--spacing-avatar-indicator-size);
     height: var(--spacing-avatar-indicator-size);
     background-color: var(--color-avatar-border);
@@ -532,9 +543,9 @@
   header::after {
     content: "";
     position: absolute;
-    left: 80px;
-    right: 80px;
-    bottom: 20px;
+    left: 64px;
+    right: 64px;
+    bottom: 16px;
     height: var(--spacing-header-bottom-border-height);
     background: rgba(0, 0, 0, 0.2);
   }
@@ -563,7 +574,6 @@
     filter: brightness(1.1);
   }
 
-  /* Divider */
   .divider {
     width: var(--spacing-divider-width);
     height: var(--spacing-divider-height);
@@ -603,6 +613,69 @@
     transform: scale(0.95);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     background: var(--color-simple-button-active-bg);
+  }
+
+  .simple-button.primary-action {
+    background: #c3b7fd;
+    color: white;
+    padding: 10px 24px;
+    border-radius: 25px;
+    box-shadow: 0 4px 10px rgba(195, 183, 253, 0.4);
+  }
+
+  .simple-button.primary-action:hover {
+    background: #afa4ff;
+    box-shadow: 0 6px 15px rgba(175, 164, 255, 0.5);
+  }
+
+  .mobile-nav-item {
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 15px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--color-text-dark);
+    text-align: center;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+  }
+
+  .mobile-nav-item.primary {
+    color: #afa4ff;
+    font-size: 1.25rem;
+  }
+
+  .mobile-divider {
+    height: 1px;
+    background: #e0e0e0;
+    width: 80%;
+    margin: 15px auto;
+  }
+
+  .mobile-profile-row {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    justify-content: center;
+    width: 100%;
+    padding-bottom: 20px;
+  }
+
+  .logout-button.small {
+    margin-left: 10px;
+  }
+
+  .avatar-container.small {
+    width: 40px;
+    height: 40px;
+  }
+
+  .logout-button.small {
+    width: auto;
+    padding: 8px 15px;
+    height: auto;
+    font-size: 0.9rem;
   }
 
   .mobile-menu-section {

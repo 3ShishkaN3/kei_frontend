@@ -288,7 +288,7 @@
     flex-direction: column;
     gap: 1rem;
     overflow-y: auto;
-    max-height: 100%;
+    height: 100%;
     padding-right: 4px;
   }
 
@@ -314,6 +314,7 @@
     border: 1px solid transparent;
     transition: all 0.2s ease;
     position: relative;
+    flex-shrink: 0;
   }
 
   .achievement-item.unlocked {

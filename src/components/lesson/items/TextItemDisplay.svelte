@@ -1,41 +1,43 @@
 <script>
-    import { marked } from 'marked';
-    
+    import { marked } from "marked";
+
     export let contentDetails; // { title: string, content: string, is_markdown: boolean }
-    
-    
-    $: htmlContent = contentDetails?.is_markdown && contentDetails?.content
-      ? marked.parse(contentDetails.content)
-      : contentDetails?.content;
-    
+
+    $: htmlContent =
+        contentDetails?.is_markdown && contentDetails?.content
+            ? marked.parse(contentDetails.content)
+            : contentDetails?.content;
+
     function sanitizeHtmlForDisplay(rawHtml, isMarkdownContent) {
-      if (!rawHtml) return '';
-      if (isMarkdownContent) {
-        return rawHtml;
-      }
-      const tempDiv = document.createElement('div');
-      tempDiv.textContent = rawHtml;
-      return tempDiv.innerHTML.replace(/\n/g, '<br>');
+        if (!rawHtml) return "";
+        if (isMarkdownContent) {
+            return rawHtml;
+        }
+        const tempDiv = document.createElement("div");
+        tempDiv.textContent = rawHtml;
+        return tempDiv.innerHTML;
     }
-    
-    $: safeHtmlContent = sanitizeHtmlForDisplay(htmlContent, contentDetails?.is_markdown);
-    
-    </script>
-    
-    <div class="text-item-display">
-      {#if contentDetails?.title}
+
+    $: safeHtmlContent = sanitizeHtmlForDisplay(
+        htmlContent,
+        contentDetails?.is_markdown,
+    );
+</script>
+
+<div class="text-item-display">
+    {#if contentDetails?.title}
         <h3 class="item-title">{contentDetails.title}</h3>
-      {/if}
-      {#if safeHtmlContent}
+    {/if}
+    {#if safeHtmlContent}
         <div class="item-content markdown-content">
             {@html safeHtmlContent}
         </div>
-      {:else}
+    {:else}
         <p class="no-content-message-small">Текстовый блок пуст.</p>
-      {/if}
-    </div>
-    
-    <style>
+    {/if}
+</div>
+
+<style>
     .text-item-display {
         padding: 10px 0;
     }
@@ -52,6 +54,9 @@
         white-space: pre-wrap;
         word-wrap: break-word;
     }
+    .item-content.markdown-content {
+        padding: 0;
+    }
     .markdown-content :global(h1),
     .markdown-content :global(h2),
     .markdown-content :global(h3),
@@ -63,16 +68,33 @@
         font-weight: var(--font-weight-semi-bold);
         color: var(--color-text-dark);
     }
-    .markdown-content :global(h1) { font-size: 1.8em; }
-    .markdown-content :global(h2) { font-size: 1.6em; }
-    .markdown-content :global(h3) { font-size: 1.4em; }
-    .markdown-content :global(p) { margin-bottom: 1em; }
+    .markdown-content :global(h1) {
+        font-size: 1.8em;
+    }
+    .markdown-content :global(h2) {
+        font-size: 1.6em;
+    }
+    .markdown-content :global(h3) {
+        font-size: 1.4em;
+    }
+    .markdown-content :global(p) {
+        margin-bottom: 0.5em;
+    }
+    .markdown-content :global(p:last-child) {
+        margin-bottom: 0;
+    }
     .markdown-content :global(ul),
     .markdown-content :global(ol) {
         margin-left: 20px;
         margin-bottom: 1em;
     }
-    .markdown-content :global(li) { margin-bottom: 0.3em; }
+    .markdown-content :global(ul:last-child),
+    .markdown-content :global(ol:last-child) {
+        margin-bottom: 0;
+    }
+    .markdown-content :global(li) {
+        margin-bottom: 0.3em;
+    }
     .markdown-content :global(blockquote) {
         border-left: 4px solid var(--color-primary-light);
         padding-left: 15px;
@@ -86,14 +108,14 @@
         padding: 10px;
         border-radius: var(--spacing-border-radius-small);
         overflow-x: auto;
-        font-family: 'Courier New', Courier, monospace;
+        font-family: "Courier New", Courier, monospace;
         white-space: pre;
     }
     .markdown-content :global(code) {
         background-color: #f0f0f0;
         padding: 2px 4px;
         border-radius: 3px;
-        font-family: 'Courier New', Courier, monospace;
+        font-family: "Courier New", Courier, monospace;
     }
     .markdown-content :global(pre code) {
         background-color: transparent;
@@ -115,10 +137,10 @@
     .markdown-content :global(u) {
         text-decoration: underline;
     }
-    
+
     .no-content-message-small {
         font-style: italic;
         color: #888;
         font-size: 0.9rem;
     }
-    </style>
+</style>

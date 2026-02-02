@@ -1,18 +1,18 @@
 <script>
-    import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
-    import { FreeTextTestModel } from '../../../../models/testTypes.js';
-    import { addNotification } from '../../../../stores/notifications.js';
-    import { fade } from 'svelte/transition';
-    import Cropper from 'svelte-easy-crop';
-    import { API_BASE_URL } from '../../../../config.js';
-    import { nanoid } from 'nanoid';
+    import { createEventDispatcher, onMount, onDestroy, tick } from "svelte";
+    import { FreeTextTestModel } from "../../../../models/testTypes.js";
+    import { addNotification } from "../../../../stores/notifications.js";
+    import { fade } from "svelte/transition";
+    import Cropper from "svelte-easy-crop";
+    import { API_BASE_URL } from "../../../../config.js";
+    import { nanoid } from "nanoid";
 
-    import PlusCircleOutline from 'svelte-material-icons/PlusCircleOutline.svelte';
-    import DeleteOutline from 'svelte-material-icons/DeleteOutline.svelte';
-    import ImagePlusOutline from 'svelte-material-icons/ImagePlusOutline.svelte';
-    import MusicNotePlus from 'svelte-material-icons/MusicNotePlus.svelte';
-    import CloseCircle from 'svelte-material-icons/CloseCircle.svelte';
-    import AspectRatioIcon from 'svelte-material-icons/AspectRatio.svelte';
+    import PlusCircleOutline from "svelte-material-icons/PlusCircleOutline.svelte";
+    import DeleteOutline from "svelte-material-icons/DeleteOutline.svelte";
+    import ImagePlusOutline from "svelte-material-icons/ImagePlusOutline.svelte";
+    import MusicNotePlus from "svelte-material-icons/MusicNotePlus.svelte";
+    import CloseCircle from "svelte-material-icons/CloseCircle.svelte";
+    import AspectRatioIcon from "svelte-material-icons/AspectRatio.svelte";
 
     export let testData;
     export let isEditing = false;
@@ -20,7 +20,10 @@
 
     const dispatch = createEventDispatcher();
 
-    let localTestModel = new FreeTextTestModel({ title: '', test_type: 'free-text' });
+    let localTestModel = new FreeTextTestModel({
+        title: "",
+        test_type: "free-text",
+    });
 
     let questionImageFile = null;
     let questionImagePreviewUrlForCropper = null;
@@ -33,9 +36,11 @@
 
     let questionImageAspectRatio = null;
     const aspectRatios = [
-        { label: 'Своб.', value: null }, { label: '1:1', value: 1/1 },
-        { label: '16:9', value: 16/9 }, { label: '4:3', value: 4/3 },
-        { label: '3:4', value: 3/4 },
+        { label: "Своб.", value: undefined },
+        { label: "1:1", value: 1 / 1 },
+        { label: "16:9", value: 16 / 9 },
+        { label: "4:3", value: 4 / 3 },
+        { label: "3:4", value: 3 / 4 },
     ];
 
     let questionAudioFile = null;
@@ -49,30 +54,50 @@
 
     function initializeModel(currentTestData) {
         if (!currentTestData) {
-            localTestModel = new FreeTextTestModel({ title: '', test_type: 'free-text' });
+            localTestModel = new FreeTextTestModel({
+                title: "",
+                test_type: "free-text",
+            });
         } else {
             localTestModel = new FreeTextTestModel({ ...currentTestData });
         }
 
-        currentQuestionImageId = currentTestData?.free_text_question?.prompt_image_file || null;
-        currentQuestionImageUrl = currentTestData?.free_text_question?.prompt_image_details?.image || null;
+        currentQuestionImageId =
+            currentTestData?.free_text_question?.prompt_image_file || null;
+        currentQuestionImageUrl =
+            currentTestData?.free_text_question?.prompt_image_details?.image ||
+            null;
         if (currentQuestionImageUrl && !questionImageFile) {
-            questionImagePreviewUrlForCropper = currentQuestionImageUrl.startsWith('http') ? currentQuestionImageUrl : API_BASE_URL + currentQuestionImageUrl;
+            questionImagePreviewUrlForCropper =
+                currentQuestionImageUrl.startsWith("http")
+                    ? currentQuestionImageUrl
+                    : API_BASE_URL + currentQuestionImageUrl;
             showQuestionImageCropper = true;
         } else if (!questionImageFile) {
             questionImagePreviewUrlForCropper = null;
             showQuestionImageCropper = false;
         }
 
-        const arFromData = currentTestData?.free_text_question?.aspect_ratio_for_question_image;
-        const foundAr = aspectRatios.find(ar => ar.value === arFromData);
-        questionImageAspectRatio = foundAr ? foundAr.value : null;
+        const arFromData =
+            currentTestData?.free_text_question
+                ?.aspect_ratio_for_question_image;
+        const foundAr = aspectRatios.find((ar) => ar.value === arFromData);
+        questionImageAspectRatio = foundAr ? foundAr.value : undefined;
 
-        currentQuestionAudioId = currentTestData?.free_text_question?.prompt_audio_file || null;
-        currentQuestionAudioUrl = currentTestData?.free_text_question?.prompt_audio_details?.audio_file || null;
+        currentQuestionAudioId =
+            currentTestData?.free_text_question?.prompt_audio_file || null;
+        currentQuestionAudioUrl =
+            currentTestData?.free_text_question?.prompt_audio_details
+                ?.audio_file || null;
         if (currentQuestionAudioUrl && !questionAudioFile) {
-            const name = currentQuestionAudioUrl.substring(currentQuestionAudioUrl.lastIndexOf('/') + 1);
-            try { questionAudioFileName = decodeURIComponent(name); } catch(e) { questionAudioFileName = name; }
+            const name = currentQuestionAudioUrl.substring(
+                currentQuestionAudioUrl.lastIndexOf("/") + 1,
+            );
+            try {
+                questionAudioFileName = decodeURIComponent(name);
+            } catch (e) {
+                questionAudioFileName = name;
+            }
         } else if (!questionAudioFile) {
             questionAudioFileName = null;
         }
@@ -86,17 +111,12 @@
 
     function validateTest() {
         if (!localTestModel.title.trim()) {
-            addNotification('Пожалуйста, введите название теста.', 'error');
-            return false;
-        }
-
-        if (!localTestModel.free_text_question.prompt_text.trim()) {
-            addNotification('Пожалуйста, введите текст вопроса.', 'error');
+            addNotification("Пожалуйста, введите название теста.", "error");
             return false;
         }
 
         if (!localTestModel.free_text_question.reference_answer.trim()) {
-            addNotification('Пожалуйста, введите правильный ответ.', 'error');
+            addNotification("Пожалуйста, введите правильный ответ.", "error");
             return false;
         }
 
@@ -106,34 +126,38 @@
     function handleQuestionImageUpload(event) {
         const file = event.target.files[0];
         if (file) {
-            if (file.type.startsWith('image/')) {
+            if (file.type.startsWith("image/")) {
                 questionImageFile = file;
                 questionImagePreviewUrlForCropper = URL.createObjectURL(file);
                 showQuestionImageCropper = true;
                 questionImageCrop = { x: 0, y: 0 };
                 questionImageZoom = 1;
+                questionImageAspectRatio = undefined;
             } else {
-                addNotification('Пожалуйста, выберите файл изображения.', 'error');
+                addNotification(
+                    "Пожалуйста, выберите файл изображения.",
+                    "error",
+                );
             }
         }
     }
 
     function onQuestionImageCropComplete(event) {
-        questionImageCroppedAreaPixels = event.detail;
+        questionImageCroppedAreaPixels = event.detail.pixels;
     }
 
     async function getCroppedQuestionImage(imageSrc, pixelCrop) {
         const image = new Image();
         image.src = imageSrc;
-        
+
         return new Promise((resolve) => {
             image.onload = () => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+
                 canvas.width = pixelCrop.width;
                 canvas.height = pixelCrop.height;
-                
+
                 ctx.drawImage(
                     image,
                     pixelCrop.x,
@@ -143,11 +167,13 @@
                     0,
                     0,
                     pixelCrop.width,
-                    pixelCrop.height
+                    pixelCrop.height,
                 );
-                
+
                 canvas.toBlob((blob) => {
-                    const file = new File([blob], questionImageFile.name, { type: questionImageFile.type });
+                    const file = new File([blob], questionImageFile.name, {
+                        type: questionImageFile.type,
+                    });
                     resolve(file);
                 }, questionImageFile.type);
             };
@@ -165,11 +191,11 @@
     function handleQuestionAudioUpload(event) {
         const file = event.target.files[0];
         if (file) {
-            if (file.type.startsWith('audio/')) {
+            if (file.type.startsWith("audio/")) {
                 questionAudioFile = file;
                 questionAudioFileName = file.name;
             } else {
-                addNotification('Пожалуйста, выберите аудио файл.', 'error');
+                addNotification("Пожалуйста, выберите аудио файл.", "error");
             }
         }
     }
@@ -187,8 +213,15 @@
         let finalCroppedQuestionImageFile = null;
 
         if (questionImageFile && showQuestionImageCropper) {
-            if (questionImageCroppedAreaPixels && questionImageCroppedAreaPixels.width > 0 && questionImageCroppedAreaPixels.height > 0) {
-                finalCroppedQuestionImageFile = await getCroppedQuestionImage(questionImagePreviewUrlForCropper, questionImageCroppedAreaPixels);
+            if (
+                questionImageCroppedAreaPixels &&
+                questionImageCroppedAreaPixels.width > 0 &&
+                questionImageCroppedAreaPixels.height > 0
+            ) {
+                finalCroppedQuestionImageFile = await getCroppedQuestionImage(
+                    questionImagePreviewUrlForCropper,
+                    questionImageCroppedAreaPixels,
+                );
             } else {
                 finalCroppedQuestionImageFile = questionImageFile;
             }
@@ -199,31 +232,41 @@
             description: localTestModel.description,
             test_type: localTestModel.test_type,
             free_text_question: {
-                prompt_text: localTestModel.free_text_question.prompt_text,
-                reference_answer: localTestModel.free_text_question.reference_answer,
+                reference_answer:
+                    localTestModel.free_text_question.reference_answer,
                 explanation: localTestModel.free_text_question.explanation,
-                prompt_image_file: finalCroppedQuestionImageFile ? null : currentQuestionImageId,
-                prompt_audio_file: questionAudioFile ? null : currentQuestionAudioId,
-            }
+                prompt_image_file: finalCroppedQuestionImageFile
+                    ? null
+                    : currentQuestionImageId,
+                prompt_audio_file: questionAudioFile
+                    ? null
+                    : currentQuestionAudioId,
+            },
         };
 
         if (finalCroppedQuestionImageFile || questionAudioFile) {
             const formData = new FormData();
-            formData.append('test_definition', JSON.stringify(testDefinition));
+            formData.append("test_definition", JSON.stringify(testDefinition));
             if (finalCroppedQuestionImageFile) {
-                formData.append('question_image_file', finalCroppedQuestionImageFile);
+                formData.append(
+                    "attached_image_file",
+                    finalCroppedQuestionImageFile,
+                );
             }
             if (questionAudioFile) {
-                formData.append('question_audio_file', questionAudioFile);
+                formData.append("attached_audio_file", questionAudioFile);
             }
-            dispatch('save', formData);
+            dispatch("save", formData);
         } else {
-            dispatch('save', testDefinition);
+            dispatch("save", testDefinition);
         }
     }
 
     onDestroy(() => {
-        if (questionImagePreviewUrlForCropper && questionImagePreviewUrlForCropper.startsWith('blob:')) {
+        if (
+            questionImagePreviewUrlForCropper &&
+            questionImagePreviewUrlForCropper.startsWith("blob:")
+        ) {
             URL.revokeObjectURL(questionImagePreviewUrlForCropper);
         }
     });
@@ -232,100 +275,248 @@
 <div class="item-form free-text-test-form">
     {#if localTestModel}
         <div class="form-group">
-            <label for={"free-text-test-title-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')}>Название теста</label>
-            <input type="text" id={"free-text-test-title-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')} bind:value={localTestModel.title} placeholder="Введите название теста" disabled={isLoading} />
+            <label
+                for={"free-text-test-title-" +
+                    (localTestModel.id && typeof localTestModel.id !== "symbol"
+                        ? localTestModel.id
+                        : "new")}>Название теста</label
+            >
+            <input
+                type="text"
+                id={"free-text-test-title-" +
+                    (localTestModel.id && typeof localTestModel.id !== "symbol"
+                        ? localTestModel.id
+                        : "new")}
+                bind:value={localTestModel.title}
+                placeholder="Введите название теста"
+                disabled={isLoading}
+            />
         </div>
 
         <div class="form-group">
-            <label for={"free-text-test-description-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')}>Описание/Инструкция</label>
-            <textarea id={"free-text-test-description-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')} bind:value={localTestModel.description} rows="3" placeholder="Описание или инструкция (необязательно)" disabled={isLoading}></textarea>
+            <label
+                for={"free-text-test-description-" +
+                    (localTestModel.id && typeof localTestModel.id !== "symbol"
+                        ? localTestModel.id
+                        : "new")}>Описание/Инструкция</label
+            >
+            <textarea
+                id={"free-text-test-description-" +
+                    (localTestModel.id && typeof localTestModel.id !== "symbol"
+                        ? localTestModel.id
+                        : "new")}
+                bind:value={localTestModel.description}
+                rows="3"
+                placeholder="Описание или инструкция (необязательно)"
+                disabled={isLoading}
+            ></textarea>
         </div>
 
         <div class="question-section">
             <h4 class="section-header">Вопрос:</h4>
-            
-            <div class="form-group">
-                <label for={"free-text-question-text-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')}>Текст вопроса</label>
-                <textarea id={"free-text-question-text-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')} bind:value={localTestModel.free_text_question.prompt_text} rows="4" placeholder="Введите текст вопроса для студентов" disabled={isLoading}></textarea>
-            </div>
-
             <div class="form-group attachment-control">
-                <label for={"free-text-question-image-upload-input-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')}>Изображение к вопросу (необязательно)</label>
+                <label
+                    for={"free-text-question-image-upload-input-" +
+                        (localTestModel.id &&
+                        typeof localTestModel.id !== "symbol"
+                            ? localTestModel.id
+                            : "new")}
+                    >Изображение к вопросу (необязательно)</label
+                >
                 {#if showQuestionImageCropper && questionImagePreviewUrlForCropper}
                     <div class="cropper-wrapper-test">
                         <Cropper
                             image={questionImagePreviewUrlForCropper}
-                            crop={questionImageCrop}
-                            zoom={questionImageZoom}
+                            bind:crop={questionImageCrop}
+                            bind:zoom={questionImageZoom}
                             aspect={questionImageAspectRatio}
-                            on:cropchange={(e) => questionImageCrop = e.detail}
-                            on:zoomchange={(e) => questionImageZoom = e.detail}
                             on:cropcomplete={onQuestionImageCropComplete}
                             cropShape="rect"
                             showGrid={true}
+                            minZoom={1}
+                            maxZoom={5}
+                        />
+                    </div>
+                    <div class="zoom-slider-container">
+                        <span>Масштаб:</span>
+                        <input
+                            type="range"
+                            bind:value={questionImageZoom}
+                            min="1"
+                            max="5"
+                            step="0.1"
+                            class="zoom-slider"
                         />
                     </div>
                     <div class="attachment-actions">
                         <div class="aspect-ratio-controls">
                             <span>Соотношение:</span>
                             {#each aspectRatios as ratio}
-                                <button type="button" class="aspect-btn" class:active={questionImageAspectRatio === ratio.value} on:click={() => questionImageAspectRatio = ratio.value}>
+                                <button
+                                    type="button"
+                                    class="aspect-btn"
+                                    class:active={questionImageAspectRatio ===
+                                        ratio.value}
+                                    on:click={() =>
+                                        (questionImageAspectRatio =
+                                            ratio.value)}
+                                >
                                     {ratio.label}
                                 </button>
                             {/each}
                         </div>
-                        <button type="button" class="remove-attachment-btn" on:click={removeQuestionImage} disabled={isLoading}>
+                        <button
+                            type="button"
+                            class="remove-attachment-btn"
+                            on:click={removeQuestionImage}
+                            disabled={isLoading}
+                        >
                             <CloseCircle size="20px" />
                         </button>
                     </div>
                 {:else}
-                    <label class="file-upload-label" for={"free-text-question-image-upload-input-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')}>
+                    <label
+                        class="file-upload-label"
+                        for={"free-text-question-image-upload-input-" +
+                            (localTestModel.id &&
+                            typeof localTestModel.id !== "symbol"
+                                ? localTestModel.id
+                                : "new")}
+                    >
                         <ImagePlusOutline size="24px" />
                         <span>Выберите изображение для вопроса</span>
                     </label>
-                    <input type="file" id={"free-text-question-image-upload-input-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')} accept="image/*" on:change={handleQuestionImageUpload} class="visually-hidden" disabled={isLoading} />
+                    <input
+                        type="file"
+                        id={"free-text-question-image-upload-input-" +
+                            (localTestModel.id &&
+                            typeof localTestModel.id !== "symbol"
+                                ? localTestModel.id
+                                : "new")}
+                        accept="image/*"
+                        on:change={handleQuestionImageUpload}
+                        class="visually-hidden"
+                        disabled={isLoading}
+                    />
                 {/if}
             </div>
 
             <div class="form-group attachment-control">
-                <label for={"free-text-question-audio-upload-input-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')}>Аудио к вопросу (необязательно)</label>
+                <label
+                    for={"free-text-question-audio-upload-input-" +
+                        (localTestModel.id &&
+                        typeof localTestModel.id !== "symbol"
+                            ? localTestModel.id
+                            : "new")}>Аудио к вопросу (необязательно)</label
+                >
                 {#if questionAudioFileName}
                     <div class="audio-filename-display">
                         <span>{questionAudioFileName}</span>
-                        <button type="button" class="remove-attachment-btn" on:click={removeQuestionAudio} disabled={isLoading}>
+                        <button
+                            type="button"
+                            class="remove-attachment-btn"
+                            on:click={removeQuestionAudio}
+                            disabled={isLoading}
+                        >
                             <CloseCircle size="20px" />
                         </button>
                     </div>
                 {:else}
-                    <label class="file-upload-label" for={"free-text-question-audio-upload-input-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')}>
+                    <label
+                        class="file-upload-label"
+                        for={"free-text-question-audio-upload-input-" +
+                            (localTestModel.id &&
+                            typeof localTestModel.id !== "symbol"
+                                ? localTestModel.id
+                                : "new")}
+                    >
                         <MusicNotePlus size="24px" />
                         <span>Выберите аудио файл для вопроса</span>
                     </label>
-                    <input type="file" id={"free-text-question-audio-upload-input-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')} accept="audio/*" on:change={handleQuestionAudioUpload} class="visually-hidden" disabled={isLoading} />
+                    <input
+                        type="file"
+                        id={"free-text-question-audio-upload-input-" +
+                            (localTestModel.id &&
+                            typeof localTestModel.id !== "symbol"
+                                ? localTestModel.id
+                                : "new")}
+                        accept="audio/*"
+                        on:change={handleQuestionAudioUpload}
+                        class="visually-hidden"
+                        disabled={isLoading}
+                    />
                 {/if}
             </div>
         </div>
 
         <div class="answer-section">
             <h4 class="section-header">Правильный ответ:</h4>
-            
+
             <div class="form-group">
-                <label for={"free-text-reference-answer-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')}>Правильный ответ</label>
-                <textarea id={"free-text-reference-answer-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')} bind:value={localTestModel.free_text_question.reference_answer} rows="4" placeholder="Введите правильный ответ для проверки" disabled={isLoading}></textarea>
+                <label
+                    for={"free-text-reference-answer-" +
+                        (localTestModel.id &&
+                        typeof localTestModel.id !== "symbol"
+                            ? localTestModel.id
+                            : "new")}>Правильный ответ</label
+                >
+                <textarea
+                    id={"free-text-reference-answer-" +
+                        (localTestModel.id &&
+                        typeof localTestModel.id !== "symbol"
+                            ? localTestModel.id
+                            : "new")}
+                    bind:value={
+                        localTestModel.free_text_question.reference_answer
+                    }
+                    rows="4"
+                    placeholder="Введите правильный ответ для проверки"
+                    disabled={isLoading}
+                ></textarea>
             </div>
 
             <div class="form-group">
-                <label for={"free-text-explanation-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')}>Объяснение (необязательно)</label>
-                <textarea id={"free-text-explanation-" + (localTestModel.id && typeof localTestModel.id !== 'symbol' ? localTestModel.id : 'new')} bind:value={localTestModel.free_text_question.explanation} rows="3" placeholder="Объяснение к правильному ответу" disabled={isLoading}></textarea>
+                <label
+                    for={"free-text-explanation-" +
+                        (localTestModel.id &&
+                        typeof localTestModel.id !== "symbol"
+                            ? localTestModel.id
+                            : "new")}>Объяснение (необязательно)</label
+                >
+                <textarea
+                    id={"free-text-explanation-" +
+                        (localTestModel.id &&
+                        typeof localTestModel.id !== "symbol"
+                            ? localTestModel.id
+                            : "new")}
+                    bind:value={localTestModel.free_text_question.explanation}
+                    rows="3"
+                    placeholder="Объяснение к правильному ответу"
+                    disabled={isLoading}
+                ></textarea>
             </div>
         </div>
 
         <div class="form-actions">
-            <button type="button" class="btn-cancel" on:click={() => dispatch('cancel')} disabled={isLoading}>
+            <button
+                type="button"
+                class="btn-cancel"
+                on:click={() => dispatch("cancel")}
+                disabled={isLoading}
+            >
                 Отмена
             </button>
-            <button type="submit" class="btn-save" on:click|preventDefault={handleSave} disabled={isLoading}>
-                {isLoading ? 'Сохранение...' : (isEditing ? 'Обновить' : 'Создать')}
+            <button
+                type="submit"
+                class="btn-save"
+                on:click|preventDefault={handleSave}
+                disabled={isLoading}
+            >
+                {isLoading
+                    ? "Сохранение..."
+                    : isEditing
+                      ? "Обновить"
+                      : "Создать"}
             </button>
         </div>
     {:else}
@@ -373,7 +564,9 @@
         border: 1px solid var(--color-border-light, #d8dce6);
         border-radius: var(--spacing-border-radius-small, 8px);
         font-size: 0.95rem;
-        transition: border-color 0.2s, box-shadow 0.2s;
+        transition:
+            border-color 0.2s,
+            box-shadow 0.2s;
         background-color: var(--color-bg-light, #fff);
         width: 100%;
         box-sizing: border-box;
@@ -381,7 +574,7 @@
 
     .form-group input:focus,
     .form-group textarea:focus {
-        border-color: var(--color-primary, #AFA4FF);
+        border-color: var(--color-primary, #afa4ff);
         box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 175, 164, 255), 0.2);
         outline: none;
     }
@@ -411,7 +604,9 @@
     }
 
     @keyframes form-spin {
-        to { transform: rotate(360deg); }
+        to {
+            transform: rotate(360deg);
+        }
     }
 
     .attachment-control > label:first-child {
@@ -427,13 +622,15 @@
         border: 2px dashed var(--color-border-admin-button, #d1c9ff);
         border-radius: var(--spacing-border-radius-small);
         cursor: pointer;
-        color: var(--color-secondary, #6D7FC9);
-        transition: background-color 0.2s, border-color 0.2s;
+        color: var(--color-secondary, #6d7fc9);
+        transition:
+            background-color 0.2s,
+            border-color 0.2s;
     }
 
     .file-upload-label:hover {
         background-color: rgba(var(--color-primary-rgb, 175, 164, 255), 0.05);
-        border-color: var(--color-primary, #AFA4FF);
+        border-color: var(--color-primary, #afa4ff);
     }
 
     .file-upload-label span {
@@ -463,6 +660,43 @@
         overflow: hidden;
         margin-bottom: 10px;
         border: 1px solid var(--color-border-light);
+        contain: content;
+        transform: translateZ(0);
+    }
+    .zoom-slider-container {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 10px;
+        margin-bottom: 12px;
+        padding: 8px 12px;
+        background: #f8faff;
+        border-radius: var(--spacing-border-radius-small);
+        border: 1px solid var(--color-border-light);
+    }
+    .zoom-slider-container span {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+        white-space: nowrap;
+    }
+    .zoom-slider {
+        flex-grow: 1;
+        height: 4px;
+        -webkit-appearance: none;
+        background: #e0e6ed;
+        border-radius: 2px;
+        outline: none;
+    }
+    .zoom-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        background: var(--color-primary);
+        cursor: pointer;
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     }
 
     .attachment-actions {
@@ -599,4 +833,4 @@
             width: 100%;
         }
     }
-</style> 
+</style>
