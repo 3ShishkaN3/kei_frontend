@@ -23,16 +23,16 @@
   --color-bg-admin-button-create-hover: #5f55d1;
   --color-border-admin-button: #C2B6FC;
   --color-danger-red: #ff4d4d;
-  
+
   --color-mcq-correct: #d4f4dd;
   --color-mcq-correct-border: #7eb88a;
   --color-mcq-correct-text: #1f5f2b;
   --color-mcq-incorrect: #fce4e6;
   --color-mcq-incorrect-border: #e57373;
   --color-mcq-incorrect-text: #8b2635;
-  
-  --color-telegram: #0088cc; 
-  --color-telegram-text: #333; 
+
+  --color-telegram: #0088cc;
+  --color-telegram-text: #333;
   --color-telegram-gradient-start: #d6ebff;
   --color-telegram-gradient-end: #c2e0ff;
   --color-shadow: rgba(0, 0, 0, 0.1);
@@ -106,20 +106,20 @@
   --color-header-bg: rgba(255, 255, 255, 1);
   --color-header-bg-scrolled: rgba(255, 255, 255, 0.9);
   --color-header-shadow: rgba(0, 0, 0, 0.1);
-  --color-auth-button-gradient-start: #EBC7F2;
-  --color-auth-button-gradient-end: #C2B6FC;
+  --color-auth-button-gradient-start: #D8A6E2;
+  --color-auth-button-gradient-end: #A192F1;
   --color-auth-button-text: #FFF;
-  --color-auth-button-gradient-hover-start: #D8A8E8;
-  --color-auth-button-gradient-hover-end: #A8A1F5;
-  --color-auth-button-gradient-active-start: #C18AD2;
-  --color-auth-button-gradient-active-end: #8E8BE0;
-  --color-logout-button-gradient-start: #EBC7F2;
-  --color-logout-button-gradient-end: #C2B6FC;
+  --color-auth-button-gradient-hover-start: #C88ED5;
+  --color-auth-button-gradient-hover-end: #8C78E3;
+  --color-auth-button-gradient-active-start: #B876C8;
+  --color-auth-button-gradient-active-end: #7864D5;
+  --color-logout-button-gradient-start: #D8A6E2;
+  --color-logout-button-gradient-end: #A192F1;
   --color-logout-button-text: #FFF;
-  --color-logout-button-gradient-hover-start: #D8A8E8;
-  --color-logout-button-gradient-hover-end: #A8A1F5;
-  --color-logout-button-gradient-active-start: #C18AD2;
-  --color-logout-button-gradient-active-end: #8E8BE0;
+  --color-logout-button-gradient-hover-start: #C88ED5;
+  --color-logout-button-gradient-hover-end: #8C78E3;
+  --color-logout-button-gradient-active-start: #B876C8;
+  --color-logout-button-gradient-active-end: #7864D5;
   --color-menu-button-bg: #f0f0f0;
   --color-menu-button-bg-hover: #e0e0e0;
   --color-menu-button-shadow: rgba(0, 0, 0, 0.1);
@@ -317,79 +317,111 @@
   --switch-transition: 0.4s;
 
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+
+    100% {
+      transform: rotate(360deg);
+    }
   }
 }
 
-html, body {
-	position: relative;
-	width: 100%;
-	height: 100%;
-	
+html,
+body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+
 }
 
 body {
-	color: #333;
-	margin: 0;
-	box-sizing: border-box;
-	font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-	background: url('/background.jpg') repeat center center fixed;
-	margin-top: 100px;
+  color: #333;
+  margin: 0;
+  box-sizing: border-box;
+  font-family: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  background: url('/background.jpg') repeat center center fixed;
+  margin-top: 100px;
 }
 
 a {
-	color: rgb(0,100,200);
-	text-decoration: none;
+  color: rgb(0, 100, 200);
+  text-decoration: none;
 }
 
 a:hover {
-	text-decoration: underline;
+  text-decoration: underline;
 }
 
 a:visited {
-	color: rgb(0,80,160);
+  color: rgb(0, 80, 160);
 }
 
 label {
-	display: block;
+  display: block;
 }
 
-input, button, select, textarea {
-	font-family: inherit;
-	font-size: inherit;
-	-webkit-padding: 0.4em 0;
-	padding: 0.4em;
-	margin: 0 0 0.5em 0;
-	box-sizing: border-box;
-	border: 1px solid #ccc;
-	border-radius: 2px;
+input,
+button,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  -webkit-padding: 0.4em 0;
+  padding: 0.4em;
+  margin: 0 0 0.5em 0;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 2px;
 }
 
 input:disabled {
-	color: #ccc;
+  color: #ccc;
 }
 
 button {
-	color: #333;
-	background-color: #f4f4f4;
-	outline: none;
+  color: #333;
+  background-color: #f4f4f4;
+  outline: none;
 }
 
 button:disabled {
-	color: #999;
+  color: #999;
 }
 
 button:not(:disabled):active {
-	background-color: #ddd;
+  background-color: #ddd;
 }
 
 button:focus {
-	border-color: #666;
+  border-color: #666;
 }
 
-.cal-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; font-size: 0.85rem; }
-.cal-chip--planned { background: var(--color-purple-light); color: #222; }
-.cal-chip--in-progress { background: var(--color-soft-blue); color: #222; }
-.cal-chip--completed { background: var(--color-pastel-green); color: #222; }
-.cal-chip--cancelled { background: var(--color-danger-red); color: #fff; }
+.cal-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.cal-chip--planned {
+  background: var(--color-purple-light);
+  color: #222;
+}
+
+.cal-chip--in-progress {
+  background: var(--color-soft-blue);
+  color: #222;
+}
+
+.cal-chip--completed {
+  background: var(--color-pastel-green);
+  color: #222;
+}
+
+.cal-chip--cancelled {
+  background: var(--color-danger-red);
+  color: #fff;
+}

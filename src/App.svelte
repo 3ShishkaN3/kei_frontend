@@ -62,6 +62,10 @@
                 component={Lesson}
             />
             <Route
+                path="/courses/:courseId/lessons/:lessonId/dictionary"
+                component={Practice}
+            />
+            <Route
                 path="/courses/:courseId/practice/:practiceId"
                 component={Practice}
             />

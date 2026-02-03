@@ -6,10 +6,13 @@
         fetchDictionarySectionDetails,
         fetchDictionaryEntries,
         fetchDictionaryMetadata,
+        fetchPrimaryLessonDictionaryEntries,
+        fetchPrimaryLessonDictionaryMetadata,
         markEntryAsLearned,
         unmarkEntryAsLearned,
         deleteDictionaryEntry
     } from '../api/dictionaryApi';
+
     import { addNotification } from '../stores/notifications.js';
 
     import EyeOutline from 'svelte-material-icons/EyeOutline.svelte';
@@ -29,7 +32,10 @@
 
     export let courseId;
     export let practiceId;
+    export let lessonId;
     const sectionId = practiceId;
+    $: isLessonDictionaryMode = Boolean(lessonId);
+    $: effectiveSectionId = isLessonDictionaryMode ? metaData?.section_id : sectionId;
 
     let entries = [];
     let sectionDetails = null;
@@ -83,22 +89,43 @@
     }
 
     onMount(async () => {
-        if (!sectionId) return;
+        if (!sectionId && !lessonId) return;
         isLoading = true;
         try {
-            const sectionPromise = fetchDictionarySectionDetails(sectionId);
-            const metaPromise = fetchDictionaryMetadata(sectionId);
-            const entriesPromise = fetchDictionaryEntries(sectionId, {
-                page: currentPage,
-                page_size: ITEMS_PER_PAGE
-            });
+            if (isLessonDictionaryMode) {
+                const metaPromise = fetchPrimaryLessonDictionaryMetadata(courseId, lessonId);
+                const entriesPromise = fetchPrimaryLessonDictionaryEntries(courseId, lessonId, {
+                    page: currentPage,
+                    page_size: ITEMS_PER_PAGE
+                });
 
-            const [sectionData, metaResponse, entriesData] = await Promise.all([sectionPromise, metaPromise, entriesPromise]);
+                const [metaResponse, entriesData] = await Promise.all([metaPromise, entriesPromise]);
 
-            sectionDetails = sectionData;
-            metaData = metaResponse;
-            entries = entriesData.results;
-            totalItems = entriesData.count;
+                sectionDetails = {
+                    id: metaResponse.section_id,
+                    title: metaResponse.section_title || 'Словарь урока',
+                    course_id: metaResponse.course_id,
+                    lesson_id: metaResponse.lesson_id,
+                    lesson_title: metaResponse.lesson_title
+                };
+                metaData = metaResponse;
+                entries = entriesData.results;
+                totalItems = entriesData.count;
+            } else {
+                const sectionPromise = fetchDictionarySectionDetails(sectionId);
+                const metaPromise = fetchDictionaryMetadata(sectionId);
+                const entriesPromise = fetchDictionaryEntries(sectionId, {
+                    page: currentPage,
+                    page_size: ITEMS_PER_PAGE
+                });
+
+                const [sectionData, metaResponse, entriesData] = await Promise.all([sectionPromise, metaPromise, entriesPromise]);
+
+                sectionDetails = sectionData;
+                metaData = metaResponse;
+                entries = entriesData.results;
+                totalItems = entriesData.count;
+            }
             totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
             if (displayMode === 'cards') {
@@ -117,7 +144,7 @@
     });
 
     async function initializeCards() {
-        console.log('🎴 Инициализация карточек, режим админа:', isAdminView);
+        console.log('Инициализация карточек, режим админа:', isAdminView);
         cardChunks.clear();
         loadingChunks.clear();
         currentChunkIndex = 0;
@@ -125,28 +152,28 @@
         previousCardIndex = 0;
         
         totalCardsCount = isAdminView ? metaData.total_count : metaData.unlearned_count;
-        console.log('📊 Общее количество карточек:', totalCardsCount);
+        console.log('Общее количество карточек:', totalCardsCount);
         
         if (totalCardsCount > 0) {
             const firstChunk = await loadCardChunk(0);
             updateVisibleEntries();
-            console.log('✅ Первый чанк загружен, записей в чанке:', firstChunk?.length || 0);
-            console.log('🔄 Обновление visibleEntries завершено');
+            console.log('Первый чанк загружен, записей в чанке:', firstChunk?.length || 0);
+            console.log('Обновление visibleEntries завершено');
         } else {
-            console.log('⚠️ Нет карточек для отображения');
+            console.log('Нет карточек для отображения');
         }
     }
 
     async function loadCardChunk(chunkIndex) {
-        console.log(`📦 Загрузка чанка ${chunkIndex}...`);
+        console.log(`Загрузка чанка ${chunkIndex}...`);
         
         if (cardChunks.has(chunkIndex)) {
-            console.log(`✅ Чанк ${chunkIndex} уже загружен`);
+            console.log(`Чанк ${chunkIndex} уже загружен`);
             return cardChunks.get(chunkIndex);
         }
 
         if (loadingChunks.has(chunkIndex)) {
-            console.log(`⏳ Чанк ${chunkIndex} уже загружается, ждем...`);
+            console.log(`Чанк ${chunkIndex} уже загружается, ждем...`);
             while (loadingChunks.has(chunkIndex)) {
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
@@ -154,47 +181,53 @@
         }
 
         loadingChunks.add(chunkIndex);
-        console.log(`🔒 Заблокирован чанк ${chunkIndex} для загрузки`);
+        console.log(`Заблокирован чанк ${chunkIndex} для загрузки`);
 
         try {
             const entriesOffset = chunkIndex * CARDS_CHUNK_SIZE;
             const page = Math.floor(entriesOffset / CARDS_CHUNK_SIZE) + 1;
             
-            console.log(`🌐 Запрос данных для чанка ${chunkIndex}, страница ${page}, include_learned: ${isAdminView ? 'true' : 'false'}`);
+            console.log(`Запрос данных для чанка ${chunkIndex}, страница ${page}, include_learned: ${isAdminView ? 'true' : 'false'}`);
             
-            const data = await fetchDictionaryEntries(sectionId, {
-                page: page,
-                page_size: CARDS_CHUNK_SIZE,
-                include_learned: isAdminView ? 'true' : 'false'
-            });
+            const data = isLessonDictionaryMode
+                ? await fetchPrimaryLessonDictionaryEntries(courseId, lessonId, {
+                    page: page,
+                    page_size: CARDS_CHUNK_SIZE,
+                    include_learned: isAdminView ? 'true' : 'false'
+                })
+                : await fetchDictionaryEntries(sectionId, {
+                    page: page,
+                    page_size: CARDS_CHUNK_SIZE,
+                    include_learned: isAdminView ? 'true' : 'false'
+                });
 
-            console.log(`📡 Ответ от API для чанка ${chunkIndex}:`, data);
+            console.log(`Ответ от API для чанка ${chunkIndex}:`, data);
             
             const chunkEntries = data.results || [];
-            console.log(`📥 Получено записей для чанка ${chunkIndex}:`, chunkEntries.length, chunkEntries);
+            console.log(`Получено записей для чанка ${chunkIndex}:`, chunkEntries.length, chunkEntries);
             
             cardChunks.set(chunkIndex, chunkEntries);
-            console.log(`💾 Сохранен чанк ${chunkIndex}, размер кеша:`, cardChunks.size);
-            console.log(`🔍 Проверка сохранения чанка ${chunkIndex}:`, cardChunks.get(chunkIndex)?.length || 0);
+            console.log(`Сохранен чанк ${chunkIndex}, размер кеша:`, cardChunks.size);
+            console.log(`Проверка сохранения чанка ${chunkIndex}:`, cardChunks.get(chunkIndex)?.length || 0);
             
             return chunkEntries;
         } catch (err) {
-            console.error(`❌ Ошибка загрузки чанка ${chunkIndex}:`, err);
+            console.error(`Ошибка загрузки чанка ${chunkIndex}:`, err);
             return [];
         } finally {
             loadingChunks.delete(chunkIndex);
-            console.log(`🔓 Разблокирован чанк ${chunkIndex}`);
+            console.log(`Разблокирован чанк ${chunkIndex}`);
         }
     }
 
     async function ensureChunkLoaded(chunkIndex) {
-        console.log(`🔄 ensureChunkLoaded для чанка ${chunkIndex}`);
+        console.log(`ensureChunkLoaded для чанка ${chunkIndex}`);
         
         if (!cardChunks.has(chunkIndex)) {
-            console.log(`📦 Загружаем основной чанк ${chunkIndex}`);
+            console.log(`Загружаем основной чанк ${chunkIndex}`);
             await loadCardChunk(chunkIndex);
         } else {
-            console.log(`✅ Чанк ${chunkIndex} уже загружен`);
+            console.log(`Чанк ${chunkIndex} уже загружен`);
         }
         
         updateVisibleEntries();
@@ -205,12 +238,12 @@
             const nextChunk = chunkIndex + i;
             
             if (prevChunk >= 0 && !cardChunks.has(prevChunk) && !loadingChunks.has(prevChunk)) {
-                console.log(`📦 Предзагрузка чанка ${prevChunk}`);
+                console.log(`Предзагрузка чанка ${prevChunk}`);
                 loadCardChunk(prevChunk);
             }
             
             if (nextChunk < totalChunks && !cardChunks.has(nextChunk) && !loadingChunks.has(nextChunk)) {
-                console.log(`📦 Предзагрузка чанка ${nextChunk}`);
+                console.log(`Предзагрузка чанка ${nextChunk}`);
                 loadCardChunk(nextChunk);
             }
         }
@@ -219,20 +252,20 @@
     function updateVisibleEntries() {
         const chunkIndex = Math.floor(currentCardIndex / CARDS_CHUNK_SIZE);
         const chunk = cardChunks.get(chunkIndex) || [];
-        console.log(`🔄 updateVisibleEntries: chunkIndex=${chunkIndex}, chunk.length=${chunk.length}`);
+        console.log(`updateVisibleEntries: chunkIndex=${chunkIndex}, chunk.length=${chunk.length}`);
         visibleEntries = chunk;
-        console.log(`📋 visibleEntries обновлены:`, visibleEntries.length, 'записей');
+        console.log(`visibleEntries обновлены:`, visibleEntries.length, 'записей');
     }
 
     function getCurrentCardEntry() {
         const indexInChunk = currentCardIndex % CARDS_CHUNK_SIZE;
         const entry = visibleEntries[indexInChunk];
         
-        console.log(`🃏 getCurrentCardEntry: currentCardIndex=${currentCardIndex}, indexInChunk=${indexInChunk}, visibleEntries.length=${visibleEntries.length}`);
+        console.log(`getCurrentCardEntry: currentCardIndex=${currentCardIndex}, indexInChunk=${indexInChunk}, visibleEntries.length=${visibleEntries.length}`);
         
         if (!entry) {
             const chunkIndex = Math.floor(currentCardIndex / CARDS_CHUNK_SIZE);
-            console.log('❌ Карточка не найдена:', {
+            console.log('Карточка не найдена:', {
                 currentCardIndex,
                 chunkIndex,
                 indexInChunk,
@@ -243,7 +276,7 @@
             });
             
             if (visibleEntries.length > 0) {
-                console.log(`🔍 Содержимое visibleEntries:`, visibleEntries.map((e, i) => `${i}: ${e.name || e.term}`));
+                console.log(`Содержимое visibleEntries:`, visibleEntries.map((e, i) => `${i}: ${e.name || e.term}`));
             }
         }
         
@@ -253,10 +286,15 @@
     async function loadEntries(page = 1) {
         isLoading = true;
         try {
-            const data = await fetchDictionaryEntries(sectionId, {
-                page: page,
-                page_size: ITEMS_PER_PAGE
-            });
+            const data = isLessonDictionaryMode
+                ? await fetchPrimaryLessonDictionaryEntries(courseId, lessonId, {
+                    page: page,
+                    page_size: ITEMS_PER_PAGE
+                })
+                : await fetchDictionaryEntries(sectionId, {
+                    page: page,
+                    page_size: ITEMS_PER_PAGE
+                });
             entries = data.results;
             totalItems = data.count;
             totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
@@ -271,12 +309,15 @@
     async function handleToggleLearned(event) {
         const entry = event.detail;
         try {
+            if (!effectiveSectionId) {
+                throw new Error('Не удалось определить раздел словаря для этого урока');
+            }
             if (entry.is_learned) {
-                await unmarkEntryAsLearned(sectionId, entry.id);
+                await unmarkEntryAsLearned(effectiveSectionId, entry.id);
                 addNotification('Слово помечено как "не выучено"', 'success');
                 entry.is_learned = false;
             } else {
-                await markEntryAsLearned(sectionId, entry.id);
+                await markEntryAsLearned(effectiveSectionId, entry.id);
                 addNotification('Слово помечено как "выучено"', 'success');
                 entry.is_learned = true;
             }
@@ -290,7 +331,9 @@
                 }
                 
                 if (!isAdminView && entry.is_learned) {
-                    const metaResponse = await fetchDictionaryMetadata(sectionId);
+                    const metaResponse = isLessonDictionaryMode
+                        ? await fetchPrimaryLessonDictionaryMetadata(courseId, lessonId)
+                        : await fetchDictionaryMetadata(sectionId);
                     metaData = metaResponse;
                     cardChunks.clear();
                     loadingChunks.clear();
@@ -313,7 +356,10 @@
         const entryToDelete = event.detail;
         if (confirm(`Вы уверены, что хотите удалить слово "${entryToDelete.term}"?`)) {
             try {
-                await deleteDictionaryEntry(sectionId, entryToDelete.id);
+                if (!effectiveSectionId) {
+                    throw new Error('Не удалось определить раздел словаря для этого урока');
+                }
+                await deleteDictionaryEntry(effectiveSectionId, entryToDelete.id);
                 addNotification('Слово успешно удалено', 'success');
                 loadEntries(currentPage);
             } catch (err) {
@@ -328,6 +374,10 @@
     }
     
     function handleCreate() {
+        if (!effectiveSectionId) {
+            addNotification('Не удалось определить раздел словаря для этого урока', 'error');
+            return;
+        }
         editingEntry = null;
         isModalOpen = true;
     }
@@ -414,7 +464,8 @@
     <DictionaryEntryFormModal
         bind:isOpen={isModalOpen}
         entry={editingEntry}
-        {sectionId}
+        sectionId={effectiveSectionId}
+        {courseId}
         on:save={onEntrySaved}
         on:close={handleCloseModal}
     />
@@ -430,7 +481,7 @@
                         <EyeOutline /><span>Админ</span>
                     {/if}
                 </button>
-                <button class="control-button primary" on:click={handleCreate} disabled={isLoading}>
+                <button class="control-button primary" on:click={handleCreate} disabled={isLoading || !effectiveSectionId || isLessonDictionaryMode}>
                     <PlusCircleOutline /> Добавить слово
                 </button>
             {/if}

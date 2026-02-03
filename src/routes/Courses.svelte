@@ -1,17 +1,17 @@
 <script>
-    import { onMount, tick } from 'svelte';
-    import { user } from '../stores/user.js';
-    import { API_BASE_URL } from '../config.js';
-    import { apiFetch } from '../api/api.js';
-    import Carousel from 'svelte-carousel';
-    import CourseCard from '../components/CourseCard.svelte';
-    import EnrollmentSuccess from '../components/EnrollmentSuccess.svelte';
-    import CourseFormModal from '../components/CourseFormModal.svelte';
-    import EyeOutline from 'svelte-material-icons/EyeOutline.svelte';
-    import EyeOffOutline from 'svelte-material-icons/EyeOffOutline.svelte';
-    import PlusCircleOutline from 'svelte-material-icons/PlusCircleOutline.svelte';
-    import ArrowLeft from 'svelte-material-icons/ArrowLeft.svelte';
-    import ArrowRight from 'svelte-material-icons/ArrowRight.svelte';
+    import { onMount, tick } from "svelte";
+    import { user } from "../stores/user.js";
+    import { API_BASE_URL } from "../config.js";
+    import { apiFetch } from "../api/api.js";
+    import Carousel from "svelte-carousel";
+    import CourseCard from "../components/CourseCard.svelte";
+    import EnrollmentSuccess from "../components/EnrollmentSuccess.svelte";
+    import CourseFormModal from "../components/CourseFormModal.svelte";
+    import EyeOutline from "svelte-material-icons/EyeOutline.svelte";
+    import EyeOffOutline from "svelte-material-icons/EyeOffOutline.svelte";
+    import PlusCircleOutline from "svelte-material-icons/PlusCircleOutline.svelte";
+    import ArrowLeft from "svelte-material-icons/ArrowLeft.svelte";
+    import ArrowRight from "svelte-material-icons/ArrowRight.svelte";
 
     let courses = [];
     let enrollmentStatus = {};
@@ -19,9 +19,9 @@
     let error = null;
     let currentUserRole = null;
     let showEnrollmentSuccess = false;
-    let enrollmentSuccessMessage = '';
+    let enrollmentSuccessMessage = "";
 
-    let viewMode = 'student';
+    let viewMode = "student";
     let isAdminOrTeacher = false;
     let isAssistant = false;
 
@@ -32,46 +32,57 @@
     let editingCourse = null;
     let pageVisible = false;
     let isCarouselReady = false;
-    let currentSortOrder = '-created_at';
+    let currentSortOrder = "-created_at";
 
-    const unsubscribeUser = user.subscribe(value => {
+    const unsubscribeUser = user.subscribe((value) => {
         if (value.isAuthenticated) {
             currentUserRole = value.role;
-            isAdminOrTeacher = currentUserRole === 'admin' || currentUserRole === 'teacher';
-            isAssistant = currentUserRole === 'assistant';
-            if (!viewMode || viewMode === 'student') {
-                viewMode = (isAdminOrTeacher || isAssistant) ? 'admin' : 'student';
+            isAdminOrTeacher =
+                currentUserRole === "admin" || currentUserRole === "teacher";
+            isAssistant = currentUserRole === "assistant";
+            if (!viewMode || viewMode === "student") {
+                viewMode =
+                    isAdminOrTeacher || isAssistant ? "admin" : "student";
             }
         } else {
             currentUserRole = null;
             isAdminOrTeacher = false;
             isAssistant = false;
-            viewMode = 'student';
+            viewMode = "student";
         }
-        console.log('User store updated:', { currentUserRole, isAdminOrTeacher, isAssistant, viewMode });
+        console.log("User store updated:", {
+            currentUserRole,
+            isAdminOrTeacher,
+            isAssistant,
+            viewMode,
+        });
     });
 
     onMount(async () => {
-        window.addEventListener('keydown', handleKeyDown);
-        
+        window.addEventListener("keydown", handleKeyDown);
+
         await fetchData();
-        
+
         setTimeout(() => {
             pageVisible = true;
         }, 100);
-        
+
         return () => {
-            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener("keydown", handleKeyDown);
             unsubscribeUser();
         };
     });
 
     function handleKeyDown(e) {
-        if (!carouselComponent || courses.length === 0 || !isCarouselReady) return;
-        
-        if (e.key === 'ArrowLeft' && currentSlideIndex > 0) {
+        if (!carouselComponent || courses.length === 0 || !isCarouselReady)
+            return;
+
+        if (e.key === "ArrowLeft" && currentSlideIndex > 0) {
             navigateSlide(currentSlideIndex - 1);
-        } else if (e.key === 'ArrowRight' && currentSlideIndex < totalSlides - 1) {
+        } else if (
+            e.key === "ArrowRight" &&
+            currentSlideIndex < totalSlides - 1
+        ) {
             navigateSlide(currentSlideIndex + 1);
         }
     }
@@ -81,25 +92,29 @@
         error = null;
         currentSlideIndex = 0;
         isCarouselReady = false;
-        
+
         try {
             const coursesResponse = await fetchCoursesBasedOnViewMode();
             if (!coursesResponse.ok) {
-                const errorData = await coursesResponse.json().catch(() => ({ detail: 'Не удалось загрузить курсы' }));
-                throw new Error(errorData.detail || `Ошибка ${coursesResponse.status}`);
+                const errorData = await coursesResponse
+                    .json()
+                    .catch(() => ({ detail: "Не удалось загрузить курсы" }));
+                throw new Error(
+                    errorData.detail || `Ошибка ${coursesResponse.status}`,
+                );
             }
             const fetchedCourses = await coursesResponse.json();
-            courses = fetchedCourses; 
+            courses = fetchedCourses;
             totalSlides = courses.length;
 
-            if (viewMode === 'student' && courses.length > 0) {
-                await fetchAllEnrollmentStatuses(courses.map(c => c.id));
+            if (viewMode === "student" && courses.length > 0) {
+                await fetchAllEnrollmentStatuses(courses.map((c) => c.id));
             } else {
                 enrollmentStatus = {};
             }
         } catch (err) {
             console.error("Ошибка загрузки данных курсов:", err);
-            error = err.message || 'Произошла ошибка при загрузке курсов.';
+            error = err.message || "Произошла ошибка при загрузке курсов.";
             courses = [];
             enrollmentStatus = {};
             totalSlides = 0;
@@ -123,11 +138,15 @@
     async function fetchCoursesBasedOnViewMode() {
         let url = `${API_BASE_URL}/courses/`;
         const params = new URLSearchParams();
-        
-        if (currentSortOrder && currentUserRole !== 'student' && currentUserRole !== 'assistant') {
-            params.append('ordering', currentSortOrder);
+
+        if (
+            currentSortOrder &&
+            currentUserRole !== "student" &&
+            currentUserRole !== "assistant"
+        ) {
+            params.append("ordering", currentSortOrder);
         }
-        
+
         if (params.toString()) {
             url += `?${params.toString()}`;
         }
@@ -138,16 +157,23 @@
         enrollmentStatus = {};
         for (const id of courseIds) {
             try {
-                const response = await apiFetch(`${API_BASE_URL}/courses/${id}/enrollment_status/`);
+                const response = await apiFetch(
+                    `${API_BASE_URL}/courses/${id}/enrollment_status/`,
+                );
                 if (response.ok) {
                     const data = await response.json();
                     enrollmentStatus[id] = data.enrolled;
                 } else {
-                    console.warn(`Не удалось получить статус записи для курса ${id}`);
-                    enrollmentStatus[id] = false; 
+                    console.warn(
+                        `Не удалось получить статус записи для курса ${id}`,
+                    );
+                    enrollmentStatus[id] = false;
                 }
             } catch (err) {
-                console.error(`Ошибка запроса статуса записи для курса ${id}:`, err);
+                console.error(
+                    `Ошибка запроса статуса записи для курса ${id}:`,
+                    err,
+                );
                 enrollmentStatus[id] = false;
             }
         }
@@ -157,39 +183,50 @@
         const courseId = event.detail;
         console.log(`Попытка записи на курс ${courseId}`);
         try {
-            const response = await apiFetch(`${API_BASE_URL}/courses/${courseId}/enroll/`, {
-                method: 'POST'
-            });
-            if (response.ok || response.status === 201 || response.status === 200) { 
-                enrollmentStatus = { ...enrollmentStatus, [courseId]: true }; 
-                enrollmentSuccessMessage = `Вы успешно записаны на курс!`; 
+            const response = await apiFetch(
+                `${API_BASE_URL}/courses/${courseId}/enroll/`,
+                {
+                    method: "POST",
+                },
+            );
+            if (
+                response.ok ||
+                response.status === 201 ||
+                response.status === 200
+            ) {
+                enrollmentStatus = { ...enrollmentStatus, [courseId]: true };
+                enrollmentSuccessMessage = `Вы успешно записаны на курс!`;
                 showEnrollmentSuccess = true;
-                setTimeout(() => showEnrollmentSuccess = false, 5000);
+                setTimeout(() => (showEnrollmentSuccess = false), 5000);
                 await fetchData();
             } else {
-                const errorData = await response.json().catch(() => ({ detail: 'Не удалось записаться на курс.' }));
+                const errorData = await response.json().catch(() => ({
+                    detail: "Не удалось записаться на курс.",
+                }));
                 console.error("Ошибка записи на курс:", errorData);
-                alert(`Ошибка: ${errorData.detail || 'Не удалось записаться.'}`);
+                alert(
+                    `Ошибка: ${errorData.detail || "Не удалось записаться."}`,
+                );
             }
         } catch (err) {
             console.error("Сетевая ошибка при записи на курс:", err);
-            alert('Произошла ошибка сети. Попробуйте снова.');
+            alert("Произошла ошибка сети. Попробуйте снова.");
         }
     }
 
     function handleCreateCourse() {
-         editingCourse = null;
-         isModalOpen = true;
+        editingCourse = null;
+        isModalOpen = true;
     }
 
     function handleEdit(event) {
-         editingCourse = event.detail;
-         isModalOpen = true;
+        editingCourse = event.detail;
+        isModalOpen = true;
     }
 
     function handleCloseModal() {
-         isModalOpen = false;
-         editingCourse = null;
+        isModalOpen = false;
+        editingCourse = null;
     }
 
     async function handleSortChange(newSortOrder) {
@@ -200,53 +237,72 @@
     }
 
     async function handleSaveCourse(event) {
-         const courseData = event.detail;
-         const isCreating = !editingCourse;
-         const url = isCreating ? `${API_BASE_URL}/courses/` : `${API_BASE_URL}/courses/${editingCourse.id}/`;
-         const method = isCreating ? 'POST' : 'PUT';
-         try {
-             const response = await apiFetch(url, {
-                 method: method,
-                 body: courseData
-             });
-             if (response.ok || response.status === 201 || response.status === 200) {
-                 handleCloseModal();
-                 await fetchData();
-                 alert(`Курс успешно ${isCreating ? 'создан' : 'обновлен'}!`);
-             } else {
-                 const errorData = await response.json().catch(() => ({ detail: `Не удалось ${isCreating ? 'создать' : 'обновить'} курс.` }));
-                 console.error("Ошибка сохранения курса:", errorData);
-                 let errorMessage = errorData.detail || `Ошибка ${response.status}.`;
-                 if (typeof errorData === 'object' && errorData !== null) {
-                      errorMessage += "\n" + Object.entries(errorData)
-                          .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
-                          .join("\n");
-                 }
-                 alert(`Ошибка сохранения:\n${errorMessage}`);
-             }
-         } catch (err) {
-             console.error("Сетевая ошибка при сохранении курса:", err);
-             alert('Произошла ошибка сети при сохранении. Попробуйте снова.');
-         }
+        const courseData = event.detail;
+        const isCreating = !editingCourse;
+        const url = isCreating
+            ? `${API_BASE_URL}/courses/`
+            : `${API_BASE_URL}/courses/${editingCourse.id}/`;
+        const method = isCreating ? "POST" : "PUT";
+        try {
+            const response = await apiFetch(url, {
+                method: method,
+                body: courseData,
+            });
+            if (
+                response.ok ||
+                response.status === 201 ||
+                response.status === 200
+            ) {
+                handleCloseModal();
+                await fetchData();
+                alert(`Курс успешно ${isCreating ? "создан" : "обновлен"}!`);
+            } else {
+                const errorData = await response.json().catch(() => ({
+                    detail: `Не удалось ${isCreating ? "создать" : "обновить"} курс.`,
+                }));
+                console.error("Ошибка сохранения курса:", errorData);
+                let errorMessage =
+                    errorData.detail || `Ошибка ${response.status}.`;
+                if (typeof errorData === "object" && errorData !== null) {
+                    errorMessage +=
+                        "\n" +
+                        Object.entries(errorData)
+                            .map(
+                                ([key, value]) =>
+                                    `${key}: ${Array.isArray(value) ? value.join(", ") : value}`,
+                            )
+                            .join("\n");
+                }
+                alert(`Ошибка сохранения:\n${errorMessage}`);
+            }
+        } catch (err) {
+            console.error("Сетевая ошибка при сохранении курса:", err);
+            alert("Произошла ошибка сети при сохранении. Попробуйте снова.");
+        }
     }
-    
+
     function toggleViewMode() {
-        viewMode = viewMode === 'admin' ? 'student' : 'admin';
+        viewMode = viewMode === "admin" ? "student" : "admin";
         fetchData();
     }
 
     async function navigateSlide(targetIndex) {
-        if (!carouselComponent || 
-            targetIndex < 0 || 
-            targetIndex >= totalSlides || 
-            targetIndex === currentSlideIndex) {
+        if (
+            !carouselComponent ||
+            targetIndex < 0 ||
+            targetIndex >= totalSlides
+        ) {
             return;
         }
-        
+
         try {
-            console.log(`Переход к слайду ${targetIndex} (текущий: ${currentSlideIndex})`);
-            currentSlideIndex = targetIndex;
+            console.log(
+                `Попытка перехода к слайду ${targetIndex} (текущий: ${currentSlideIndex})`,
+            );
             await carouselComponent.goTo(targetIndex);
+            if (targetIndex === currentSlideIndex) {
+                currentSlideIndex = targetIndex;
+            }
         } catch (e) {
             console.error("Ошибка при переходе к слайду:", e);
         }
@@ -254,35 +310,40 @@
 
     function handleArrowClick(direction) {
         if (!carouselComponent) return;
-        
-        const targetIndex = direction === 'next' 
-            ? Math.min(currentSlideIndex + 1, totalSlides - 1)
-            : Math.max(currentSlideIndex - 1, 0);
-            
+
+        const targetIndex =
+            direction === "next"
+                ? Math.min(currentSlideIndex + 1, totalSlides - 1)
+                : Math.max(currentSlideIndex - 1, 0);
+
         if (targetIndex !== currentSlideIndex) {
             navigateSlide(targetIndex);
         }
     }
 
-    function handleAfterChange(event) {
-        if (!event || !event.detail) return;
-        
-        let newIndex = null;
-        
-        if (typeof event.detail.currentSlide === 'number') {
-            newIndex = event.detail.currentSlide;
-        } else if (typeof event.detail.current === 'number') {
-            newIndex = event.detail.current;
-        } else if (event.detail.index !== undefined) {
-            newIndex = event.detail.index;
-        }
-        
-        if (newIndex !== null && newIndex >= 0 && newIndex < totalSlides && newIndex !== currentSlideIndex) {
-            console.log(`Карусель сообщила о переходе к слайду ${newIndex} (был ${currentSlideIndex})`);
-            currentSlideIndex = newIndex;
+    function handleCarouselChange(event) {
+        if (!event || event.detail === undefined) return;
+
+        const newIndex =
+            typeof event.detail === "number"
+                ? event.detail
+                : (event.detail.index ??
+                  event.detail.current ??
+                  event.detail.currentSlide);
+
+        if (
+            newIndex !== null &&
+            newIndex !== undefined &&
+            newIndex >= 0 &&
+            newIndex < totalSlides
+        ) {
+            if (currentSlideIndex !== newIndex) {
+                console.log(`Карусель синхронизирована: индекс ${newIndex}`);
+                currentSlideIndex = newIndex;
+            }
         }
     }
-    
+
     const carouselOptions = {
         dots: false,
         arrows: false,
@@ -296,7 +357,7 @@
         pauseOnHover: true,
         speed: 300,
         enableSwipe: true,
-        draggable: true
+        draggable: true,
     };
 </script>
 
@@ -304,52 +365,71 @@
     <title>Курсы — Kei</title>
     <meta name="og:title" content="Курсы — Kei" />
     <meta name="twitter:title" content="Курсы — Kei" />
-    <meta name="description" content="Выберите курс и начните обучение на платформе Kei." />
-  </svelte:head>
+    <meta
+        name="description"
+        content="Выберите курс и начните обучение на платформе Kei."
+    />
+</svelte:head>
 
 <div class="courses-page {pageVisible ? 'visible' : ''}" key={viewMode}>
     <h1 class="page-title entrance-animation">Курсы</h1>
-    
-    {#if courses.length > 0 && currentUserRole !== 'student' && currentUserRole !== 'assistant'}
+
+    {#if courses.length > 0 && currentUserRole !== "student" && currentUserRole !== "assistant"}
         <div class="sort-controls entrance-animation">
             <span class="sort-label">Сортировать:</span>
-            <button 
-                class="sort-button {currentSortOrder === '-created_at' ? 'active' : ''}" 
-                on:click={() => handleSortChange('-created_at')}
+            <button
+                class="sort-button {currentSortOrder === '-created_at'
+                    ? 'active'
+                    : ''}"
+                on:click={() => handleSortChange("-created_at")}
                 title="Сначала новые курсы"
             >
                 Сначала новые
             </button>
-            <button 
-                class="sort-button {currentSortOrder === 'created_at' ? 'active' : ''}" 
-                on:click={() => handleSortChange('created_at')}
+            <button
+                class="sort-button {currentSortOrder === 'created_at'
+                    ? 'active'
+                    : ''}"
+                on:click={() => handleSortChange("created_at")}
                 title="Сначала старые курсы"
             >
                 Сначала старые
             </button>
-            <button 
-                class="sort-button {currentSortOrder === 'title' ? 'active' : ''}" 
-                on:click={() => handleSortChange('title')}
+            <button
+                class="sort-button {currentSortOrder === 'title'
+                    ? 'active'
+                    : ''}"
+                on:click={() => handleSortChange("title")}
                 title="По алфавиту"
             >
                 По названию
             </button>
         </div>
     {/if}
-    
+
     {#if isAdminOrTeacher || isAssistant}
         <div class="admin-controls entrance-animation">
-             {#if isAdminOrTeacher}
-                <button class="admin-button create-button" on:click={handleCreateCourse} title="Создать новый курс">
+            {#if isAdminOrTeacher}
+                <button
+                    class="admin-button create-button"
+                    on:click={handleCreateCourse}
+                    title="Создать новый курс"
+                >
                     <PlusCircleOutline size="20px" /> Создать курс
                 </button>
             {/if}
-             <button class="admin-button view-toggle-button" on:click={toggleViewMode} title={viewMode === 'admin' ? 'Посмотреть как студент' : 'Вернуться в режим администрирования'}>
-                 {#if viewMode === 'admin'}
+            <button
+                class="admin-button view-toggle-button"
+                on:click={toggleViewMode}
+                title={viewMode === "admin"
+                    ? "Посмотреть как студент"
+                    : "Вернуться в режим администрирования"}
+            >
+                {#if viewMode === "admin"}
                     <EyeOutline size="20px" /> Режим студента
-                 {:else}
+                {:else}
                     <EyeOffOutline size="20px" /> Режим админа
-                 {/if}
+                {/if}
             </button>
         </div>
     {/if}
@@ -358,70 +438,78 @@
     {:else if error}
         <p class="error-message entrance-animation">{error}</p>
     {:else if courses.length === 0}
-        <p class="no-courses-message entrance-animation">{viewMode === 'admin' ? 'Нет созданных курсов.' : 'Доступных курсов пока нет.'}</p>
+        <p class="no-courses-message entrance-animation">
+            {viewMode === "admin"
+                ? "Нет созданных курсов."
+                : "Доступных курсов пока нет."}
+        </p>
     {:else}
         <div class="carousel-container entrance-animation">
-             <button 
-                class="carousel-arrow prev" 
-                on:click={() => handleArrowClick('prev')} 
-                aria-label="Предыдущий курс" 
-                title="Предыдущий курс" 
+            <button
+                class="carousel-arrow prev"
+                on:click={() => handleArrowClick("prev")}
+                aria-label="Предыдущий курс"
+                title="Предыдущий курс"
                 disabled={currentSlideIndex === 0}
-             >
-                 <ArrowLeft size="30px" />
-             </button>
-             <Carousel 
-                bind:this={carouselComponent} 
-                {...carouselOptions} 
-                on:afterChange={handleAfterChange}
-                uniqueKey={courses.map(c => c.id).join('-') + '-' + viewMode}
-             >
-                 {#each courses as course (course.id)}
-                     <div class="carousel-slide">
-                         <CourseCard
-                             {course}
-                             isEnrolled={enrollmentStatus[course.id] || false}
-                             {currentUserRole}
-                             {viewMode}
-                             on:enroll={handleEnroll}
-                             on:edit={handleEdit}
-                             on:delete={handleEdit}
-                         />
-                     </div>
-                 {/each}
-             </Carousel>
-             <button 
-                class="carousel-arrow next" 
-                on:click={() => handleArrowClick('next')} 
-                aria-label="Следующий курс" 
-                title="Следующий курс" 
+            >
+                <ArrowLeft size="30px" />
+            </button>
+            <Carousel
+                bind:this={carouselComponent}
+                {...carouselOptions}
+                on:pageChange={handleCarouselChange}
+                on:change={handleCarouselChange}
+                uniqueKey={courses.map((c) => c.id).join("-") + "-" + viewMode}
+            >
+                {#each courses as course (course.id)}
+                    <div class="carousel-slide">
+                        <CourseCard
+                            {course}
+                            isEnrolled={enrollmentStatus[course.id] || false}
+                            {currentUserRole}
+                            {viewMode}
+                            on:enroll={handleEnroll}
+                            on:edit={handleEdit}
+                            on:delete={handleEdit}
+                        />
+                    </div>
+                {/each}
+            </Carousel>
+            <button
+                class="carousel-arrow next"
+                on:click={() => handleArrowClick("next")}
+                aria-label="Следующий курс"
+                title="Следующий курс"
                 disabled={currentSlideIndex === courses.length - 1}
-             >
-                 <ArrowRight size="30px" />
-             </button>
-             <div class="carousel-dots-custom">
-                 {#each Array(courses.length) as _, i}
-                     <button 
-                         class="custom-dot {i === currentSlideIndex ? 'active' : ''}" 
-                         on:click={() => navigateSlide(i)}
-                         aria-label="Перейти к слайду {i+1}"
-                         title="Слайд {i+1}"
-                     ></button>
-                 {/each}
-             </div>
+            >
+                <ArrowRight size="30px" />
+            </button>
+            <div class="carousel-dots-custom">
+                {#each Array(courses.length) as _, i}
+                    <button
+                        class="custom-dot {i === currentSlideIndex
+                            ? 'active'
+                            : ''}"
+                        on:click={() => navigateSlide(i)}
+                        aria-label="Перейти к слайду {i + 1}"
+                        title="Слайд {i + 1}"
+                    ></button>
+                {/each}
+            </div>
         </div>
     {/if}
     {#if isModalOpen}
-         <CourseFormModal
-             courseToEdit={editingCourse}
-             on:close={handleCloseModal}
-             on:save={handleSaveCourse}
-         />
+        <CourseFormModal
+            courseToEdit={editingCourse}
+            on:close={handleCloseModal}
+            on:save={handleSaveCourse}
+        />
     {/if}
     {#if showEnrollmentSuccess}
         <EnrollmentSuccess message={enrollmentSuccessMessage} />
     {/if}
 </div>
+
 <style>
     .courses-page {
         padding: 30px var(--spacing-padding-page);
@@ -431,7 +519,9 @@
         background-color: var(--color-bg-ultra-light);
         opacity: 0.8;
         transform: translateY(20px);
-        transition: opacity 0.5s ease, transform 0.5s ease;
+        transition:
+            opacity 0.5s ease,
+            transform 0.5s ease;
     }
 
     .courses-page.visible {
@@ -460,9 +550,15 @@
     }
 
     @keyframes pulse {
-        0% { opacity: 0.5; }
-        50% { opacity: 1; }
-        100% { opacity: 0.5; }
+        0% {
+            opacity: 0.5;
+        }
+        50% {
+            opacity: 1;
+        }
+        100% {
+            opacity: 0.5;
+        }
     }
     .page-title {
         animation-delay: var(--animation-delay-title);
@@ -490,7 +586,8 @@
     .admin-button {
         background-color: var(--color-bg-admin-button);
         color: var(--color-text-admin-button);
-        border: var(--border-width-button) solid var(--color-border-admin-button);
+        border: var(--border-width-button) solid
+            var(--color-border-admin-button);
         border-radius: var(--spacing-border-radius-button);
         padding: var(--spacing-padding-button);
         font-family: var(--font-family-primary);
@@ -503,15 +600,15 @@
         font-size: var(--font-size-button);
     }
     .admin-button:hover {
-        background-color: var(--color-border-admin-button); 
+        background-color: var(--color-border-admin-button);
         box-shadow: 0 2px 8px rgba(77, 68, 181, 0.1);
         transform: translateY(-1px);
     }
-     .admin-button:active {
+    .admin-button:active {
         transform: translateY(0);
         filter: brightness(0.98);
     }
-    
+
     .sort-controls {
         display: flex;
         justify-content: center;
@@ -520,13 +617,13 @@
         margin-bottom: var(--spacing-margin-bottom-medium);
         flex-wrap: wrap;
     }
-    
+
     .sort-label {
         font-size: var(--font-size-small);
         color: var(--color-text-muted);
         font-weight: var(--font-weight-medium);
     }
-    
+
     .sort-button {
         background-color: var(--color-bg-light);
         color: var(--color-text-dark);
@@ -539,24 +636,24 @@
         cursor: pointer;
         transition: all var(--animation-duration-transition) ease;
     }
-    
+
     .sort-button:hover {
         background-color: var(--color-bg-hover);
         border-color: var(--color-purple-light);
         transform: translateY(-1px);
     }
-    
+
     .sort-button.active {
         background-color: var(--color-purple-light);
         color: white;
         border-color: var(--color-purple-light);
         font-weight: var(--font-weight-semi-bold);
     }
-    
+
     .sort-button:active {
         transform: translateY(0);
     }
-    
+
     .student-sort-info {
         text-align: center;
         margin-bottom: var(--spacing-margin-bottom-medium);
@@ -571,11 +668,13 @@
         color: var(--color-text-admin-button-create);
         border-color: var(--color-bg-admin-button-create);
     }
-     .admin-button.create-button:hover {
+    .admin-button.create-button:hover {
         background-color: var(--color-bg-admin-button-create-hover);
         border-color: var(--color-bg-admin-button-create-hover);
     }
-    .loading-message, .error-message, .no-courses-message {
+    .loading-message,
+    .error-message,
+    .no-courses-message {
         text-align: center;
         font-size: 1.1rem;
         color: var(--color-text-muted);
@@ -591,6 +690,7 @@
         margin: 0 auto;
         padding: 0 50px;
         padding-bottom: 50px;
+        touch-action: pan-y;
     }
 
     :global(.carousel-container .slick-dots) {
@@ -637,10 +737,9 @@
         display: flex;
         align-items: stretch;
         box-sizing: border-box;
-        transition: transform var(--animation-duration-transition) ease, opacity var(--animation-duration-transition) ease;
     }
     :global(.slick-slide) {
-        transition: opacity var(--animation-duration-transition) ease, transform var(--animation-duration-transition) ease;
+        /* transition: opacity var(--animation-duration-transition) ease, transform var(--animation-duration-transition) ease; */
     }
     :global(.slick-current) {
         z-index: 10;
@@ -648,7 +747,7 @@
     :global(.slick-active) {
         z-index: 5;
     }
-     .carousel-slide > :global(*) {
+    .carousel-slide > :global(*) {
         width: 100%;
         height: 100%;
         display: block;
@@ -680,7 +779,7 @@
     .carousel-arrow:disabled {
         opacity: 0.4;
         cursor: not-allowed;
-        background: #f0f0f0; 
+        background: #f0f0f0;
         color: #aaa;
         border-color: #eee;
     }
@@ -695,7 +794,7 @@
             max-width: 600px;
             padding: 0 45px 50px;
         }
-         .carousel-slide {
+        .carousel-slide {
             min-height: 480px;
         }
     }
@@ -703,7 +802,7 @@
         .courses-page {
             padding: 20px var(--spacing-padding-page);
         }
-         .admin-controls {
+        .admin-controls {
             justify-content: space-between;
         }
         .carousel-container {
@@ -715,38 +814,44 @@
             height: 35px;
             top: calc(50% - 35px);
         }
-         .carousel-arrow.prev {
+        .carousel-arrow.prev {
             left: 0px;
         }
         .carousel-arrow.next {
             right: 0px;
         }
-         .carousel-slide {
+        .carousel-slide {
             min-height: 460px;
             padding: 5px;
         }
     }
-     @media (max-width: 480px) {
-          .carousel-slide {
+    @media (max-width: 480px) {
+        .carousel-slide {
             min-height: 420px;
         }
         .carousel-arrow {
-             width: 30px;
-             height: 30px;
-             top: calc(50% - 40px);
+            width: 30px;
+            height: 30px;
+            top: calc(50% - 40px);
         }
-         .carousel-arrow.prev { left: -5px; }
-         .carousel-arrow.next { right: -5px; }
-         .carousel-container { padding: 0 30px 40px; }
-
-         .custom-dot {
-             width: 10px;
-             height: 10px;
+        .carousel-arrow.prev {
+            left: -5px;
+        }
+        .carousel-arrow.next {
+            right: -5px;
+        }
+        .carousel-container {
+            padding: 0 30px 40px;
         }
 
-         .custom-dot.active {
-             width: 12px;
-             height: 12px;
+        .custom-dot {
+            width: 10px;
+            height: 10px;
+        }
+
+        .custom-dot.active {
+            width: 12px;
+            height: 12px;
         }
     }
 </style>

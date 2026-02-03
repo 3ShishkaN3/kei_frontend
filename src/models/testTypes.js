@@ -10,16 +10,16 @@ export class BaseTestModel {
         description = "",
         test_type,
         attached_image_id = null,
-        attached_audio_id = null
-        // aspect_ratio_for_test_image = null
+        attached_audio_id = null,
+        attached_image = null,
+        attached_audio = null
     }) {
         this.id = id;
         this.title = title;
         this.description = description;
         this.test_type = test_type;
-        this.attached_image_id = attached_image_id;
-        this.attached_audio_id = attached_audio_id;
-        // this.aspect_ratio_for_test_image = aspect_ratio_for_test_image;
+        this.attached_image_id = attached_image_id || attached_image;
+        this.attached_audio_id = attached_audio_id || attached_audio;
     }
 
     toPayload() {
@@ -27,7 +27,7 @@ export class BaseTestModel {
             title: this.title,
             description: this.description,
             test_type: this.test_type,
-            attached_image: this.attached_image_id, 
+            attached_image: this.attached_image_id,
             attached_audio: this.attached_audio_id,
             // aspect_ratio_for_test_image: this.aspect_ratio_for_test_image,
         };
@@ -40,7 +40,7 @@ export class BaseTestModel {
  */
 export class MCQOptionModel {
     constructor({ id = null, text = "", is_correct = false, explanation = "", order = 0 }) {
-        this.id = id; 
+        this.id = id;
         this.text = text;
         this.is_correct = is_correct;
         this.explanation = explanation;
@@ -55,7 +55,7 @@ export class MCQOptionModel {
             order: this.order,
         };
         if (this.id && typeof this.id !== 'string' || (typeof this.id === 'string' && !this.id.startsWith('temp_'))) {
-            payload.id = this.id; 
+            payload.id = this.id;
         }
         return payload;
     }
@@ -66,7 +66,7 @@ export class MCQOptionModel {
  */
 export class MCQTestModel extends BaseTestModel {
     constructor({ mcq_options = [], ...baseData }) {
-        super(baseData); 
+        super(baseData);
         this.mcq_options = mcq_options.map(opt => opt instanceof MCQOptionModel ? opt : new MCQOptionModel(opt));
     }
 
@@ -89,21 +89,19 @@ export class MCQTestModel extends BaseTestModel {
  * Модель для теста со свободным текстовым ответом.
  */
 export class FreeTextTestModel extends BaseTestModel {
-    constructor({ 
-        reference_answer = "", 
-        explanation = "", 
-        prompt_text = "",
-        prompt_image_file = null,
-        prompt_audio_file = null,
-        ...baseData 
-    }) {
+    constructor(data = {}) {
+        const {
+            free_text_question = {},
+            ...baseData
+        } = data;
         super({ ...baseData, test_type: 'free-text' });
-        this.free_text_question = { 
-            reference_answer: reference_answer,
-            explanation: explanation,
-            prompt_text: prompt_text,
-            prompt_image_file: prompt_image_file,
-            prompt_audio_file: prompt_audio_file,
+
+        this.free_text_question = {
+            reference_answer: free_text_question.reference_answer || data.reference_answer || "",
+            explanation: free_text_question.explanation || data.explanation || "",
+            prompt_text: free_text_question.prompt_text || data.prompt_text || "",
+            prompt_image_file: free_text_question.prompt_image_file || data.prompt_image_file || null,
+            prompt_audio_file: free_text_question.prompt_audio_file || data.prompt_audio_file || null,
         };
     }
 
@@ -118,19 +116,23 @@ export class FreeTextTestModel extends BaseTestModel {
  * Модель для слота/ячейки в Drag-and-Drop тесте
  */
 export class DragDropSlotModel {
-    constructor({ 
-        id = null, 
-        prompt_text = "", 
-        prompt_image_file = null, 
-        prompt_audio_file = null, 
-        correct_answer_text = "", 
-        explanation = "", 
-        order = 0 
+    constructor({
+        id = null,
+        prompt_text = "",
+        prompt_image_file = null,
+        prompt_audio_file = null,
+        prompt_image = null,
+        prompt_audio = null,
+        correct_answer_text = "",
+        explanation = "",
+        order = 0
     }) {
         this.id = id;
         this.prompt_text = prompt_text;
         this.prompt_image_file = prompt_image_file;
         this.prompt_audio_file = prompt_audio_file;
+        this.prompt_image_id = prompt_image || (prompt_image_file && typeof prompt_image_file === 'number' ? prompt_image_file : null);
+        this.prompt_audio_id = prompt_audio || (prompt_audio_file && typeof prompt_audio_file === 'number' ? prompt_audio_file : null);
         this.correct_answer_text = correct_answer_text;
         this.explanation = explanation;
         this.order = order;
@@ -139,8 +141,8 @@ export class DragDropSlotModel {
     toPayload() {
         const payload = {
             prompt_text: this.prompt_text,
-            prompt_image_file: null, // Файл передается отдельно в multipart/form-data
-            prompt_audio_file: null, // Файл передается отдельно в multipart/form-data
+            prompt_image: this.prompt_image_id,
+            prompt_audio: this.prompt_audio_id,
             correct_answer_text: this.correct_answer_text,
             explanation: this.explanation,
             order: this.order,
@@ -156,10 +158,10 @@ export class DragDropSlotModel {
  * Модель для Drag-and-Drop теста.
  */
 export class DragDropTestModel extends BaseTestModel {
-    constructor({ 
+    constructor({
         draggable_options_pool = [],
         drag_drop_slots = [],
-        ...baseData 
+        ...baseData
     }) {
         super({ ...baseData, test_type: 'drag-and-drop' });
         this.draggable_options_pool = Array.isArray(draggable_options_pool) ? [...draggable_options_pool] : [];
@@ -199,20 +201,26 @@ export class DragDropTestModel extends BaseTestModel {
  * Модель для теста на порядок слов
  */
 export class WordOrderTestModel extends BaseTestModel {
-    constructor({ 
-        correct_ordered_texts = [],
-        display_prompt = "", 
-        explanation = "",
-        draggable_options_pool = [],  
-        ...baseData 
-    }) {
+    constructor(data = {}) {
+        const {
+            draggable_options_pool = [],
+            ...baseData
+        } = data;
         super({ ...baseData, test_type: 'word-order' });
+
+        const word_order_sentence = data.word_order_sentence || {};
+        const wos = word_order_sentence.correct_ordered_texts ? word_order_sentence : (data.word_order_sentence_details || {});
+
+        const correct_ordered_texts = wos.correct_ordered_texts || data.correct_ordered_texts || [];
+        const display_prompt = wos.display_prompt || data.display_prompt || "";
+        const explanation = wos.explanation || data.explanation || "";
+
         this.word_order_sentence = {
             correct_ordered_texts: Array.isArray(correct_ordered_texts) ? [...correct_ordered_texts] : [],
             display_prompt: display_prompt,
             explanation: explanation,
         };
-        this.draggable_options_pool = Array.isArray(draggable_options_pool) ? [...draggable_options_pool] : []; 
+        this.draggable_options_pool = Array.isArray(draggable_options_pool) ? [...draggable_options_pool] : (data.draggable_options_pool || []);
     }
 
     addOptionToPool(optionText) {
@@ -228,7 +236,7 @@ export class WordOrderTestModel extends BaseTestModel {
 
     toPayload() {
         const payload = super.toPayload();
-        payload.word_order_sentence = { ...this.word_order_sentence }; 
+        payload.word_order_sentence = { ...this.word_order_sentence };
         payload.draggable_options_pool = [...this.draggable_options_pool];
         return payload;
     }
@@ -267,6 +275,67 @@ export class SpellingTestModel extends BaseTestModel {
     toPayload() {
         const payload = super.toPayload();
         payload.spelling_question = this.spelling_question;
+        return payload;
+    }
+}
+
+/**
+ * Модель для AI Conversation теста ("Кайва с сенсеем")
+ */
+function _normalizeBackgroundImageId(val) {
+    if (val == null) return null;
+    if (typeof val === 'number' && Number.isInteger(val)) return val;
+    if (typeof val === 'object' && val != null && typeof val.id === 'number') return val.id;
+    return null;
+}
+
+export class AiConversationTestModel extends BaseTestModel {
+    constructor(data = {}) {
+        const { ai_conversation_question = {}, ...baseData } = data;
+        super({ ...baseData, test_type: 'ai-conversation' });
+
+        const rawBg = ai_conversation_question.background_image ?? data.background_image;
+        const bgId = _normalizeBackgroundImageId(rawBg) ?? _normalizeBackgroundImageId(ai_conversation_question.background_image_details ?? data.background_image_details);
+
+        const dictionaries = ai_conversation_question.dictionaries || data.dictionaries || [];
+        const dictionariesDetails = ai_conversation_question.dictionaries_details || data.dictionaries_details || [];
+
+        let normalizedDictionaries = [];
+        if (Array.isArray(dictionaries)) {
+            normalizedDictionaries = dictionaries.map(item => {
+                return typeof item === 'object' && item !== null && 'id' in item ? item.id : item;
+            }).filter(id => id != null && id !== undefined);
+        }
+
+        this.ai_conversation_question = {
+            context: ai_conversation_question.context || data.context || "",
+            personality: ai_conversation_question.personality || data.personality || "",
+            goodbye_condition: ai_conversation_question.goodbye_condition || data.goodbye_condition || "",
+            background_image: bgId,
+            background_image_details: ai_conversation_question.background_image_details || data.background_image_details || null,
+            dictionaries: normalizedDictionaries,
+            dictionaries_details: Array.isArray(dictionariesDetails) ? dictionariesDetails : [],
+        };
+    }
+
+    toPayload() {
+        const payload = super.toPayload();
+        const bgId = _normalizeBackgroundImageId(this.ai_conversation_question.background_image);
+
+        let dictionariesIds = [];
+        if (Array.isArray(this.ai_conversation_question.dictionaries)) {
+            dictionariesIds = this.ai_conversation_question.dictionaries.map(item => {
+                return typeof item === 'object' && item !== null && 'id' in item ? item.id : item;
+            }).filter(id => id != null);
+        }
+
+        payload.ai_conversation_question = {
+            context: this.ai_conversation_question.context,
+            personality: this.ai_conversation_question.personality,
+            goodbye_condition: this.ai_conversation_question.goodbye_condition,
+            background_image: bgId,
+            dictionaries: dictionariesIds,
+        };
         return payload;
     }
 }
